@@ -13,6 +13,7 @@ import FilterSheet from '../features/explore/components/FilterSheet.jsx';
 import LanguageModal from '../features/explore/components/LanguageModal.jsx';
 import LocationSheet from '../features/explore/components/LocationSheet.jsx';
 import NearbySheet from '../features/explore/components/NearbySheet.jsx';
+import KakaoMap from '../features/explore/components/KakaoMap.jsx';
 import { SearchIcon, FilterIcon, PinIcon, GlobeIcon, ChevronRightIcon } from '../shared/components/Icon.jsx';
 
 /** Map tab — a full-bleed (placeholder) map with floating search / location /
@@ -60,13 +61,8 @@ export default function HomePage() {
 
   return (
     <div ref={mapRef} className="relative h-full overflow-hidden bg-map-land">
-      {/* blank map base (no backend) */}
-      <div className="absolute inset-0 flex items-center justify-center">
-        <div className="flex flex-col items-center gap-2 text-ink-faint/60">
-          <PinIcon size={26} className="text-coral/40" />
-          <span className="text-xs font-semibold uppercase tracking-wide">Map view</span>
-        </div>
-      </div>
+      {/* Kakao Map — fills the background; falls back to placeholder if key is absent */}
+      <KakaoMap selectedLocation={selectedLocation} course={todayCourse} />
 
       {/* floating controls */}
       <div className="absolute inset-x-0 top-0 z-20 px-4 pt-3.5">
