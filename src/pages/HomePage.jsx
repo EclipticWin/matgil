@@ -1,6 +1,5 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { getPlaces } from '../api/placeApi.js';
-import { COURSES } from '../features/courses/data/courses.js';
 import {
   EMPTY_FILTERS,
   filterCount,
@@ -8,6 +7,7 @@ import {
   LANGUAGES,
 } from '../features/explore/data/exploreOptions.js';
 import { DEFAULT_LOCATION, sortPlacesByDistance } from '../features/explore/data/locations.js';
+import { buildTodayCourse } from '../features/explore/data/courseBuilder.js';
 import Modal from '../features/explore/components/Modal.jsx';
 import FilterSheet from '../features/explore/components/FilterSheet.jsx';
 import LanguageModal from '../features/explore/components/LanguageModal.jsx';
@@ -45,7 +45,16 @@ export default function HomePage() {
     return () => ro.disconnect();
   }, []);
 
-  const nearby = sortPlacesByDistance(applyFilters(places, filters), selectedLocation);
+  const nearby = useMemo(
+    () => sortPlacesByDistance(applyFilters(places, filters), selectedLocation),
+    [places, filters, selectedLocation],
+  );
+
+  const todayCourse = useMemo(
+    () => buildTodayCourse({ places: nearby, selectedLocation, selectedFoodTypes: filters.cat }),
+    [nearby, selectedLocation, filters.cat],
+  );
+
   const count = filterCount(filters);
   const langShort = LANGUAGES.find((l) => l.code === lang)?.short ?? 'EN';
 
@@ -110,7 +119,7 @@ export default function HomePage() {
       </div>
 
       {/* draggable nearby sheet */}
-      <NearbySheet vh={vh} course={COURSES[0]} places={nearby} selectedLocation={selectedLocation} />
+      <NearbySheet vh={vh} course={todayCourse} places={nearby} selectedLocation={selectedLocation} />
 
       {/* filter sheet (slides up) */}
       <Modal open={sheet === 'filters'} onClose={() => setSheet(null)} variant="sheet">

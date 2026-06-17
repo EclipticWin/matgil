@@ -3,17 +3,14 @@ import { ROUTES } from '../../../shared/constants/routes.js';
 import Thumbnail from '../../../shared/components/Thumbnail.jsx';
 import { WalkIcon, ClockIcon } from '../../../shared/components/Icon.jsx';
 
-/** A course summary card: a row of stop thumbnails + meta, links to the detail. */
-export default function CourseCard({ course }) {
+function CourseCardInner({ course }) {
   return (
-    <Link
-      to={ROUTES.courseDetail(course.id)}
-      className="block overflow-hidden rounded-3xl bg-white shadow-card"
-    >
+    <>
       <div className="flex h-24">
         {course.stops.slice(0, 3).map((stop, i) => (
           <Thumbnail
             key={stop.id}
+            src={stop.imageUrl}
             tint={stop.tint}
             rounded="rounded-none"
             className={`h-24 flex-1 ${i < Math.min(course.stops.length, 3) - 1 ? 'border-r-2 border-white' : ''}`}
@@ -40,6 +37,27 @@ export default function CourseCard({ course }) {
           </span>
         </div>
       </div>
+    </>
+  );
+}
+
+/** A course summary card: a row of stop thumbnails + meta.
+ *  Pass `disableLink` to suppress navigation (e.g. when used in Map tab). */
+export default function CourseCard({ course, disableLink = false }) {
+  if (disableLink) {
+    return (
+      <div className="block overflow-hidden rounded-3xl bg-white shadow-card">
+        <CourseCardInner course={course} />
+      </div>
+    );
+  }
+
+  return (
+    <Link
+      to={ROUTES.courseDetail(course.id)}
+      className="block overflow-hidden rounded-3xl bg-white shadow-card"
+    >
+      <CourseCardInner course={course} />
     </Link>
   );
 }

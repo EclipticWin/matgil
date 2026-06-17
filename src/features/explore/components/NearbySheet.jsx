@@ -106,12 +106,16 @@ export default function NearbySheet({ vh, course, places, selectedLocation }) {
       </div>
 
       <div className="no-scrollbar flex-1 overflow-y-auto px-5 pb-5 pt-1">
-        <div className="mb-2 text-[0.7rem] font-extrabold uppercase tracking-wide text-ink-faint">
-          ★ Today's pick
-        </div>
-        <CourseCard course={course} />
+        {course && (
+          <>
+            <div className="mb-2 text-[0.7rem] font-extrabold uppercase tracking-wide text-ink-faint">
+              ★ Today's pick
+            </div>
+            <CourseCard course={course} disableLink />
+          </>
+        )}
 
-        <div className="mb-2 mt-5 flex items-center gap-2.5">
+        <div className={cn('mb-2 flex items-center gap-2.5', course ? 'mt-5' : 'mt-1')}>
           <span className="text-[0.7rem] font-extrabold uppercase tracking-wide text-ink-faint">
             Nearby right now
           </span>
