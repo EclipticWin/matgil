@@ -39,6 +39,8 @@ function normalizePlace(row, locale = "ko") {
     hasMenuInfo: details.has_menu_info ?? false,
     hasImage: details.has_image ?? false,
     hasLocation: details.has_location ?? false,
+
+    matgilCategoryKeys: row.matgil_category_keys ?? [],
   };
 }
 
@@ -51,6 +53,7 @@ export async function getPlaces(locale = "ko") {
       latitude,
       longitude,
       default_image_url,
+      matgil_category_keys,
       mg_place_texts(locale, name, address, description, first_menu, treat_menu, open_time, rest_date, parking, packing, tags),
       mg_place_food_details(tel, has_parking, has_packing, has_open_time, has_menu_info, has_image, has_location),
       mg_place_images(image_url, thumbnail_url, sort_order)

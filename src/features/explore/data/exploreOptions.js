@@ -1,13 +1,25 @@
 /** Options for the Map-tab filter sheet + language modal. ids match the
  *  fields on RESTAURANTS (cat / price / features) so filtering is exact. */
 export const CATEGORIES = [
-  { key: 'all', label: 'All' },
-  { key: 'bbq', label: 'Korean BBQ' },
-  { key: 'street', label: 'Street Food' },
-  { key: 'noodle', label: 'Noodles' },
-  { key: 'cafe', label: 'Café' },
-  { key: 'stew', label: 'Stew & Soup' },
-  { key: 'chicken', label: 'Chicken' },
+  { key: 'all',           label: 'All' },
+  { key: 'bbq',           label: 'Korean BBQ' },
+  { key: 'noodle',        label: 'Noodles' },
+  { key: 'stew',          label: 'Stew & Soup' },
+  { key: 'seafood',       label: 'Seafood' },
+  { key: 'chicken',       label: 'Chicken' },
+  { key: 'street',        label: 'Street Food' },
+  { key: 'cafe',          label: 'Cafe & Dessert' },
+  { key: 'rice',          label: 'Rice Meals' },
+  { key: 'pork',          label: 'Pork Cutlet & Pork' },
+  { key: 'chinese',       label: 'Chinese' },
+  { key: 'japanese',      label: 'Japanese' },
+  { key: 'western',       label: 'Western' },
+  { key: 'pasta',         label: 'Pasta' },
+  { key: 'pizza',         label: 'Pizza' },
+  { key: 'burger',        label: 'Burger' },
+  { key: 'indian',        label: 'Indian' },
+  { key: 'southeast_asian', label: 'Southeast Asian' },
+  { key: 'other',         label: 'Other' },
 ];
 
 export const PRICES = ['₩', '₩₩', '₩₩₩'];
@@ -31,11 +43,16 @@ export const EMPTY_FILTERS = { cat: 'all', price: [], features: [] };
 export const filterCount = (f) =>
   (f.cat !== 'all' ? 1 : 0) + f.price.length + f.features.length;
 
+function matchesCat(place, cat) {
+  if (cat === 'all') return true;
+  return (place.matgilCategoryKeys ?? []).includes(cat);
+}
+
 /** Apply the current filters to a list of restaurants. */
 export function applyFilters(list, f) {
   return list.filter(
     (r) =>
-      (f.cat === 'all' || r.cat === f.cat) &&
+      matchesCat(r, f.cat) &&
       (f.price.length === 0 || f.price.includes(r.price)) &&
       (f.features.length === 0 || f.features.every((x) => (r.features || []).includes(x))),
   );
