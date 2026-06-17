@@ -2,6 +2,8 @@ import { calcDistanceKm } from './locations.js';
 
 const DEFAULT_STOP_COUNT = 3;
 const COURSE_CANDIDATE_LIMIT = 20;
+const IDEAL_ROUTE_DISTANCE_KM = 1.0;       // ~10-12 min walk
+const MAX_PREFERRED_ROUTE_DISTANCE_KM = 1.5; // ~15 min walk, allowed when ideal pool is empty
 
 const TINTS = [
   '#FFE3D4', '#FFEFC9', '#E2F1DE', '#FBE0E4', '#E6E9F7',
@@ -176,7 +178,20 @@ export function buildTodayCourse({ places, selectedLocation, selectedFoodTypes }
     return aKey < bKey ? -1 : aKey > bKey ? 1 : 0;
   });
 
-  const { stops, score, dist } = scored[0];
+  const idealPool = scored.filter((c) => c.dist <= IDEAL_ROUTE_DISTANCE_KM);
+  const preferredPool = scored.filter((c) => c.dist <= MAX_PREFERRED_ROUTE_DISTANCE_KM);
+  let chosen, routeDistanceLevel;
+  if (idealPool.length > 0) {
+    chosen = idealPool[0];
+    routeDistanceLevel = 'ideal';
+  } else if (preferredPool.length > 0) {
+    chosen = preferredPool[0];
+    routeDistanceLevel = 'preferred';
+  } else {
+    chosen = scored[0];
+    routeDistanceLevel = 'fallback';
+  }
+  const { stops, score, dist } = chosen;
   const title = makeTitle(stops, selectedLocation.label);
 
   return {
@@ -189,5 +204,6 @@ export function buildTodayCourse({ places, selectedLocation, selectedFoodTypes }
     score,
     totalDistanceKm: dist,
     stopCount: stops.length,
+    routeDistanceLevel,
   };
 }

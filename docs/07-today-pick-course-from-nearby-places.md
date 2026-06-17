@@ -84,6 +84,24 @@ courseScore =
   - weakOtherPenalty (Food Type 미선택 + other-only stop 시 장소당 -2)
 ```
 
+**도보 10분 우선 거리 풀 보완:**
+
+초기 기획의 “도보 10분 이내 동선 우선” 기준을 반영하기 위해 거리 기준 pool 선택 로직을 추가했다.
+
+기존 점수 계산과 tie-break는 유지하되, 최종 선택 전에 stop 간 총 이동거리 기준으로 후보 pool을 단계적으로 좁힌다.
+
+| 단계 | 기준 | 설명 |
+|---|---|---|
+| ideal | `totalDistanceKm <= 1.0` | 도보 약 10~12분 수준의 코스 우선 선택 |
+| preferred | `totalDistanceKm <= 1.5` | ideal 후보가 없을 때 허용 |
+| fallback | 제한 없음 | 데이터 부족 시 TODAY'S PICK이 사라지지 않도록 전체 후보 중 최고점 선택 |
+
+현재 `totalDistanceKm`는 실제 도보 경로가 아니라 stop 좌표 간 거리의 단순 합이다.
+Kakao Map polyline 또는 실제 도보 경로 계산은 아직 구현하지 않았다.
+
+`routeDistanceLevel`은 course 객체에 포함되지만, 화면에는 아직 표시하지 않는다.
+
+
 - **랜덤 없음, LLM 없음, Kakao Map 없음**
 - 동일 입력 → 항상 동일 결과 (Tie-break 4단계 고정)
 - Food Type은 점수 가산이 아니라 후보군 필터 (`applyFilters`에서 이미 처리됨)
@@ -187,3 +205,4 @@ const todayCourse = useMemo(
 - 추천 코스 2~3개 확장
 - Kakao Map 마커 / polyline 연결
 - 지역 데이터 확장 (TourAPI 추가 수집)
+
