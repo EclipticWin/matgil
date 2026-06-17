@@ -5,6 +5,13 @@ const COURSE_CANDIDATE_LIMIT = 20;
 const IDEAL_ROUTE_DISTANCE_KM = 1.0;       // ~10-12 min walk
 const MAX_PREFERRED_ROUTE_DISTANCE_KM = 1.5; // ~15 min walk, allowed when ideal pool is empty
 
+// Radius tiers for selecting candidates relative to selectedLocation.
+// Tier 1 (local): if any places exist within this radius, use only those.
+// Tier 2 (extended): expand only when tier 1 is empty.
+// Fallback: use the full sorted list only when both tiers are empty.
+const LOCAL_RADIUS_KM = 2.0;
+const EXTENDED_RADIUS_KM = 4.0;
+
 const TINTS = [
   '#FFE3D4', '#FFEFC9', '#E2F1DE', '#FBE0E4', '#E6E9F7',
   '#FFE0CE', '#DDEFEA', '#F0E6FF', '#E6F0FF', '#FFF3E0',
@@ -26,7 +33,7 @@ function combinations(arr, k) {
   return result;
 }
 
-// ─── distance helper ─────────────────────────────────────────────────────────
+// ─── distance helpers ────────────────────────────────────────────────────────
 
 function totalStopDist(stops) {
   let d = 0;
@@ -37,6 +44,17 @@ function totalStopDist(stops) {
     );
   }
   return d;
+}
+
+// Returns distanceKm from selectedLocation, falling back to live calculation
+// when the field hasn't been pre-populated (e.g. in unit tests).
+function distFromSelected(place, selectedLocation) {
+  return place.distanceKm != null
+    ? place.distanceKm
+    : calcDistanceKm(
+        selectedLocation.lat, selectedLocation.lng,
+        place.latitude, place.longitude,
+      );
 }
 
 // ─── scoring components ──────────────────────────────────────────────────────
@@ -76,13 +94,7 @@ function calcDataQualityScore(stops) {
 }
 
 function calcStartAccessScore(firstStop, selectedLocation) {
-  const dist =
-    firstStop.distanceKm != null
-      ? firstStop.distanceKm
-      : calcDistanceKm(
-          selectedLocation.lat, selectedLocation.lng,
-          firstStop.latitude, firstStop.longitude,
-        );
+  const dist = distFromSelected(firstStop, selectedLocation);
   if (dist <= 0.5) return 10;
   if (dist <= 1.0) return 8;
   if (dist <= 2.0) return 5;
@@ -139,11 +151,33 @@ function makeTitle(stops, locationLabel) {
 export function buildTodayCourse({ places, selectedLocation, selectedFoodTypes }) {
   const foodTypes = Array.isArray(selectedFoodTypes) ? selectedFoodTypes : [];
 
-  const candidates = places
-    .filter((p) => p && p.latitude != null && p.longitude != null)
-    .slice(0, COURSE_CANDIDATE_LIMIT);
+  const validPlaces = places.filter((p) => p && p.latitude != null && p.longitude != null);
 
-  if (candidates.length === 0) return null;
+  if (validPlaces.length === 0) return null;
+
+  // ── Radius-based candidate selection ──────────────────────────────────────
+  // Places are pre-sorted by distance from selectedLocation (via sortPlacesByDistance).
+  // We enforce a local radius before scoring so that a tight, high-quality cluster
+  // far from selectedLocation cannot outcompete nearby places purely on cluster score.
+  //
+  // Tier 1 (≤2 km): use only these when any exist — even if fewer than 3 stops.
+  // Tier 2 (≤4 km): expand only when tier 1 is empty.
+  // Fallback: use the nearest COURSE_CANDIDATE_LIMIT places when both tiers are empty.
+  const tier1 = validPlaces.filter((p) => distFromSelected(p, selectedLocation) <= LOCAL_RADIUS_KM);
+  const tier2 = validPlaces.filter((p) => distFromSelected(p, selectedLocation) <= EXTENDED_RADIUS_KM);
+
+  let candidates;
+  if (tier1.length >= DEFAULT_STOP_COUNT) {
+    // 2km 이내 3개 이상: tier1만 사용
+    candidates = tier1.slice(0, COURSE_CANDIDATE_LIMIT);
+  } else if (tier2.length >= 1) {
+    // tier1 부족(< 3): 4km 이내로 확장
+    // tier2가 3개 이상이면 3-stop 코스, 부족하면 stopCount가 자동으로 줄어들어 1~2 stop 허용
+    candidates = tier2.slice(0, COURSE_CANDIDATE_LIMIT);
+  } else {
+    // 4km 이내 아무것도 없을 때만 전체 fallback
+    candidates = validPlaces.slice(0, COURSE_CANDIDATE_LIMIT);
+  }
 
   const stopCount = Math.min(DEFAULT_STOP_COUNT, candidates.length);
   const combos = combinations(candidates, stopCount);
@@ -163,13 +197,7 @@ export function buildTodayCourse({ places, selectedLocation, selectedFoodTypes }
     const bImg = b.stops.filter((s) => s.imageUrl || s.hasImage).length;
     if (aImg !== bImg) return bImg - aImg;
     // tie-break 3: first stop closer to selectedLocation
-    const firstDist = (stops) =>
-      stops[0].distanceKm != null
-        ? stops[0].distanceKm
-        : calcDistanceKm(
-            selectedLocation.lat, selectedLocation.lng,
-            stops[0].latitude, stops[0].longitude,
-          );
+    const firstDist = (stops) => distFromSelected(stops[0], selectedLocation);
     const diff = firstDist(a.stops) - firstDist(b.stops);
     if (Math.abs(diff) > 1e-9) return diff;
     // tie-break 4: lexicographic by sorted stop ids
