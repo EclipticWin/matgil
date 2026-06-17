@@ -2,11 +2,12 @@ import { useRef, useState } from 'react';
 import Card from '../../../shared/components/Card.jsx';
 import Thumbnail from '../../../shared/components/Thumbnail.jsx';
 import CourseCard from '../../courses/components/CourseCard.jsx';
+import TodayCourseDetail from './TodayCourseDetail.jsx';
 import { useBookmarks } from '../../../shared/hooks/useBookmarks.jsx';
 import { HeartIcon } from '../../../shared/components/Icon.jsx';
+import { cn } from '../../../shared/utils/classNames.js';
 
 const TINTS = ['#FFE3D4','#FFEFC9','#E2F1DE','#FBE0E4','#E6E9F7','#FFE0CE','#DDEFEA','#F0E6FF','#E6F0FF','#FFF3E0'];
-import { cn } from '../../../shared/utils/classNames.js';
 
 function NearbyRow({ place, index }) {
   const { toggle, isBookmarked } = useBookmarks();
@@ -58,6 +59,7 @@ export default function NearbySheet({ vh, course, places, selectedLocation }) {
 
   const [snap, setSnap] = useState('peek');
   const [dragH, setDragH] = useState(null);
+  const [selectedCourse, setSelectedCourse] = useState(null);
   const drag = useRef(null);
 
   const height = dragH != null ? dragH : snap === 'full' ? full : peek;
@@ -79,59 +81,85 @@ export default function NearbySheet({ vh, course, places, selectedLocation }) {
     drag.current = null;
   };
 
+  const openDetail = (c) => {
+    setSelectedCourse(c);
+    setSnap('full');
+    setDragH(null);
+  };
+
+  const closeDetail = () => {
+    setSelectedCourse(null);
+  };
+
   return (
     <div
-      className="absolute inset-x-0 bottom-0 z-10 flex flex-col rounded-t-[1.625rem] bg-paper-soft shadow-card"
+      className="absolute inset-x-0 bottom-0 z-30 flex flex-col rounded-t-[1.625rem] bg-paper-soft shadow-card"
       style={{ height, transition: drag.current ? 'none' : 'height 0.35s cubic-bezier(0.2,0.8,0.2,1)' }}
     >
-      <div
-        onPointerDown={onDown}
-        onPointerMove={onMove}
-        onPointerUp={onUp}
-        onPointerCancel={onUp}
-        className="shrink-0 cursor-grab touch-none px-5 pb-1.5 pt-2.5"
-      >
-        <button
-          type="button"
-          aria-label="Expand"
-          onClick={() => setSnap((s) => (s === 'full' ? 'peek' : 'full'))}
-          className="mx-auto mb-3 block h-[5px] w-10 rounded-full bg-ink/15"
+      {selectedCourse ? (
+        /* 상세 상태 — TodayCourseDetail 전체 */
+        <TodayCourseDetail
+          course={selectedCourse}
+          selectedLocation={selectedLocation}
+          onBack={closeDetail}
         />
-        <div className="flex items-baseline justify-between">
-          <h2 className="font-display text-[1.15rem] font-bold tracking-tight text-ink">
-            Eat near {selectedLocation?.label ?? 'here'}
-          </h2>
-          <span className="text-[0.8rem] font-bold text-coral">{places.length} nearby</span>
-        </div>
-      </div>
-
-      <div className="no-scrollbar flex-1 overflow-y-auto px-5 pb-5 pt-1">
-        {course && (
-          <>
-            <div className="mb-2 text-[0.7rem] font-extrabold uppercase tracking-wide text-ink-faint">
-              ★ Today's pick
+      ) : (
+        /* 기본 목록 상태 */
+        <>
+          <div
+            onPointerDown={onDown}
+            onPointerMove={onMove}
+            onPointerUp={onUp}
+            onPointerCancel={onUp}
+            className="shrink-0 cursor-grab touch-none px-5 pb-1.5 pt-2.5"
+          >
+            <button
+              type="button"
+              aria-label="Expand"
+              onClick={() => setSnap((s) => (s === 'full' ? 'peek' : 'full'))}
+              className="mx-auto mb-3 block h-[5px] w-10 rounded-full bg-ink/15"
+            />
+            <div className="flex items-baseline justify-between">
+              <h2 className="font-display text-[1.15rem] font-bold tracking-tight text-ink">
+                Eat near {selectedLocation?.label ?? 'here'}
+              </h2>
+              <span className="text-[0.8rem] font-bold text-coral">{places.length} nearby</span>
             </div>
-            <CourseCard course={course} disableLink />
-          </>
-        )}
-
-        <div className={cn('mb-2 flex items-center gap-2.5', course ? 'mt-5' : 'mt-1')}>
-          <span className="text-[0.7rem] font-extrabold uppercase tracking-wide text-ink-faint">
-            Nearby right now
-          </span>
-          <span className="h-px flex-1 bg-ink/8" />
-        </div>
-
-        {places.length === 0 ? (
-          <p className="py-8 text-center text-sm font-semibold text-ink-faint">No matches yet</p>
-        ) : (
-          <div className="flex flex-col gap-3">
-            {places.map((p, i) => (
-              <NearbyRow key={p.id} place={p} index={i} />
-            ))}
           </div>
-        )}
-      </div>
+
+          <div className="no-scrollbar flex-1 overflow-y-auto px-5 pb-5 pt-1">
+            {course && (
+              <>
+                <div className="mb-2 text-[0.7rem] font-extrabold uppercase tracking-wide text-ink-faint">
+                  ★ Today's pick
+                </div>
+                <CourseCard
+                  course={course}
+                  disableLink
+                  onClick={() => openDetail(course)}
+                />
+              </>
+            )}
+
+            <div className={cn('mb-2 flex items-center gap-2.5', course ? 'mt-5' : 'mt-1')}>
+              <span className="text-[0.7rem] font-extrabold uppercase tracking-wide text-ink-faint">
+                Nearby right now
+              </span>
+              <span className="h-px flex-1 bg-ink/8" />
+            </div>
+
+            {places.length === 0 ? (
+              <p className="py-8 text-center text-sm font-semibold text-ink-faint">No matches yet</p>
+            ) : (
+              <div className="flex flex-col gap-3">
+                {places.map((p, i) => (
+                  <NearbyRow key={p.id} place={p} index={i} />
+                ))}
+              </div>
+            )}
+          </div>
+        </>
+      )}
     </div>
   );
 }

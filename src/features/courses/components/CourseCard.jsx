@@ -42,9 +42,22 @@ function CourseCardInner({ course }) {
 }
 
 /** A course summary card: a row of stop thumbnails + meta.
- *  Pass `disableLink` to suppress navigation (e.g. when used in Map tab). */
-export default function CourseCard({ course, disableLink = false }) {
+ *  Pass `disableLink` to suppress navigation (e.g. when used in Map tab).
+ *  Pass `onClick` together with `disableLink` to make the card interactive. */
+export default function CourseCard({ course, disableLink = false, onClick }) {
   if (disableLink) {
+    if (onClick) {
+      return (
+        <button
+          type="button"
+          onClick={onClick}
+          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') onClick(); }}
+          className="block w-full overflow-hidden rounded-3xl bg-white shadow-card text-left"
+        >
+          <CourseCardInner course={course} />
+        </button>
+      );
+    }
     return (
       <div className="block overflow-hidden rounded-3xl bg-white shadow-card">
         <CourseCardInner course={course} />
