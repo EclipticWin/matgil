@@ -1,0 +1,54 @@
+import { Navigate, useNavigate } from 'react-router-dom';
+import { useAuth } from '../features/auth/hooks/useAuth.jsx';
+import { useBookmarks } from '../shared/hooks/useBookmarks.jsx';
+import { ROUTES } from '../shared/constants/routes.js';
+import Card from '../shared/components/Card.jsx';
+import Button from '../shared/components/Button.jsx';
+
+function Stat({ value, label, onClick }) {
+  return (
+    <Card
+      as={onClick ? 'button' : 'div'}
+      onClick={onClick}
+      className="flex-1 px-2 py-3.5 text-center"
+    >
+      <div className="font-display text-2xl font-bold text-coral">{value}</div>
+      <div className="mt-0.5 text-[0.7rem] font-semibold leading-tight text-ink-soft">{label}</div>
+    </Card>
+  );
+}
+
+/** My tab: profile when logged in, otherwise redirect to the login page. */
+export default function MyPage() {
+  const { user, logout } = useAuth();
+  const { items } = useBookmarks();
+  const navigate = useNavigate();
+
+  if (!user) return <Navigate to={ROUTES.login} replace />;
+
+  return (
+    <div className="px-5 pb-6 pt-6">
+      <h1 className="mb-5 font-display text-[1.75rem] font-bold tracking-tight text-ink">Your trip</h1>
+
+      <Card className="flex items-center gap-3.5 p-4">
+        <div className="flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-amber to-coral font-display text-2xl font-bold text-white">
+          {user.name.charAt(0).toUpperCase()}
+        </div>
+        <div className="min-w-0">
+          <p className="truncate text-[1.05rem] font-bold text-ink">{user.name}</p>
+          <p className="truncate text-sm text-ink-soft">{user.email}</p>
+        </div>
+      </Card>
+
+      <div className="mt-3.5 flex gap-2.5">
+        <Stat value={items.length} label="Saved places" onClick={() => navigate(ROUTES.bookmark)} />
+        <Stat value="2" label="Courses walked" />
+        <Stat value="14" label="Reviews left" />
+      </div>
+
+      <Button variant="secondary" full className="mt-6" onClick={logout}>
+        Log out
+      </Button>
+    </div>
+  );
+}

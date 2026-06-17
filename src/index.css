@@ -1,0 +1,122 @@
+@import url('https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+
+  body {
+    @apply font-sans text-ink antialiased;
+    /* Cream gradient fills the space around the centered mobile frame on desktop. */
+    background: radial-gradient(120% 90% at 50% -10%, #f3eadc 0%, #e8decf 55%, #ded2bf 100%) fixed;
+  }
+}
+
+@layer utilities {
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+}
+
+/* ── small, reusable keyframes ──────────────────────────────── */
+@keyframes matgil-rise {
+  from {
+    opacity: 0;
+    transform: translateY(0.75rem);
+  }
+}
+@keyframes matgil-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.94);
+  }
+}
+@keyframes matgil-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.animate-rise {
+  animation: matgil-rise 0.45s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+.animate-pop {
+  animation: matgil-pop 0.28s cubic-bezier(0.2, 0.9, 0.3, 1) both;
+}
+.animate-spin-slow {
+  animation: matgil-spin 0.9s linear infinite;
+}
+
+/* ── Map-tab overlays (filter sheet / language modal) ──────── */
+@keyframes matgil-mfade {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes matgil-mfade-out {
+  to {
+    opacity: 0;
+  }
+}
+@keyframes matgil-mup {
+  from {
+    transform: translateY(100%);
+  }
+}
+@keyframes matgil-mdown {
+  to {
+    transform: translateY(100%);
+  }
+}
+@keyframes matgil-mpop {
+  from {
+    opacity: 0;
+    transform: scale(0.92);
+  }
+}
+@keyframes matgil-mpop-out {
+  to {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+}
+.modal-in .modal-back {
+  animation: matgil-mfade 0.25s ease both;
+}
+.modal-in .modal-sheet {
+  animation: matgil-mup 0.32s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+.modal-in .modal-center {
+  animation: matgil-mpop 0.26s cubic-bezier(0.2, 0.9, 0.3, 1) both;
+}
+.modal-out .modal-back {
+  animation: matgil-mfade-out 0.22s ease forwards;
+}
+.modal-out .modal-sheet {
+  animation: matgil-mdown 0.24s ease forwards;
+}
+.modal-out .modal-center {
+  animation: matgil-mpop-out 0.2s ease forwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-rise,
+  .animate-pop {
+    animation: none;
+  }
+  .modal-in .modal-back,
+  .modal-in .modal-sheet,
+  .modal-in .modal-center {
+    animation: none;
+  }
+}
