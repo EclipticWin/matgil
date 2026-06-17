@@ -5,10 +5,6 @@ const COURSE_CANDIDATE_LIMIT = 20;
 const IDEAL_ROUTE_DISTANCE_KM = 1.0;       // ~10-12 min walk
 const MAX_PREFERRED_ROUTE_DISTANCE_KM = 1.5; // ~15 min walk, allowed when ideal pool is empty
 
-// Radius tiers for selecting candidates relative to selectedLocation.
-// Tier 1 (local): if any places exist within this radius, use only those.
-// Tier 2 (extended): expand only when tier 1 is empty.
-// Fallback: use the full sorted list only when both tiers are empty.
 const LOCAL_RADIUS_KM = 2.0;
 const EXTENDED_RADIUS_KM = 4.0;
 
@@ -18,6 +14,9 @@ const TINTS = [
 ];
 
 const ESTIMATED_TIME = { 1: '~30 min', 2: '~1 hr', 3: '~1.5 hr', 4: '~2 hr' };
+
+// Distinct accent colors for each recommended course slot.
+const COURSE_ACCENTS = ['#F8481F', '#5B7CFA', '#2CB67D'];
 
 // ─── combinatorics ───────────────────────────────────────────────────────────
 
@@ -46,8 +45,8 @@ function totalStopDist(stops) {
   return d;
 }
 
-// Returns distanceKm from selectedLocation, falling back to live calculation
-// when the field hasn't been pre-populated (e.g. in unit tests).
+// Returns distance from selectedLocation, falling back to live calculation
+// when distanceKm was not pre-populated (e.g. in tests).
 function distFromSelected(place, selectedLocation) {
   return place.distanceKm != null
     ? place.distanceKm
@@ -146,38 +145,29 @@ function makeTitle(stops, locationLabel) {
   return `${locationLabel} Food Walk`;
 }
 
-// ─── public API ──────────────────────────────────────────────────────────────
+// ─── private: radius-tier candidate selection ─────────────────────────────────
+//
+// Tier 1 (≤2 km, ≥3 places): use only tier1.
+// Tier 2 (≤4 km): expand when tier1 < 3; allow fewer stops if < 3 available.
+// Fallback: nearest COURSE_CANDIDATE_LIMIT places when both tiers are empty.
 
-export function buildTodayCourse({ places, selectedLocation, selectedFoodTypes }) {
-  const foodTypes = Array.isArray(selectedFoodTypes) ? selectedFoodTypes : [];
+function selectCandidates(validPlaces, selectedLocation) {
+  const tier1 = validPlaces.filter(
+    (p) => distFromSelected(p, selectedLocation) <= LOCAL_RADIUS_KM,
+  );
+  const tier2 = validPlaces.filter(
+    (p) => distFromSelected(p, selectedLocation) <= EXTENDED_RADIUS_KM,
+  );
 
-  const validPlaces = places.filter((p) => p && p.latitude != null && p.longitude != null);
+  if (tier1.length >= DEFAULT_STOP_COUNT) return tier1.slice(0, COURSE_CANDIDATE_LIMIT);
+  if (tier2.length >= 1)                  return tier2.slice(0, COURSE_CANDIDATE_LIMIT);
+  return validPlaces.slice(0, COURSE_CANDIDATE_LIMIT);
+}
 
-  if (validPlaces.length === 0) return null;
+// ─── private: build one course from a given candidate array ──────────────────
 
-  // ── Radius-based candidate selection ──────────────────────────────────────
-  // Places are pre-sorted by distance from selectedLocation (via sortPlacesByDistance).
-  // We enforce a local radius before scoring so that a tight, high-quality cluster
-  // far from selectedLocation cannot outcompete nearby places purely on cluster score.
-  //
-  // Tier 1 (≤2 km): use only these when any exist — even if fewer than 3 stops.
-  // Tier 2 (≤4 km): expand only when tier 1 is empty.
-  // Fallback: use the nearest COURSE_CANDIDATE_LIMIT places when both tiers are empty.
-  const tier1 = validPlaces.filter((p) => distFromSelected(p, selectedLocation) <= LOCAL_RADIUS_KM);
-  const tier2 = validPlaces.filter((p) => distFromSelected(p, selectedLocation) <= EXTENDED_RADIUS_KM);
-
-  let candidates;
-  if (tier1.length >= DEFAULT_STOP_COUNT) {
-    // 2km 이내 3개 이상: tier1만 사용
-    candidates = tier1.slice(0, COURSE_CANDIDATE_LIMIT);
-  } else if (tier2.length >= 1) {
-    // tier1 부족(< 3): 4km 이내로 확장
-    // tier2가 3개 이상이면 3-stop 코스, 부족하면 stopCount가 자동으로 줄어들어 1~2 stop 허용
-    candidates = tier2.slice(0, COURSE_CANDIDATE_LIMIT);
-  } else {
-    // 4km 이내 아무것도 없을 때만 전체 fallback
-    candidates = validPlaces.slice(0, COURSE_CANDIDATE_LIMIT);
-  }
+function buildOneCourse(candidates, selectedLocation, foodTypes, courseId, accent) {
+  if (candidates.length === 0) return null;
 
   const stopCount = Math.min(DEFAULT_STOP_COUNT, candidates.length);
   const combos = combinations(candidates, stopCount);
@@ -197,8 +187,9 @@ export function buildTodayCourse({ places, selectedLocation, selectedFoodTypes }
     const bImg = b.stops.filter((s) => s.imageUrl || s.hasImage).length;
     if (aImg !== bImg) return bImg - aImg;
     // tie-break 3: first stop closer to selectedLocation
-    const firstDist = (stops) => distFromSelected(stops[0], selectedLocation);
-    const diff = firstDist(a.stops) - firstDist(b.stops);
+    const diff =
+      distFromSelected(a.stops[0], selectedLocation)
+      - distFromSelected(b.stops[0], selectedLocation);
     if (Math.abs(diff) > 1e-9) return diff;
     // tie-break 4: lexicographic by sorted stop ids
     const aKey = a.stops.map((s) => s.id).sort().join(',');
@@ -206,7 +197,7 @@ export function buildTodayCourse({ places, selectedLocation, selectedFoodTypes }
     return aKey < bKey ? -1 : aKey > bKey ? 1 : 0;
   });
 
-  const idealPool = scored.filter((c) => c.dist <= IDEAL_ROUTE_DISTANCE_KM);
+  const idealPool    = scored.filter((c) => c.dist <= IDEAL_ROUTE_DISTANCE_KM);
   const preferredPool = scored.filter((c) => c.dist <= MAX_PREFERRED_ROUTE_DISTANCE_KM);
   let chosen, routeDistanceLevel;
   if (idealPool.length > 0) {
@@ -219,19 +210,71 @@ export function buildTodayCourse({ places, selectedLocation, selectedFoodTypes }
     chosen = scored[0];
     routeDistanceLevel = 'fallback';
   }
+
   const { stops, score, dist } = chosen;
   const title = makeTitle(stops, selectedLocation.label);
 
   return {
-    id: 'today-pick',
+    id: courseId,
     title,
     stops: stops.map((stop, i) => ({ ...stop, tint: TINTS[i % TINTS.length] })),
     km: `${dist.toFixed(1)} km`,
     hr: ESTIMATED_TIME[stops.length] ?? '~1.5 hr',
-    accent: '#F8481F',
+    accent,
     score,
     totalDistanceKm: dist,
     stopCount: stops.length,
     routeDistanceLevel,
   };
+}
+
+// ─── public API ──────────────────────────────────────────────────────────────
+
+/** Builds a single "today's pick" course. Preserved for backwards compatibility. */
+export function buildTodayCourse({ places, selectedLocation, selectedFoodTypes }) {
+  const foodTypes = Array.isArray(selectedFoodTypes) ? selectedFoodTypes : [];
+  const validPlaces = places.filter((p) => p && p.latitude != null && p.longitude != null);
+  if (validPlaces.length === 0) return null;
+  const candidates = selectCandidates(validPlaces, selectedLocation);
+  return buildOneCourse(candidates, selectedLocation, foodTypes, 'today-pick', COURSE_ACCENTS[0]);
+}
+
+/**
+ * Builds up to `maxCourses` non-overlapping recommended courses.
+ * Each course uses a distinct set of stops; stops used in earlier courses
+ * are excluded from the pool for later ones.
+ * Returns fewer than `maxCourses` when the candidate pool is exhausted.
+ */
+export function buildRecommendedCourses({
+  places,
+  selectedLocation,
+  selectedFoodTypes,
+  maxCourses = 3,
+}) {
+  const foodTypes = Array.isArray(selectedFoodTypes) ? selectedFoodTypes : [];
+  const validPlaces = places.filter((p) => p && p.latitude != null && p.longitude != null);
+  if (validPlaces.length === 0) return [];
+
+  const candidatePool = selectCandidates(validPlaces, selectedLocation);
+  const courses = [];
+  const usedIds = new Set();
+
+  for (let i = 0; i < maxCourses; i++) {
+    const available = candidatePool.filter((p) => !usedIds.has(p.id));
+    if (available.length === 0) break;
+
+    const course = buildOneCourse(
+      available,
+      selectedLocation,
+      foodTypes,
+      `recommended-${i + 1}`,
+      COURSE_ACCENTS[i % COURSE_ACCENTS.length],
+    );
+    if (!course) break;
+
+    course.stops.forEach((s) => usedIds.add(s.id));
+    courses.push(course);
+  }
+
+  return courses;
 }

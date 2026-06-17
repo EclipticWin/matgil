@@ -7,7 +7,7 @@ import {
   LANGUAGES,
 } from '../features/explore/data/exploreOptions.js';
 import { DEFAULT_LOCATION, sortPlacesByDistance } from '../features/explore/data/locations.js';
-import { buildTodayCourse } from '../features/explore/data/courseBuilder.js';
+import { buildRecommendedCourses } from '../features/explore/data/courseBuilder.js';
 import Modal from '../features/explore/components/Modal.jsx';
 import FilterSheet from '../features/explore/components/FilterSheet.jsx';
 import LanguageModal from '../features/explore/components/LanguageModal.jsx';
@@ -51,18 +51,28 @@ export default function HomePage() {
     [places, filters, selectedLocation],
   );
 
-  const todayCourse = useMemo(
-    () => buildTodayCourse({ places: nearby, selectedLocation, selectedFoodTypes: filters.cat }),
+  const recommendedCourses = useMemo(
+    () => buildRecommendedCourses({ places: nearby, selectedLocation, selectedFoodTypes: filters.cat }),
     [nearby, selectedLocation, filters.cat],
   );
+
+  const [activeCourseId, setActiveCourseId] = useState(null);
+
+  // Reset to first course whenever location or food-type filter changes.
+  useEffect(() => {
+    setActiveCourseId(null);
+  }, [selectedLocation, filters.cat]);
+
+  const activeCourse =
+    recommendedCourses.find((c) => c.id === activeCourseId) ?? recommendedCourses[0] ?? null;
 
   const count = filterCount(filters);
   const langShort = LANGUAGES.find((l) => l.code === lang)?.short ?? 'EN';
 
   return (
     <div ref={mapRef} className="relative h-full overflow-hidden bg-map-land">
-      {/* Kakao Map — fills the background; falls back to placeholder if key is absent */}
-      <KakaoMap selectedLocation={selectedLocation} course={todayCourse} />
+      {/* Kakao Map — shows the active course only; falls back to placeholder if key is absent */}
+      <KakaoMap selectedLocation={selectedLocation} course={activeCourse} />
 
       {/* floating controls */}
       <div className="absolute inset-x-0 top-0 z-20 px-4 pt-3.5">
@@ -115,7 +125,14 @@ export default function HomePage() {
       </div>
 
       {/* draggable nearby sheet */}
-      <NearbySheet vh={vh} course={todayCourse} places={nearby} selectedLocation={selectedLocation} />
+      <NearbySheet
+        vh={vh}
+        courses={recommendedCourses}
+        activeCourse={activeCourse}
+        onSelectCourse={(c) => setActiveCourseId(c.id)}
+        places={nearby}
+        selectedLocation={selectedLocation}
+      />
 
       {/* filter sheet (slides up) */}
       <Modal open={sheet === 'filters'} onClose={() => setSheet(null)} variant="sheet">
