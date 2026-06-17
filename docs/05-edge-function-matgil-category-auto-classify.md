@@ -110,3 +110,10 @@ matgil_category_keys: classifyMatgilCategories(listItem.title, introItem?.firstm
 - 기존 수동 입력 데이터(10개)는 키워드 룰 기준과 다를 수 있음. 필요 시 재분류 고려.
 - `japanese` / `noodle` / `seafood`처럼 키워드가 겹치는 카테고리는 복수 태그 정상 동작.
 - FilterSheet에 현재 미노출 카테고리(`rice`, `pork`, `chinese` 등)는 `CATEGORIES` 배열에 추가하면 UI에 즉시 반영 가능.
+- TourAPI pageNo 3~10 추가 수집을 완료했다.
+
+현재 mg_places 총 100개이고, matgil_category_keys 빈 배열 데이터는 0개다.
+
+카테고리 분포는 other 35, stew 20, bbq 19, noodle 12, street 8, seafood 7, pork 5, japanese 4, rice 3, cafe 3, chinese 2, chicken 2, western 1 정도다.
+
+other 비율이 높지만 MVP 코스 기능 구현을 먼저 진행하기로 했다.

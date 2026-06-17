@@ -38,14 +38,15 @@ export const LANGUAGES = [
   { code: 'JA', short: '日', name: '日本語' },
 ];
 
-export const EMPTY_FILTERS = { cat: 'all', price: [], features: [] };
+export const EMPTY_FILTERS = { cat: [], price: [], features: [] };
 
 export const filterCount = (f) =>
-  (f.cat !== 'all' ? 1 : 0) + f.price.length + f.features.length;
+  (Array.isArray(f.cat) ? f.cat.length : 0) + f.price.length + f.features.length;
 
-function matchesCat(place, cat) {
-  if (cat === 'all') return true;
-  return (place.matgilCategoryKeys ?? []).includes(cat);
+function matchesCat(place, cats) {
+  const arr = Array.isArray(cats) ? cats : [];
+  if (arr.length === 0) return true;
+  return arr.some((cat) => (place.matgilCategoryKeys ?? []).includes(cat));
 }
 
 /** Apply the current filters to a list of restaurants. */
