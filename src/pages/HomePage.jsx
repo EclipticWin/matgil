@@ -7,9 +7,11 @@ import {
   applyFilters,
   LANGUAGES,
 } from '../features/explore/data/exploreOptions.js';
+import { DEFAULT_LOCATION, sortPlacesByDistance } from '../features/explore/data/locations.js';
 import Modal from '../features/explore/components/Modal.jsx';
 import FilterSheet from '../features/explore/components/FilterSheet.jsx';
 import LanguageModal from '../features/explore/components/LanguageModal.jsx';
+import LocationSheet from '../features/explore/components/LocationSheet.jsx';
 import NearbySheet from '../features/explore/components/NearbySheet.jsx';
 import { SearchIcon, FilterIcon, PinIcon, GlobeIcon, ChevronRightIcon } from '../shared/components/Icon.jsx';
 
@@ -18,8 +20,9 @@ import { SearchIcon, FilterIcon, PinIcon, GlobeIcon, ChevronRightIcon } from '..
 export default function HomePage() {
   const [filters, setFilters] = useState(EMPTY_FILTERS);
   const [lang, setLang] = useState('EN');
-  const [sheet, setSheet] = useState(null); // 'filters' | 'language' | null
+  const [sheet, setSheet] = useState(null); // 'filters' | 'language' | 'location' | null
   const [places, setPlaces] = useState([]);
+  const [selectedLocation, setSelectedLocation] = useState(DEFAULT_LOCATION);
 
   const mapRef = useRef(null);
   const [vh, setVh] = useState(0);
@@ -42,7 +45,7 @@ export default function HomePage() {
     return () => ro.disconnect();
   }, []);
 
-  const nearby = applyFilters(places, filters);
+  const nearby = sortPlacesByDistance(applyFilters(places, filters), selectedLocation);
   const count = filterCount(filters);
   const langShort = LANGUAGES.find((l) => l.code === lang)?.short ?? 'EN';
 
@@ -79,16 +82,20 @@ export default function HomePage() {
         </div>
 
         <div className="mt-3 flex items-center justify-between">
-          <div className="flex h-10 items-center gap-1.5 rounded-full bg-white px-3.5 shadow-soft">
+          <button
+            type="button"
+            onClick={() => setSheet('location')}
+            className="flex h-10 items-center gap-1.5 rounded-full bg-white px-3.5 shadow-soft"
+          >
             <PinIcon size={14} className="text-coral" />
             <span className="leading-none">
               <span className="block text-[0.55rem] font-bold uppercase tracking-wide text-ink-faint">
                 You're in
               </span>
-              <span className="mt-0.5 block text-[0.85rem] font-bold text-ink">Myeongdong</span>
+              <span className="mt-0.5 block text-[0.85rem] font-bold text-ink">{selectedLocation.label}</span>
             </span>
             <ChevronRightIcon size={10} className="ml-0.5 rotate-90 text-ink-faint" />
-          </div>
+          </button>
 
           <button
             type="button"
@@ -103,7 +110,7 @@ export default function HomePage() {
       </div>
 
       {/* draggable nearby sheet */}
-      <NearbySheet vh={vh} course={COURSES[0]} places={nearby} />
+      <NearbySheet vh={vh} course={COURSES[0]} places={nearby} selectedLocation={selectedLocation} />
 
       {/* filter sheet (slides up) */}
       <Modal open={sheet === 'filters'} onClose={() => setSheet(null)} variant="sheet">
@@ -113,6 +120,11 @@ export default function HomePage() {
       {/* language modal (centered) */}
       <Modal open={sheet === 'language'} onClose={() => setSheet(null)} variant="center">
         <LanguageModal value={lang} onSelect={setLang} onClose={() => setSheet(null)} />
+      </Modal>
+
+      {/* location picker sheet */}
+      <Modal open={sheet === 'location'} onClose={() => setSheet(null)} variant="sheet">
+        <LocationSheet value={selectedLocation} onSelect={setSelectedLocation} onClose={() => setSheet(null)} />
       </Modal>
     </div>
   );

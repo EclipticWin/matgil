@@ -13,13 +13,21 @@ function NearbyRow({ place, index }) {
   const saved = isBookmarked(place.id);
   const tint = TINTS[index % TINTS.length];
   const subtitle = place.firstMenu || place.tags?.[0] || '음식점';
+  const distText =
+    place.distanceKm != null
+      ? place.distanceKm < 1
+        ? `${Math.round(place.distanceKm * 1000)} m`
+        : `${place.distanceKm.toFixed(1)} km`
+      : null;
 
   return (
     <Card className="flex items-center gap-3 p-3">
       <Thumbnail src={place.imageUrl} tint={tint} className="h-[4.25rem] w-[4.25rem]" />
       <div className="min-w-0 flex-1">
         <p className="truncate text-[0.95rem] font-bold text-ink">{place.name}</p>
-        <p className="mt-0.5 truncate text-xs text-ink-soft">{subtitle}</p>
+        <p className="mt-0.5 truncate text-xs text-ink-soft">
+          {subtitle}{distText ? ` · ${distText}` : ''}
+        </p>
         {place.address && (
           <p className="mt-1 truncate text-xs text-ink-faint">{place.address}</p>
         )}
@@ -44,7 +52,7 @@ function NearbyRow({ place, index }) {
  * between a peek and a near-full height — mirroring the web Explore screen.
  * `vh` is the height of the map container in px (drives the snap points).
  */
-export default function NearbySheet({ vh, course, places }) {
+export default function NearbySheet({ vh, course, places, selectedLocation }) {
   const peek = vh ? Math.round(vh * 0.44) : 300;
   const full = vh ? Math.round(vh * 0.92) : 560;
 
@@ -90,7 +98,9 @@ export default function NearbySheet({ vh, course, places }) {
           className="mx-auto mb-3 block h-[5px] w-10 rounded-full bg-ink/15"
         />
         <div className="flex items-baseline justify-between">
-          <h2 className="font-display text-[1.15rem] font-bold tracking-tight text-ink">Eat near here</h2>
+          <h2 className="font-display text-[1.15rem] font-bold tracking-tight text-ink">
+            Eat near {selectedLocation?.label ?? 'here'}
+          </h2>
           <span className="text-[0.8rem] font-bold text-coral">{places.length} nearby</span>
         </div>
       </div>
