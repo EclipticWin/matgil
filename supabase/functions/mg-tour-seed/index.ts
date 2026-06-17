@@ -172,6 +172,38 @@ async function placeAlreadyExists(supabase: any, contentId: string, contentTypeI
     return data;
 }
 
+function classifyMatgilCategories(title: unknown, firstMenu: unknown): string[] {
+    const text = [title, firstMenu].filter(Boolean).join(" ").toLowerCase();
+
+    if (!text.trim()) return ["other"];
+
+    const RULES: { key: string; keywords: string[] }[] = [
+        { key: "bbq",           keywords: ["갈비", "불고기", "삼겹살", "목살", "곱창", "막창", "대창", "숯불", "갈매기살", "고기", "고깃집", "흑염소"] },
+        { key: "noodle",        keywords: ["칼국수", "냉면", "국수", "라면", "우동", "짜장", "짬뽕", "쌀국수", "라멘", "소바"] },
+        { key: "stew",          keywords: ["찌개", "탕", "매운탕", "해장", "전골", "아구찜", "아귀찜", "갈비찜", "찜닭", "찜"] },
+        { key: "seafood",       keywords: ["해물", "해산물", "아구", "아귀", "회", "조개", "낙지", "오징어", "생선", "초밥", "스시", "새우", "게", "대게", "랍스터"] },
+        { key: "chicken",       keywords: ["치킨", "닭갈비", "닭볶음탕", "삼계탕", "찜닭", "후라이드", "양념치킨"] },
+        { key: "street",        keywords: ["떡볶이", "순대", "어묵", "김밥", "분식", "만두", "호떡", "핫도그"] },
+        { key: "cafe",          keywords: ["카페", "커피", "디저트", "베이커리", "케이크", "빵", "마카롱", "도넛", "와플", "빙수"] },
+        { key: "rice",          keywords: ["비빔밥", "덮밥", "국밥", "볶음밥", "백반", "한정식", "도시락", "쌈밥"] },
+        { key: "pork",          keywords: ["돈까스", "돈가스", "족발", "보쌈", "돼지", "제육"] },
+        { key: "chinese",       keywords: ["중식", "중국집", "탕수육", "마라탕", "훠궈", "딤섬", "양꼬치", "양갈비"] },
+        { key: "japanese",      keywords: ["일식", "초밥", "스시", "라멘", "우동", "소바", "돈부리", "오마카세", "이자카야", "가츠", "카츠", "규카츠"] },
+        { key: "western",       keywords: ["양식", "스테이크", "브런치", "리조또", "샐러드", "그릴", "필라프"] },
+        { key: "pasta",         keywords: ["파스타", "스파게티", "라자냐", "뇨끼", "알리오", "까르보나라", "볼로네제"] },
+        { key: "pizza",         keywords: ["피자", "화덕피자", "피제리아"] },
+        { key: "burger",        keywords: ["버거", "햄버거", "수제버거"] },
+        { key: "indian",        keywords: ["인도", "커리", "카레", "난", "탄두리", "마살라", "비리야니"] },
+        { key: "southeast_asian", keywords: ["베트남", "태국", "타이", "팟타이", "똠얌", "분짜", "반미", "나시고랭", "미고랭", "동남아"] },
+    ];
+
+    const matched = RULES
+        .filter(({ keywords }) => keywords.some((kw) => text.includes(kw)))
+        .map(({ key }) => key);
+
+    return matched.length > 0 ? matched : ["other"];
+}
+
 async function insertPlace(supabase: any, listItem: any, introRaw: any, introItem: any) {
     const existing = await placeAlreadyExists(
         supabase,
@@ -216,6 +248,8 @@ async function insertPlace(supabase: any, listItem: any, introRaw: any, introIte
                 food_category_code_1: listItem.lclsSystm1 || null,
                 food_category_code_2: listItem.lclsSystm2 || null,
                 food_category_code_3: listItem.lclsSystm3 || null,
+
+                matgil_category_keys: classifyMatgilCategories(listItem.title, introItem?.firstmenu),
 
                 default_image_url: listItem.firstimage || null,
                 is_active: true,
