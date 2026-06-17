@@ -4,6 +4,8 @@ import { useBookmarks } from '../shared/hooks/useBookmarks.jsx';
 import { ROUTES } from '../shared/constants/routes.js';
 import Card from '../shared/components/Card.jsx';
 import Button from '../shared/components/Button.jsx';
+import PageShell from '../shared/components/PageShell.jsx';
+import PageHeader from '../shared/components/PageHeader.jsx';
 
 function Stat({ value, label, onClick }) {
   return (
@@ -27,8 +29,8 @@ export default function MyPage() {
   if (!user) return <Navigate to={ROUTES.login} replace />;
 
   return (
-    <div className="px-5 pb-6 pt-6">
-      <h1 className="mb-5 font-display text-[1.75rem] font-bold tracking-tight text-ink">Your trip</h1>
+    <PageShell>
+      <PageHeader title="Your trip" titleClassName="mb-5" />
 
       <Card className="flex items-center gap-3.5 p-4">
         <div className="flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-amber to-coral font-display text-2xl font-bold text-white">
@@ -49,6 +51,6 @@ export default function MyPage() {
       <Button variant="secondary" full className="mt-6" onClick={logout}>
         Log out
       </Button>
-    </div>
+    </PageShell>
   );
 }

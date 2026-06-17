@@ -3,6 +3,7 @@ import { COMMUNITY_POSTS, filterPosts } from '../features/community/data/communi
 import CommunityTabs from '../features/community/components/CommunityTabs.jsx';
 import PostCard from '../features/community/components/PostCard.jsx';
 import { PencilIcon } from '../shared/components/Icon.jsx';
+import PageHeader from '../shared/components/PageHeader.jsx';
 
 /** Community tab (커뮤니티): tips and reviews from travellers eating in Seoul. */
 export default function CommunityPage() {
@@ -13,10 +14,11 @@ export default function CommunityPage() {
     <>
       <div className="pb-[6.5rem] pt-6">
         <div className="px-5">
-          <h1 className="font-display text-[1.75rem] font-bold tracking-tight text-ink">Community</h1>
-          <p className="text-sm text-ink-soft [text-wrap:pretty]">
-            Tips from travellers eating in Seoul
-          </p>
+          <PageHeader
+            title="Community"
+            subtitle="Tips from travellers eating in Seoul"
+            subtitleClassName="[text-wrap:pretty]"
+          />
         </div>
 
         <CommunityTabs value={filter} onChange={setFilter} />

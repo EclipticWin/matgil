@@ -4,15 +4,16 @@ import PhraseCategoryTabs from '../features/phrases/components/PhraseCategoryTab
 import PhraseCard from '../features/phrases/components/PhraseCard.jsx';
 import Card from '../shared/components/Card.jsx';
 import { SpeakerIcon } from '../shared/components/Icon.jsx';
+import PageShell from '../shared/components/PageShell.jsx';
+import PageHeader from '../shared/components/PageHeader.jsx';
 
-/** Phrases tab: situational Korean phrases with text-to-speech. */
 export default function PhrasesPage() {
   const [category, setCategory] = useState('arriving');
   const phrases = PHRASES.filter((p) => p.category === category);
 
   return (
-    <div className="px-5 pb-6 pt-6">
-      <h1 className="font-display text-[1.75rem] font-bold tracking-tight text-ink">Useful phrases</h1>
+    <PageShell>
+      <PageHeader title="Useful phrases" />
       <div className="mt-2 inline-flex items-center gap-1.5 rounded-xl bg-coral-tint px-3 py-1.5 text-[0.8rem] font-semibold text-coral-deep">
         <SpeakerIcon size={15} className="text-coral" /> Tap to hear it in Korean
       </div>
@@ -28,6 +29,6 @@ export default function PhrasesPage() {
           </div>
         ))}
       </Card>
-    </div>
+    </PageShell>
   );
 }
