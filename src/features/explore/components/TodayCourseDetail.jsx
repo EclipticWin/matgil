@@ -1,4 +1,3 @@
-import { cn } from '../../../shared/utils/classNames.js';
 import Thumbnail from '../../../shared/components/Thumbnail.jsx';
 import Button from '../../../shared/components/Button.jsx';
 import {
@@ -21,7 +20,7 @@ function distLabel(stop) {
 
 /** Map Bottom Sheet 내부 코스 상세 콘텐츠.
  *  todayCourse.stops 기반이므로 mock CourseDetailPage와 별개로 유지한다. */
-export default function TodayCourseDetail({ course, selectedLocation, onBack }) {
+export default function TodayCourseDetail({ course, selectedLocation, onBack, onSelectPlace }) {
   const stopCount = course.stopCount ?? course.stops.length;
   const blurb = `A short food walk near ${selectedLocation?.label ?? 'here'}.`;
 
@@ -61,20 +60,20 @@ export default function TodayCourseDetail({ course, selectedLocation, onBack }) 
       <div className="no-scrollbar flex-1 overflow-y-auto px-5 pb-4">
         <p className="mb-4 text-sm leading-relaxed text-ink-soft">{blurb}</p>
 
-        <div className="mb-1 text-[0.72rem] font-extrabold uppercase tracking-wide text-ink-faint">
+        <div className="mb-2 text-[0.72rem] font-extrabold uppercase tracking-wide text-ink-faint">
           Route stops
         </div>
 
         {/*
-          stops 목록 구조:
-          - 왼쪽: 번호 배지 컬럼 — border 없음, connector만 통과
-          - 오른쪽: 콘텐츠 래퍼 — border-b는 여기에만 (마지막 stop 제외)
-
-          connector top-12/bottom-12: py-5(20px) 기준 배지 중심 = 20+(56-34)/2+17 = 48px
+          왼쪽 배지 컬럼: connector만 통과, 카드 배경 없음
+          오른쪽 카드: 연한 bg-white/45 + rounded-2xl
+          connector: badge 34px, card 80px(py-3×2+h-14), space-y-3 12px
+          badge center = (80-34)/2+17 = 40px → top-10 / bottom-10
+          connector left=17px < card start=54px(badge34+gap-5 20) → 카드에 가리지 않음
         */}
-        <div className="relative">
+        <div className="relative space-y-3">
           <div
-            className="absolute bottom-12 left-[1.0625rem] top-12 w-[2.5px]"
+            className="absolute bottom-10 left-[1.0625rem] top-10 w-[2.5px]"
             style={{
               background:
                 'repeating-linear-gradient(180deg, rgba(248,72,31,0.45) 0 5px, transparent 5px 12px)',
@@ -82,19 +81,23 @@ export default function TodayCourseDetail({ course, selectedLocation, onBack }) 
           />
 
           {course.stops.map((stop, i) => {
-            const isLast = i === course.stops.length - 1;
             const subtitle = stop.firstMenu || stop.tags?.[0] || '음식점';
             const dist = distLabel(stop);
 
             return (
-              <div key={stop.id ?? i} className="relative flex items-center gap-4 py-5">
-                {/* 왼쪽: 번호 배지 — border 없음 */}
+              <button
+                key={stop.id ?? i}
+                type="button"
+                onClick={() => onSelectPlace?.(stop)}
+                className="relative flex w-full items-center gap-5 text-left"
+              >
+                {/* 왼쪽: 번호 배지 — 카드 배경/border 없음 */}
                 <div className="z-[1] flex h-[2.125rem] w-[2.125rem] shrink-0 items-center justify-center rounded-full bg-coral font-display text-[0.9375rem] font-bold text-white shadow-coral">
                   {i + 1}
                 </div>
 
-                {/* 오른쪽: 콘텐츠 래퍼 — border는 여기에만 */}
-                <div className="flex min-w-0 flex-1 items-center gap-3">
+                {/* 오른쪽: 연한 카드 영역 */}
+                <div className="flex min-w-0 flex-1 items-center gap-3 rounded-2xl border border-ink/5 bg-white/45 px-3 py-3 shadow-[0_0.25rem_1rem_rgba(34,24,20,0.04)]">
                   <Thumbnail
                     src={stop.imageUrl}
                     tint={stop.tint}
@@ -111,7 +114,7 @@ export default function TodayCourseDetail({ course, selectedLocation, onBack }) 
 
                   <ChevronRightIcon size={14} className="shrink-0 text-ink-faint" />
                 </div>
-              </div>
+              </button>
             );
           })}
         </div>

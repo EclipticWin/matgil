@@ -3,6 +3,7 @@ import Card from '../../../shared/components/Card.jsx';
 import Thumbnail from '../../../shared/components/Thumbnail.jsx';
 import CourseCard from '../../courses/components/CourseCard.jsx';
 import TodayCourseDetail from './TodayCourseDetail.jsx';
+import PlaceDetailSheet from './PlaceDetailSheet.jsx';
 import { useBookmarks } from '../../../shared/hooks/useBookmarks.jsx';
 import { HeartIcon } from '../../../shared/components/Icon.jsx';
 import { cn } from '../../../shared/utils/classNames.js';
@@ -60,6 +61,7 @@ export default function NearbySheet({ vh, course, places, selectedLocation }) {
   const [snap, setSnap] = useState('peek');
   const [dragH, setDragH] = useState(null);
   const [selectedCourse, setSelectedCourse] = useState(null);
+  const [selectedPlace, setSelectedPlace] = useState(null);
   const drag = useRef(null);
 
   const height = dragH != null ? dragH : snap === 'full' ? full : peek;
@@ -83,13 +85,18 @@ export default function NearbySheet({ vh, course, places, selectedLocation }) {
 
   const openDetail = (c) => {
     setSelectedCourse(c);
+    setSelectedPlace(null);
     setSnap('full');
     setDragH(null);
   };
 
   const closeDetail = () => {
     setSelectedCourse(null);
+    setSelectedPlace(null);
   };
+
+  const openPlace = (place) => setSelectedPlace(place);
+  const closePlace = () => setSelectedPlace(null);
 
   return (
     <div
@@ -97,12 +104,18 @@ export default function NearbySheet({ vh, course, places, selectedLocation }) {
       style={{ height, transition: drag.current ? 'none' : 'height 0.35s cubic-bezier(0.2,0.8,0.2,1)' }}
     >
       {selectedCourse ? (
-        /* 상세 상태 — TodayCourseDetail 전체 */
-        <TodayCourseDetail
-          course={selectedCourse}
-          selectedLocation={selectedLocation}
-          onBack={closeDetail}
-        />
+        selectedPlace ? (
+          /* 식당 상세 상태 */
+          <PlaceDetailSheet place={selectedPlace} selectedLocation={selectedLocation} onBack={closePlace} />
+        ) : (
+          /* 코스 상세 상태 */
+          <TodayCourseDetail
+            course={selectedCourse}
+            selectedLocation={selectedLocation}
+            onBack={closeDetail}
+            onSelectPlace={openPlace}
+          />
+        )
       ) : (
         /* 기본 목록 상태 */
         <>

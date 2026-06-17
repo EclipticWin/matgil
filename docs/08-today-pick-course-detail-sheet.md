@@ -197,7 +197,6 @@ connector는 왼쪽 컬럼(0~34px)과 badge-card 사이(34~54px)에만 위치.
 
 ## 아직 하지 않은 것
 
-- place detail sheet (개별 음식점 상세 화면)
 - Start this course 실제 기능
 - Kakao Map 마커 / polyline
 - 실제 도보 경로 계산
@@ -210,7 +209,6 @@ connector는 왼쪽 컬럼(0~34px)과 badge-card 사이(34~54px)에만 위치.
 
 ## 다음 작업 후보
 
-- 각 stop 카드 클릭 시 place detail sheet 열기
 - 추천 코스 2~3개 확장
 - Kakao Map 마커 / polyline 연결
 - 지역 데이터 확장 (TourAPI 추가 수집)
