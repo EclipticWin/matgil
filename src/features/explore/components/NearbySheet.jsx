@@ -1,53 +1,12 @@
-import { useRef, useState } from 'react';
-import Card from '../../../shared/components/Card.jsx';
-import Thumbnail from '../../../shared/components/Thumbnail.jsx';
+import { useEffect, useRef, useState } from 'react';
 import CourseCard from '../../courses/components/CourseCard.jsx';
 import TodayCourseDetail from './TodayCourseDetail.jsx';
 import PlaceDetailSheet from './PlaceDetailSheet.jsx';
-import { useBookmarks } from '../../../shared/hooks/useBookmarks.jsx';
-import { HeartIcon, ChevronRightIcon } from '../../../shared/components/Icon.jsx';
+import { ChevronRightIcon } from '../../../shared/components/Icon.jsx';
 import { cn } from '../../../shared/utils/classNames.js';
 
-const TINTS = ['#FFE3D4','#FFEFC9','#E2F1DE','#FBE0E4','#E6E9F7','#FFE0CE','#DDEFEA','#F0E6FF','#E6F0FF','#FFF3E0'];
-
-function NearbyRow({ place, index }) {
-  const { toggle, isBookmarked } = useBookmarks();
-  const saved = isBookmarked(place.id);
-  const tint = TINTS[index % TINTS.length];
-  const subtitle = place.firstMenu || place.tags?.[0] || '음식점';
-  const distText =
-    place.distanceKm != null
-      ? place.distanceKm < 1
-        ? `${Math.round(place.distanceKm * 1000)} m`
-        : `${place.distanceKm.toFixed(1)} km`
-      : null;
-
-  return (
-    <Card className="flex items-center gap-3 p-3">
-      <Thumbnail src={place.imageUrl} tint={tint} className="h-[4.25rem] w-[4.25rem]" />
-      <div className="min-w-0 flex-1">
-        <p className="truncate text-[0.95rem] font-bold text-ink">{place.name}</p>
-        <p className="mt-0.5 truncate text-xs text-ink-soft">
-          {subtitle}{distText ? ` · ${distText}` : ''}
-        </p>
-        {place.address && (
-          <p className="mt-1 truncate text-xs text-ink-faint">{place.address}</p>
-        )}
-      </div>
-      <button
-        type="button"
-        aria-label={saved ? 'Remove bookmark' : 'Add bookmark'}
-        onClick={() => toggle(place)}
-        className={cn(
-          'flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-coral transition-colors',
-          saved ? 'bg-coral-tint' : 'border-[1.5px] border-ink/10',
-        )}
-      >
-        <HeartIcon active={saved} size={18} />
-      </button>
-    </Card>
-  );
-}
+const INITIAL_VISIBLE = 3;
+const LOAD_BATCH = 3;
 
 /**
  * Draggable "Eat near here" sheet.
@@ -64,7 +23,6 @@ export default function NearbySheet({
   courses,
   activeCourse,
   onSelectCourse,
-  places,
   selectedLocation,
 }) {
   const peek = vh ? Math.round(vh * 0.44) : 300;
@@ -76,6 +34,40 @@ export default function NearbySheet({
   const [selectedPlace, setSelectedPlace] = useState(null);
   const drag = useRef(null);
   const preCollapseSnap = useRef('peek'); // restored when handle is tapped
+
+  // ── Load-more state ──────────────────────────────────────────────────────
+  const [visibleCount, setVisibleCount] = useState(INITIAL_VISIBLE);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const scrollContainerRef = useRef(null);
+  const sentinelRef = useRef(null);
+
+  // Reset visible count when the course list changes (location / filter change).
+  useEffect(() => {
+    setVisibleCount(INITIAL_VISIBLE);
+    setLoadingMore(false);
+  }, [courses]);
+
+  // Observe sentinel element to trigger progressive reveal.
+  useEffect(() => {
+    const sentinel = sentinelRef.current;
+    const container = scrollContainerRef.current;
+    const total = courses?.length ?? 0;
+    if (!sentinel || !container || visibleCount >= total || loadingMore) return;
+
+    const obs = new IntersectionObserver(
+      ([entry]) => {
+        if (!entry.isIntersecting) return;
+        setLoadingMore(true);
+        setTimeout(() => {
+          setVisibleCount((prev) => Math.min(prev + LOAD_BATCH, total));
+          setLoadingMore(false);
+        }, 400);
+      },
+      { root: container, threshold: 0.1 },
+    );
+    obs.observe(sentinel);
+    return () => obs.disconnect();
+  }, [courses, loadingMore, visibleCount]);
 
   const height = dragH != null ? dragH : snap === 'full' ? full : snap === 'peek' ? peek : 0;
 
@@ -135,7 +127,7 @@ export default function NearbySheet({
             onClick={handleExpand}
             className="pointer-events-auto flex h-8 w-14 items-center justify-center rounded-t-2xl bg-white shadow-[0_-3px_14px_rgba(34,24,20,0.12)]"
           >
-            <ChevronRightIcon size={15} className="-rotate-90 text-coral" />
+            <ChevronRightIcon size={15} className="-rotate-90 text-stone-400" />
           </button>
         </div>
       )}
@@ -182,64 +174,65 @@ export default function NearbySheet({
         ) : (
           /* ── 기본 목록 ── */
           <>
-            {/* Header: title + nearby count */}
+            {/* Header */}
             <div className="shrink-0 px-5 pb-1.5">
-              <div className="flex items-baseline justify-between">
-                <h2 className="font-display text-[1.15rem] font-bold tracking-tight text-ink">
-                  Eat near {selectedLocation?.label ?? 'here'}
-                </h2>
-                <span className="text-[0.8rem] font-bold text-coral">{places.length} nearby</span>
-              </div>
+              <h2 className="font-display text-[1.15rem] font-bold tracking-tight text-ink">
+                Eat near {selectedLocation?.label ?? 'here'}
+              </h2>
             </div>
 
             {/* Scrollable body */}
-            <div className="no-scrollbar flex-1 overflow-y-auto px-5 pb-5 pt-1">
+            <div ref={scrollContainerRef} className="no-scrollbar flex-1 overflow-y-auto px-5 pb-5 pt-1">
 
               {/* ── Recommended courses ── */}
-              {courses && courses.length > 0 && (
-                <>
-                  <div className="mb-2 text-[0.7rem] font-extrabold uppercase tracking-wide text-ink-faint">
-                    ★ Today's picks
-                  </div>
-                  <div className="flex flex-col gap-3">
-                    {courses.map((course) => {
-                      const isActive = course.id === activeCourse?.id;
-                      return (
-                        /* Active course gets a coral ring; tapping enters detail */
-                        <div
-                          key={course.id}
-                          className={cn('rounded-3xl', isActive && 'ring-2 ring-coral/55')}
-                        >
-                          <CourseCard
-                            course={course}
-                            disableLink
-                            onClick={() => {
-                              onSelectCourse?.(course);
-                              openDetail(course);
-                            }}
-                          />
-                        </div>
-                      );
-                    })}
-                  </div>
-                </>
-              )}
+              {courses && courses.length > 0 ? (() => {
+                const visibleCourses = courses.slice(0, visibleCount);
+                const hasMore = visibleCount < courses.length;
+                return (
+                  <>
+                    <div className="mb-2 text-[0.7rem] font-extrabold uppercase tracking-wide text-ink-faint">
+                      ★ Today's picks
+                    </div>
+                    <div className="flex flex-col gap-3">
+                      {visibleCourses.map((course) => {
+                        const isActive = course.id === activeCourse?.id;
+                        return (
+                          <div
+                            key={course.id}
+                            className={cn('rounded-3xl', isActive && 'ring-2 ring-coral/55')}
+                          >
+                            <CourseCard
+                              course={course}
+                              disableLink
+                              isActive={isActive}
+                              onClick={() => {
+                                onSelectCourse?.(course);
+                                openDetail(course);
+                              }}
+                            />
+                          </div>
+                        );
+                      })}
+                    </div>
 
-              {/* ── Nearby right now ── */}
-              <div className={cn('mb-2 flex items-center gap-2.5', courses?.length ? 'mt-5' : 'mt-1')}>
-                <span className="text-[0.7rem] font-extrabold uppercase tracking-wide text-ink-faint">
-                  Nearby right now
-                </span>
-                <span className="h-px flex-1 bg-ink/8" />
-              </div>
+                    {/* Sentinel: entering scroll viewport triggers load-more */}
+                    {hasMore && <div ref={sentinelRef} className="h-1" />}
 
-              {places.length === 0 ? (
-                <p className="py-8 text-center text-sm font-semibold text-ink-faint">No matches yet</p>
-              ) : (
-                <div className="flex flex-col gap-3">
-                  {places.map((p, i) => (
-                    <NearbyRow key={p.id} place={p} index={i} />
-                  ))}
+                    {/* Muted spinner while revealing next batch */}
+                    {loadingMore && (
+                      <div className="flex justify-center py-4">
+                        <div className="h-5 w-5 animate-spin rounded-full border-2 border-ink/10 border-t-ink/30" />
+                      </div>
+                    )}
+                  </>
+                );
+              })() : (
+                /* 추천 코스 0개 — 빈 상태 안내 */
+                <div className="flex flex-col items-center justify-center px-4 py-12 text-center">
+                  <p className="text-[0.95rem] font-semibold text-ink-soft">No routes found nearby.</p>
+                  <p className="mt-1.5 text-[0.82rem] text-ink-faint">
+                    Try another area or remove some filters.
+                  </p>
                 </div>
               )}
             </div>

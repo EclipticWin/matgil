@@ -52,7 +52,7 @@ export default function HomePage() {
   );
 
   const recommendedCourses = useMemo(
-    () => buildRecommendedCourses({ places: nearby, selectedLocation, selectedFoodTypes: filters.cat }),
+    () => buildRecommendedCourses({ places: nearby, selectedLocation, selectedFoodTypes: filters.cat, maxCourses: 9 }),
     [nearby, selectedLocation, filters.cat],
   );
 
@@ -130,7 +130,6 @@ export default function HomePage() {
         courses={recommendedCourses}
         activeCourse={activeCourse}
         onSelectCourse={(c) => setActiveCourseId(c.id)}
-        places={nearby}
         selectedLocation={selectedLocation}
       />
 

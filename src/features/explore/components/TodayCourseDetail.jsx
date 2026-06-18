@@ -1,11 +1,9 @@
 import Thumbnail from '../../../shared/components/Thumbnail.jsx';
-import Button from '../../../shared/components/Button.jsx';
 import {
   BackIcon,
   PinIcon,
   WalkIcon,
   ClockIcon,
-  NavIcon,
   ChevronRightIcon,
 } from '../../../shared/components/Icon.jsx';
 
@@ -120,12 +118,6 @@ export default function TodayCourseDetail({ course, selectedLocation, onBack, on
         </div>
       </div>
 
-      {/* 하단 CTA */}
-      <div className="shrink-0 border-t border-ink/5 px-5 pb-5 pt-3">
-        <Button full disabled>
-          <NavIcon /> Start this course
-        </Button>
-      </div>
     </div>
   );
 }

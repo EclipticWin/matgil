@@ -2,8 +2,9 @@ import { Link } from 'react-router-dom';
 import { ROUTES } from '../../../shared/constants/routes.js';
 import Thumbnail from '../../../shared/components/Thumbnail.jsx';
 import { WalkIcon, ClockIcon } from '../../../shared/components/Icon.jsx';
+import { cn } from '../../../shared/utils/classNames.js';
 
-function CourseCardInner({ course }) {
+function CourseCardInner({ course, isActive = true }) {
   return (
     <>
       <div className="flex h-24">
@@ -20,8 +21,10 @@ function CourseCardInner({ course }) {
 
       <div className="p-[0.9375rem]">
         <span
-          className="inline-block rounded-md px-2 py-[0.1875rem] font-display text-[0.625rem] font-extrabold uppercase tracking-wide text-white"
-          style={{ background: course.accent }}
+          className={cn(
+            'inline-block rounded-md px-2 py-[0.1875rem] font-display text-[0.625rem] font-extrabold uppercase tracking-wide',
+            isActive ? 'bg-coral text-white' : 'bg-ink/15 text-ink-soft',
+          )}
         >
           {course.stops.length} stops
         </span>
@@ -43,8 +46,9 @@ function CourseCardInner({ course }) {
 
 /** A course summary card: a row of stop thumbnails + meta.
  *  Pass `disableLink` to suppress navigation (e.g. when used in Map tab).
- *  Pass `onClick` together with `disableLink` to make the card interactive. */
-export default function CourseCard({ course, disableLink = false, onClick }) {
+ *  Pass `onClick` together with `disableLink` to make the card interactive.
+ *  Pass `isActive={false}` to show a neutral (muted) stops badge. */
+export default function CourseCard({ course, disableLink = false, onClick, isActive = true }) {
   if (disableLink) {
     if (onClick) {
       return (
@@ -54,13 +58,13 @@ export default function CourseCard({ course, disableLink = false, onClick }) {
           onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') onClick(); }}
           className="block w-full overflow-hidden rounded-3xl bg-white shadow-card text-left"
         >
-          <CourseCardInner course={course} />
+          <CourseCardInner course={course} isActive={isActive} />
         </button>
       );
     }
     return (
       <div className="block overflow-hidden rounded-3xl bg-white shadow-card">
-        <CourseCardInner course={course} />
+        <CourseCardInner course={course} isActive={isActive} />
       </div>
     );
   }
@@ -70,7 +74,7 @@ export default function CourseCard({ course, disableLink = false, onClick }) {
       to={ROUTES.courseDetail(course.id)}
       className="block overflow-hidden rounded-3xl bg-white shadow-card"
     >
-      <CourseCardInner course={course} />
+      <CourseCardInner course={course} isActive={isActive} />
     </Link>
   );
 }
