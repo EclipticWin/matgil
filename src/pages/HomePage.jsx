@@ -12,16 +12,17 @@ import Modal from '../features/explore/components/Modal.jsx';
 import FilterSheet from '../features/explore/components/FilterSheet.jsx';
 import LanguageModal from '../features/explore/components/LanguageModal.jsx';
 import LocationSheet from '../features/explore/components/LocationSheet.jsx';
+import SearchOverlay from '../features/explore/components/SearchOverlay.jsx';
 import NearbySheet from '../features/explore/components/NearbySheet.jsx';
 import KakaoMap from '../features/explore/components/KakaoMap.jsx';
-import { SearchIcon, FilterIcon, PinIcon, GlobeIcon, ChevronRightIcon } from '../shared/components/Icon.jsx';
+import { SearchIcon, FilterIcon, FlameIcon, GlobeIcon, ChevronRightIcon } from '../shared/components/Icon.jsx';
 
-/** Map tab — a full-bleed (placeholder) map with floating search / location /
- *  language controls and a draggable "Eat near here" sheet. */
+/** Map tab — full-bleed map with floating controls and a draggable "Eat near here" sheet. */
 export default function HomePage() {
   const [filters, setFilters] = useState(EMPTY_FILTERS);
   const [lang, setLang] = useState('EN');
   const [sheet, setSheet] = useState(null); // 'filters' | 'language' | 'location' | null
+  const [isSearching, setIsSearching] = useState(false);
   const [places, setPlaces] = useState([]);
   const [selectedLocation, setSelectedLocation] = useState(DEFAULT_LOCATION);
 
@@ -69,23 +70,36 @@ export default function HomePage() {
   const count = filterCount(filters);
   const langShort = LANGUAGES.find((l) => l.code === lang)?.short ?? 'EN';
 
+  function handleSearchSelect(loc) {
+    setSelectedLocation(loc);
+    setIsSearching(false);
+  }
+
   return (
     <div ref={mapRef} className="relative h-full overflow-hidden bg-map-land">
-      {/* Kakao Map — shows the active course only; falls back to placeholder if key is absent */}
+      {/* Kakao Map */}
       <KakaoMap selectedLocation={selectedLocation} course={activeCourse} />
 
       {/* floating controls */}
       <div className="absolute inset-x-0 top-0 z-20 px-4 pt-3.5">
-        <div className="flex h-[3.25rem] items-center gap-2.5 rounded-2xl bg-white px-3.5 shadow-card">
-          <SearchIcon className="text-ink-soft" />
-          <span className="flex-1 truncate text-[0.95rem] font-medium text-ink-faint">
-            Search dishes, places…
-          </span>
+        {/* Search bar — click opens full-screen SearchOverlay */}
+        <div className="flex h-[3.25rem] items-center gap-2.5 rounded-2xl bg-white px-3.5 shadow-soft">
+          <button
+            type="button"
+            aria-label="Search places"
+            onClick={() => setIsSearching(true)}
+            className="flex min-w-0 flex-1 items-center gap-2.5"
+          >
+            <SearchIcon className="shrink-0 text-ink-soft" />
+            <span className="truncate text-[0.95rem] font-medium text-ink-faint">
+              Search dishes, places…
+            </span>
+          </button>
           <button
             type="button"
             aria-label="Filters"
             onClick={() => setSheet('filters')}
-            className="relative flex h-9 w-9 items-center justify-center rounded-xl bg-coral text-white shadow-coral"
+            className="relative flex h-9 w-9 items-center justify-center rounded-xl bg-coral text-white shadow-[0_2px_6px_rgba(248,72,31,0.22)]"
           >
             <FilterIcon />
             {count > 0 && (
@@ -97,19 +111,14 @@ export default function HomePage() {
         </div>
 
         <div className="mt-3 flex items-center justify-between">
+          {/* Hot place preset button */}
           <button
             type="button"
+            aria-label="Choose a hot place"
             onClick={() => setSheet('location')}
-            className="flex h-10 items-center gap-1.5 rounded-full bg-white px-3.5 shadow-soft"
+            className="flex h-10 w-10 items-center justify-center rounded-full bg-white shadow-soft"
           >
-            <PinIcon size={14} className="text-coral" />
-            <span className="leading-none">
-              <span className="block text-[0.55rem] font-bold uppercase tracking-wide text-ink-faint">
-                You're in
-              </span>
-              <span className="mt-0.5 block text-[0.85rem] font-bold text-ink">{selectedLocation.label}</span>
-            </span>
-            <ChevronRightIcon size={10} className="ml-0.5 rotate-90 text-ink-faint" />
+            <FlameIcon size={20} className="text-coral" />
           </button>
 
           <button
@@ -133,17 +142,26 @@ export default function HomePage() {
         selectedLocation={selectedLocation}
       />
 
-      {/* filter sheet (slides up) */}
+      {/* full-screen search overlay — rendered before modals so modals stack on top */}
+      <SearchOverlay
+        open={isSearching}
+        onSelect={handleSearchSelect}
+        onClose={() => setIsSearching(false)}
+        filterCount={count}
+        onFilterClick={() => setSheet('filters')}
+      />
+
+      {/* filter sheet */}
       <Modal open={sheet === 'filters'} onClose={() => setSheet(null)} variant="sheet">
         <FilterSheet value={filters} onApply={setFilters} onClose={() => setSheet(null)} />
       </Modal>
 
-      {/* language modal (centered) */}
+      {/* language modal */}
       <Modal open={sheet === 'language'} onClose={() => setSheet(null)} variant="center">
         <LanguageModal value={lang} onSelect={setLang} onClose={() => setSheet(null)} />
       </Modal>
 
-      {/* location picker sheet */}
+      {/* hot place preset sheet */}
       <Modal open={sheet === 'location'} onClose={() => setSheet(null)} variant="sheet">
         <LocationSheet value={selectedLocation} onSelect={setSelectedLocation} onClose={() => setSheet(null)} />
       </Modal>

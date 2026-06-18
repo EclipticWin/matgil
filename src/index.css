@@ -136,6 +136,16 @@
   animation: matgil-mpop-out 0.2s ease forwards;
 }
 
+/* ── Search overlay (full-screen, fades in over the map) ─── */
+@keyframes matgil-sfade {
+  from { opacity: 0; }
+}
+@keyframes matgil-sfade-out {
+  to { opacity: 0; }
+}
+.search-overlay-in { animation: matgil-sfade 0.15s ease both; }
+.search-overlay-out { animation: matgil-sfade-out 0.12s ease forwards; }
+
 @media (prefers-reduced-motion: reduce) {
   .animate-rise,
   .animate-pop {
@@ -144,6 +154,10 @@
   .modal-in .modal-back,
   .modal-in .modal-sheet,
   .modal-in .modal-center {
+    animation: none;
+  }
+  .search-overlay-in,
+  .search-overlay-out {
     animation: none;
   }
 }

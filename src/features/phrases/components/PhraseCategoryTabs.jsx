@@ -16,7 +16,7 @@ export default function PhraseCategoryTabs({ categories, value, onChange }) {
                 'h-9 shrink-0 whitespace-nowrap rounded-full px-4 text-sm font-bold transition-colors',
                 active
                   ? 'bg-coral text-white'
-                  : 'bg-white text-ink-soft shadow-soft',
+                  : 'bg-white text-ink-soft',
               )}
             >
               {cat.label}

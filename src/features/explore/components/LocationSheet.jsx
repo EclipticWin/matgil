@@ -7,7 +7,7 @@ export default function LocationSheet({ value, onSelect, onClose }) {
     <>
       <div className="shrink-0 px-5 pb-1 pt-2.5">
         <div className="mx-auto mb-3 h-[5px] w-10 rounded-full bg-ink/15" />
-        <h2 className="font-display text-[1.375rem] font-bold tracking-tight text-ink">Choose location</h2>
+        <h2 className="font-display text-[1.375rem] font-bold tracking-tight text-ink">Choose a hot place</h2>
       </div>
 
       <div className="no-scrollbar flex-1 overflow-y-auto px-3.5 pb-5 pt-1">

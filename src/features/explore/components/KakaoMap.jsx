@@ -3,11 +3,12 @@ import { loadKakaoMapSdk } from '../map/loadKakaoMapSdk.js';
 import { PinIcon } from '../../../shared/components/Icon.jsx';
 
 const INITIAL_LEVEL = 5;
+const CORAL = '#F8481F';
 
 function makeMarkerContent(number) {
   return `<div style="
     width:28px;height:28px;border-radius:50%;
-    background:#F8481F;color:#fff;
+    background:${CORAL};color:#fff;
     font-size:13px;font-weight:700;line-height:1;
     display:flex;align-items:center;justify-content:center;
     border:2.5px solid #fff;
@@ -16,11 +17,34 @@ function makeMarkerContent(number) {
   ">${number}</div>`;
 }
 
+// Base location marker — plain blue teardrop pin, no white border/dot.
+function makeLocationMarkerContent() {
+  const blue = '#3B82F6';
+  return `<div style="
+    display:flex;flex-direction:column;align-items:center;
+    pointer-events:none;
+  ">
+    <div style="
+      width:22px;height:22px;border-radius:50%;
+      background:${blue};
+      box-shadow:0 1px 4px rgba(0,0,0,0.22);
+    "></div>
+    <div style="
+      width:0;height:0;
+      border-left:5px solid transparent;
+      border-right:5px solid transparent;
+      border-top:8px solid ${blue};
+      margin-top:-1px;
+    "></div>
+  </div>`;
+}
+
 export default function KakaoMap({ selectedLocation, course }) {
   const containerRef = useRef(null);
   const mapRef = useRef(null);
   const overlaysRef = useRef([]);
   const polylineRef = useRef(null);
+  const locationMarkerRef = useRef(null);
   const [status, setStatus] = useState('idle'); // 'idle'|'loading'|'ready'|'no-key'|'error'
 
   // ── Effect 1: SDK load + map initialisation (runs once on mount) ─────────────
@@ -45,18 +69,35 @@ export default function KakaoMap({ selectedLocation, course }) {
     return () => {
       alive = false;
       clearOverlaysAndPolyline();
+      if (locationMarkerRef.current) {
+        locationMarkerRef.current.setMap(null);
+        locationMarkerRef.current = null;
+      }
       mapRef.current = null;
-      // Clear the container so Kakao doesn't retain a stale map instance.
-      // This also lets StrictMode's double-invocation recreate the map cleanly.
       if (containerRef.current) containerRef.current.innerHTML = '';
     };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ── Effect 2: Centre map on selectedLocation ──────────────────────────────────
+  // ── Effect 2: Centre map + update base location marker ───────────────────────
   useEffect(() => {
     if (status !== 'ready' || !mapRef.current) return;
-    const center = new window.kakao.maps.LatLng(selectedLocation.lat, selectedLocation.lng);
+    const { kakao } = window;
+    const center = new kakao.maps.LatLng(selectedLocation.lat, selectedLocation.lng);
     mapRef.current.setCenter(center);
+
+    // Remove old base marker and place a new one at the selected location.
+    if (locationMarkerRef.current) {
+      locationMarkerRef.current.setMap(null);
+    }
+    const overlay = new kakao.maps.CustomOverlay({
+      position: center,
+      content: makeLocationMarkerContent(),
+      xAnchor: 0.5,
+      yAnchor: 1.0, // pin tip (bottom of element) sits on the coordinate
+      zIndex: 1,
+    });
+    overlay.setMap(mapRef.current);
+    locationMarkerRef.current = overlay;
   }, [selectedLocation, status]);
 
   // ── Effect 3: Render course stops as numbered markers + straight polyline ─────
@@ -85,14 +126,13 @@ export default function KakaoMap({ selectedLocation, course }) {
       overlaysRef.current.push(overlay);
     });
 
-    // Straight-line polyline connecting stops in order.
-    // This is a visual connection between recommended stops, not an actual walking route.
+    // Straight-line polyline — always coral regardless of course accent.
     if (stops.length >= 2) {
       const path = stops.map((s) => new kakao.maps.LatLng(s.latitude, s.longitude));
       const polyline = new kakao.maps.Polyline({
         path,
         strokeWeight: 3,
-        strokeColor: course?.accent ?? '#F8481F',
+        strokeColor: CORAL,
         strokeOpacity: 0.65,
         strokeStyle: 'solid',
       });
@@ -118,7 +158,6 @@ export default function KakaoMap({ selectedLocation, course }) {
     }
   }
 
-  // Fallback placeholder — matches existing "Map view" style
   const showFallback = status === 'no-key' || status === 'error';
 
   return (

@@ -25,7 +25,7 @@ export function loadKakaoMapSdk() {
 
   sdkPromise = new Promise((resolve, reject) => {
     const script = document.createElement('script');
-    script.src = `//dapi.kakao.com/v2/maps/sdk.js?appkey=${key}&autoload=false`;
+    script.src = `//dapi.kakao.com/v2/maps/sdk.js?appkey=${key}&autoload=false&libraries=services`;
 
     script.onload = () => {
       // kakao object exists now, but maps API is not ready until this callback fires.
