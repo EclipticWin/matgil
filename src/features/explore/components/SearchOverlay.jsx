@@ -129,6 +129,7 @@ export default function SearchOverlay({ open, onSelect, onClose, filterCount = 0
                   lng: Number(r.x),
                   source: 'search',
                   address: r.address_name,
+                  categoryGroupCode: r.category_group_code,
                 });
               }}
               className="mb-1 flex w-full items-center gap-3.5 rounded-2xl px-3 py-3.5 text-left transition-colors hover:bg-ink/[0.04]"

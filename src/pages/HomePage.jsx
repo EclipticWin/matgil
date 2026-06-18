@@ -8,6 +8,7 @@ import {
 } from '../features/explore/data/exploreOptions.js';
 import { DEFAULT_LOCATION, sortPlacesByDistance } from '../features/explore/data/locations.js';
 import { buildRecommendedCourses } from '../features/explore/data/courseBuilder.js';
+import { findAnchorPlace } from '../features/explore/services/anchorMatchService.js';
 import Modal from '../features/explore/components/Modal.jsx';
 import FilterSheet from '../features/explore/components/FilterSheet.jsx';
 import LanguageModal from '../features/explore/components/LanguageModal.jsx';
@@ -24,7 +25,9 @@ export default function HomePage() {
   const [sheet, setSheet] = useState(null); // 'filters' | 'language' | 'location' | null
   const [isSearching, setIsSearching] = useState(false);
   const [places, setPlaces] = useState([]);
+  const [placesLoading, setPlacesLoading] = useState(true);
   const [selectedLocation, setSelectedLocation] = useState(DEFAULT_LOCATION);
+  const [anchorPlace, setAnchorPlace] = useState(null);
 
   const mapRef = useRef(null);
   const [vh, setVh] = useState(0);
@@ -32,8 +35,15 @@ export default function HomePage() {
   useEffect(() => {
     let cancelled = false;
     getPlaces('ko')
-      .then((data) => { if (!cancelled) setPlaces(data); })
-      .catch(() => {});
+      .then((data) => {
+        if (!cancelled) {
+          setPlaces(data);
+          setPlacesLoading(false);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setPlacesLoading(false);
+      });
     return () => { cancelled = true; };
   }, []);
 
@@ -53,8 +63,8 @@ export default function HomePage() {
   );
 
   const recommendedCourses = useMemo(
-    () => buildRecommendedCourses({ places: nearby, selectedLocation, selectedFoodTypes: filters.cat, maxCourses: 9 }),
-    [nearby, selectedLocation, filters.cat],
+    () => buildRecommendedCourses({ places: nearby, selectedLocation, selectedFoodTypes: filters.cat, maxCourses: 9, anchorPlace }),
+    [nearby, selectedLocation, filters.cat, anchorPlace],
   );
 
   const [activeCourseId, setActiveCourseId] = useState(null);
@@ -71,8 +81,18 @@ export default function HomePage() {
   const langShort = LANGUAGES.find((l) => l.code === lang)?.short ?? 'EN';
 
   function handleSearchSelect(loc) {
+    const kakaoResult = loc.source === 'search' && loc.categoryGroupCode
+      ? { category_group_code: loc.categoryGroupCode, y: String(loc.lat), x: String(loc.lng), place_name: loc.label }
+      : null;
+    const anchor = kakaoResult ? findAnchorPlace(kakaoResult, places) : null;
     setSelectedLocation(loc);
+    setAnchorPlace(anchor);
     setIsSearching(false);
+  }
+
+  function handleLocationPresetSelect(loc) {
+    setSelectedLocation(loc);
+    setAnchorPlace(null);
   }
 
   return (
@@ -140,6 +160,7 @@ export default function HomePage() {
         activeCourse={activeCourse}
         onSelectCourse={(c) => setActiveCourseId(c.id)}
         selectedLocation={selectedLocation}
+        isLoading={placesLoading}
       />
 
       {/* full-screen search overlay — rendered before modals so modals stack on top */}
@@ -163,7 +184,7 @@ export default function HomePage() {
 
       {/* hot place preset sheet */}
       <Modal open={sheet === 'location'} onClose={() => setSheet(null)} variant="sheet">
-        <LocationSheet value={selectedLocation} onSelect={setSelectedLocation} onClose={() => setSheet(null)} />
+        <LocationSheet value={selectedLocation} onSelect={handleLocationPresetSelect} onClose={() => setSheet(null)} />
       </Modal>
     </div>
   );

@@ -166,13 +166,20 @@ function selectCandidates(validPlaces, selectedLocation) {
 
 // ─── private: build one course from a given candidate array ──────────────────
 
-function buildOneCourse(candidates, selectedLocation, foodTypes, courseId, accent) {
+function buildOneCourse(candidates, selectedLocation, foodTypes, courseId, accent, anchorPlace = null) {
   if (candidates.length === 0) return null;
 
   const stopCount = Math.min(DEFAULT_STOP_COUNT, candidates.length);
   const combos = combinations(candidates, stopCount);
 
-  const scored = combos.map((stops) => ({
+  // When anchor is set, prefer combinations that include it.
+  // Falls back to all combos if no anchor combo exists (e.g. anchor filtered out).
+  const anchoredCombos = anchorPlace
+    ? combos.filter((stops) => stops.some((s) => s.id === anchorPlace.id))
+    : null;
+  const evalCombos = anchoredCombos && anchoredCombos.length > 0 ? anchoredCombos : combos;
+
+  const scored = evalCombos.map((stops) => ({
     stops,
     score: calcScore(stops, selectedLocation, foodTypes),
     dist: totalStopDist(stops),
@@ -244,12 +251,18 @@ export function buildTodayCourse({ places, selectedLocation, selectedFoodTypes }
  * Each course uses a distinct set of stops; stops used in earlier courses
  * are excluded from the pool for later ones.
  * Returns fewer than `maxCourses` when the candidate pool is exhausted.
+ *
+ * anchorPlace: a DB place that must appear in the first course.
+ * If the anchor was trimmed from candidatePool by the 20-place slice but is
+ * still in validPlaces (passed food-type filters), it is re-injected so it
+ * has distanceKm. Ignored for subsequent courses and when null.
  */
 export function buildRecommendedCourses({
   places,
   selectedLocation,
   selectedFoodTypes,
   maxCourses = 3,
+  anchorPlace = null,
 }) {
   const foodTypes = Array.isArray(selectedFoodTypes) ? selectedFoodTypes : [];
   const validPlaces = places.filter((p) => p && p.latitude != null && p.longitude != null);
@@ -261,14 +274,26 @@ export function buildRecommendedCourses({
 
   for (let i = 0; i < maxCourses; i++) {
     const available = candidatePool.filter((p) => !usedIds.has(p.id));
-    if (available.length === 0) break;
+
+    // First course only: ensure anchor is in candidates.
+    // If it passed food-type filters (in validPlaces) but was cut from candidatePool
+    // by the 20-place slice, re-inject the validPlaces version (which has distanceKm).
+    const useAnchor = i === 0 && anchorPlace != null;
+    let courseCandidates = available;
+    if (useAnchor && !available.some((p) => p.id === anchorPlace.id)) {
+      const anchorInValid = validPlaces.find((p) => p.id === anchorPlace.id);
+      if (anchorInValid) courseCandidates = [anchorInValid, ...available];
+    }
+
+    if (courseCandidates.length === 0) break;
 
     const course = buildOneCourse(
-      available,
+      courseCandidates,
       selectedLocation,
       foodTypes,
       `recommended-${i + 1}`,
       COURSE_ACCENTS[i % COURSE_ACCENTS.length],
+      useAnchor ? anchorPlace : null,
     );
     if (!course) break;
 

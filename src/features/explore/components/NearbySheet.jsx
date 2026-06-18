@@ -24,6 +24,7 @@ export default function NearbySheet({
   activeCourse,
   onSelectCourse,
   selectedLocation,
+  isLoading = false,
 }) {
   const peek = vh ? Math.round(vh * 0.44) : 300;
   const full = vh ? Math.round(vh * 0.92) : 560;
@@ -221,13 +222,19 @@ export default function NearbySheet({
                     {/* Muted spinner while revealing next batch */}
                     {loadingMore && (
                       <div className="flex justify-center py-4">
-                        <div className="h-5 w-5 animate-spin rounded-full border-2 border-ink/10 border-t-ink/30" />
+                        <div className="h-7 w-7 animate-spin rounded-full border-2 border-ink/10 border-t-ink/30" />
                       </div>
                     )}
                   </>
                 );
-              })() : (
-                /* 추천 코스 0개 — 빈 상태 안내 */
+              })() : isLoading ? (
+                /* places 로딩 중 */
+                <div className="flex flex-col items-center justify-center px-4 py-12 text-center">
+                  <div className="mb-3 h-8 w-8 animate-spin rounded-full border-2 border-ink/10 border-t-ink/30" />
+                  <p className="text-[0.85rem] text-ink-faint">Finding routes nearby…</p>
+                </div>
+              ) : (
+                /* 로딩 완료 후 실제 빈 결과 */
                 <div className="flex flex-col items-center justify-center px-4 py-12 text-center">
                   <p className="text-[0.95rem] font-semibold text-ink-soft">No routes found nearby.</p>
                   <p className="mt-1.5 text-[0.82rem] text-ink-faint">
