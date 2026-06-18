@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import CourseCard from '../../courses/components/CourseCard.jsx';
 import TodayCourseDetail from './TodayCourseDetail.jsx';
 import PlaceDetailSheet from './PlaceDetailSheet.jsx';
-import { ChevronRightIcon, LocateIcon } from '../../../shared/components/Icon.jsx';
+import { ChevronRightIcon, CloseIcon, LocateIcon } from '../../../shared/components/Icon.jsx';
 import { cn } from '../../../shared/utils/classNames.js';
 
 const INITIAL_VISIBLE = 3;
@@ -18,10 +18,19 @@ const LOAD_BATCH = 3;
  * or place detail. Collapsing preserves the current view — the handle button
  * restores to whatever snap was active before collapsing.
  */
-const GPS_MESSAGES = {
-  denied: 'Location permission is needed to use your current location.',
-  error: 'Could not get your current location.',
-  unsupported: 'Location is not supported in this browser.',
+const GPS_MODAL_CONTENT = {
+  denied: {
+    title: 'Location permission is needed to use your current location.',
+    body: 'Please allow location access in your browser settings and try again.',
+  },
+  error: {
+    title: 'Could not get your current location.',
+    body: 'Please try again.',
+  },
+  unsupported: {
+    title: 'Location is not supported in this browser.',
+    body: null,
+  },
 };
 
 export default function NearbySheet({
@@ -81,16 +90,9 @@ export default function NearbySheet({
 
   const height = dragH != null ? dragH : snap === 'full' ? full : snap === 'peek' ? peek : 0;
 
-  // Auto-dismiss GPS error states after 3s
-  useEffect(() => {
-    if (gpsStatus !== 'denied' && gpsStatus !== 'error' && gpsStatus !== 'unsupported') return;
-    const t = setTimeout(() => onGpsStatusChange?.('idle'), 3000);
-    return () => clearTimeout(t);
-  }, [gpsStatus]); // eslint-disable-line react-hooks/exhaustive-deps
-
   // Derived GPS button visibility: hide (opacity + pointer-events) when full
   const isSheetFull = dragH != null ? dragH > (peek + full) / 2 : snap === 'full';
-  const gpsErrorMsg = GPS_MESSAGES[gpsStatus] ?? null;
+  const gpsModal = GPS_MODAL_CONTENT[gpsStatus] ?? null;
 
   const onDown = (e) => {
     drag.current = { y: e.clientY, h: height };
@@ -137,12 +139,36 @@ export default function NearbySheet({
 
   return (
     <>
+      {/* ── GPS error modal ──────────────────────────────────────────────────
+          Shown for denied / error / unsupported. Dismissed by X button only. */}
+      {gpsModal && (
+        <>
+          <div className="absolute inset-0 z-40 bg-black/40" onClick={() => onGpsStatusChange?.('idle')} />
+          <div className="absolute inset-x-6 top-1/2 z-40 -translate-y-1/2 rounded-2xl bg-white p-6 shadow-card">
+            <button
+              type="button"
+              aria-label="Close"
+              onClick={() => onGpsStatusChange?.('idle')}
+              className="absolute right-4 top-4 flex h-8 w-8 items-center justify-center rounded-full text-ink-soft hover:bg-ink/5"
+            >
+              <CloseIcon size={16} />
+            </button>
+            <div className="pr-6">
+              <p className="text-[0.95rem] font-semibold leading-snug text-ink">{gpsModal.title}</p>
+              {gpsModal.body && (
+                <p className="mt-2 text-[0.82rem] leading-relaxed text-ink-soft">{gpsModal.body}</p>
+              )}
+            </div>
+          </div>
+        </>
+      )}
+
       {/* ── GPS floating button ──────────────────────────────────────────────
           Sits just above the sheet top edge, moves with the sheet height.
           Hidden (opacity + pointer-events) when sheet is fully expanded. */}
       <div
         className={cn(
-          'absolute right-4 z-30 flex flex-col items-end gap-1.5',
+          'absolute right-4 z-30',
           isSheetFull ? 'pointer-events-none opacity-0' : 'opacity-100',
         )}
         style={{
@@ -150,30 +176,18 @@ export default function NearbySheet({
           transition: drag.current ? 'none' : 'bottom 0.35s cubic-bezier(0.2,0.8,0.2,1), opacity 0.35s cubic-bezier(0.2,0.8,0.2,1)',
         }}
       >
-        {/* Error / denied / unsupported message callout */}
-        {gpsErrorMsg && (
-          <div className="max-w-[13rem] rounded-xl bg-ink px-3 py-2 text-right text-[0.72rem] leading-snug text-white shadow-card">
-            {gpsErrorMsg}
-          </div>
-        )}
-
-        {/* GPS button */}
         <button
           type="button"
           aria-label="Use current location"
           disabled={gpsStatus === 'loading'}
           onClick={onGpsClick}
           className={cn(
-            'flex h-11 w-11 items-center justify-center rounded-full shadow-card transition-colors',
-            gpsStatus === 'active'
-              ? 'bg-blue-500 text-white'
-              : gpsStatus === 'loading'
-                ? 'bg-white text-ink-faint'
-                : 'bg-white text-ink-soft',
+            'flex h-11 w-11 items-center justify-center rounded-full bg-white shadow-card transition-colors',
+            gpsStatus === 'active' ? 'text-blue-500' : gpsStatus === 'loading' ? 'text-ink/20' : 'text-ink-soft',
           )}
         >
           {gpsStatus === 'loading' ? (
-            <div className="h-5 w-5 animate-spin rounded-full border-2 border-ink/15 border-t-ink/50" />
+            <div className="h-5 w-5 animate-spin rounded-full border-2 border-ink/10 border-t-ink/35" />
           ) : (
             <LocateIcon size={20} />
           )}
