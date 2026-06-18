@@ -258,6 +258,17 @@ export function GlobeIcon(p) {
   );
 }
 
+export function MicIcon(p) {
+  return (
+    <Svg vb="0 0 24 24" {...p}>
+      <rect x="9" y="2" width="6" height="12" rx="3" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M5 10a7 7 0 0 0 14 0" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+      <line x1="12" y1="19" x2="12" y2="22" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+      <line x1="9" y1="22" x2="15" y2="22" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+    </Svg>
+  );
+}
+
 /* ── brand logos (fixed colors) ── */
 export function GoogleIcon({ size = 22 }) {
   return (
