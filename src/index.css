@@ -26,6 +26,33 @@
     scrollbar-width: none;
     -ms-overflow-style: none;
   }
+
+  /* Hides scrollbar on touch; shows thin scrollbar on pointer devices (PC/mouse) */
+  .category-scroll::-webkit-scrollbar {
+    display: none;
+  }
+  .category-scroll {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  @media (hover: hover) and (pointer: fine) {
+    .category-scroll::-webkit-scrollbar {
+      display: block;
+      height: 3px;
+    }
+    .category-scroll::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    .category-scroll::-webkit-scrollbar-thumb {
+      background: rgba(0, 0, 0, 0.18);
+      border-radius: 2px;
+    }
+    .category-scroll {
+      scrollbar-width: thin;
+      scrollbar-color: rgba(0, 0, 0, 0.18) transparent;
+      -ms-overflow-style: auto;
+    }
+  }
 }
 
 /* ── small, reusable keyframes ──────────────────────────────── */

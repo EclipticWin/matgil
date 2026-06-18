@@ -3,7 +3,7 @@ import { cn } from '../../../shared/utils/classNames.js';
 /** Horizontal, scrollable category selector. Receives categories as props. */
 export default function PhraseCategoryTabs({ categories, value, onChange }) {
   return (
-    <div className="no-scrollbar w-full max-w-full touch-pan-x overflow-x-auto overscroll-x-contain pb-1">
+    <div className="category-scroll w-full max-w-full touch-pan-x overflow-x-auto overscroll-x-contain pb-1">
       <div className="flex min-w-max gap-2">
         {categories.map((cat) => {
           const active = value === cat.id;
