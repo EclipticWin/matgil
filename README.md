@@ -11,10 +11,16 @@ It renders as a centered mobile frame (max-width `22.5rem`, 360px base) on any s
 
 ```bash
 npm install
-npm run dev      # start dev server (Vite prints the URL)
+npm run dev      # start dev server
 npm run build    # production build
 npm run preview  # preview the build
 ```
+
+> **Local URL note:** `base: '/matgil/'` is set for GitHub Pages deployment.
+> Always append `/matgil/` to the URL Vite prints in the terminal.
+> Example: if Vite outputs `http://localhost:5174/`, open `http://localhost:5174/matgil/`.
+> Accessing `/` or `/phrases` without the prefix may trigger a Vite base URL warning —
+> this is a local dev quirk, not a deployment error.
 
 ## Folder structure
 
