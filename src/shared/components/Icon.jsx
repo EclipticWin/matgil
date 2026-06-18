@@ -281,6 +281,15 @@ export function GoogleIcon({ size = 22 }) {
   );
 }
 
+export function LocateIcon(p) {
+  return (
+    <Svg vb="0 0 24 24" {...p}>
+      <circle cx="12" cy="12" r="4" stroke="currentColor" strokeWidth="2" />
+      <path d="M12 2v3M12 19v3M2 12h3M19 12h3" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+    </Svg>
+  );
+}
+
 export function FacebookIcon({ size = 26 }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24">

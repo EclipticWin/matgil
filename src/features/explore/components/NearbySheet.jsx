@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import CourseCard from '../../courses/components/CourseCard.jsx';
 import TodayCourseDetail from './TodayCourseDetail.jsx';
 import PlaceDetailSheet from './PlaceDetailSheet.jsx';
-import { ChevronRightIcon } from '../../../shared/components/Icon.jsx';
+import { ChevronRightIcon, LocateIcon } from '../../../shared/components/Icon.jsx';
 import { cn } from '../../../shared/utils/classNames.js';
 
 const INITIAL_VISIBLE = 3;
@@ -18,6 +18,12 @@ const LOAD_BATCH = 3;
  * or place detail. Collapsing preserves the current view — the handle button
  * restores to whatever snap was active before collapsing.
  */
+const GPS_MESSAGES = {
+  denied: 'Location permission is needed to use your current location.',
+  error: 'Could not get your current location.',
+  unsupported: 'Location is not supported in this browser.',
+};
+
 export default function NearbySheet({
   vh,
   courses,
@@ -25,6 +31,9 @@ export default function NearbySheet({
   onSelectCourse,
   selectedLocation,
   isLoading = false,
+  gpsStatus = 'idle',
+  onGpsClick,
+  onGpsStatusChange,
 }) {
   const peek = vh ? Math.round(vh * 0.44) : 300;
   const full = vh ? Math.round(vh * 0.92) : 560;
@@ -72,6 +81,17 @@ export default function NearbySheet({
 
   const height = dragH != null ? dragH : snap === 'full' ? full : snap === 'peek' ? peek : 0;
 
+  // Auto-dismiss GPS error states after 3s
+  useEffect(() => {
+    if (gpsStatus !== 'denied' && gpsStatus !== 'error' && gpsStatus !== 'unsupported') return;
+    const t = setTimeout(() => onGpsStatusChange?.('idle'), 3000);
+    return () => clearTimeout(t);
+  }, [gpsStatus]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Derived GPS button visibility: hide (opacity + pointer-events) when full
+  const isSheetFull = dragH != null ? dragH > (peek + full) / 2 : snap === 'full';
+  const gpsErrorMsg = GPS_MESSAGES[gpsStatus] ?? null;
+
   const onDown = (e) => {
     drag.current = { y: e.clientY, h: height };
     e.currentTarget.setPointerCapture(e.pointerId);
@@ -117,6 +137,49 @@ export default function NearbySheet({
 
   return (
     <>
+      {/* ── GPS floating button ──────────────────────────────────────────────
+          Sits just above the sheet top edge, moves with the sheet height.
+          Hidden (opacity + pointer-events) when sheet is fully expanded. */}
+      <div
+        className={cn(
+          'absolute right-4 z-30 flex flex-col items-end gap-1.5',
+          isSheetFull ? 'pointer-events-none opacity-0' : 'opacity-100',
+        )}
+        style={{
+          bottom: height + 12,
+          transition: drag.current ? 'none' : 'bottom 0.35s cubic-bezier(0.2,0.8,0.2,1), opacity 0.35s cubic-bezier(0.2,0.8,0.2,1)',
+        }}
+      >
+        {/* Error / denied / unsupported message callout */}
+        {gpsErrorMsg && (
+          <div className="max-w-[13rem] rounded-xl bg-ink px-3 py-2 text-right text-[0.72rem] leading-snug text-white shadow-card">
+            {gpsErrorMsg}
+          </div>
+        )}
+
+        {/* GPS button */}
+        <button
+          type="button"
+          aria-label="Use current location"
+          disabled={gpsStatus === 'loading'}
+          onClick={onGpsClick}
+          className={cn(
+            'flex h-11 w-11 items-center justify-center rounded-full shadow-card transition-colors',
+            gpsStatus === 'active'
+              ? 'bg-blue-500 text-white'
+              : gpsStatus === 'loading'
+                ? 'bg-white text-ink-faint'
+                : 'bg-white text-ink-soft',
+          )}
+        >
+          {gpsStatus === 'loading' ? (
+            <div className="h-5 w-5 animate-spin rounded-full border-2 border-ink/15 border-t-ink/50" />
+          ) : (
+            <LocateIcon size={20} />
+          )}
+        </button>
+      </div>
+
       {/* ── Pull-up handle ────────────────────────────────────────────────────
           Icon-only tab sitting at the very bottom when the sheet is collapsed.
           Tapping it restores the sheet to the pre-collapse snap & view. */}

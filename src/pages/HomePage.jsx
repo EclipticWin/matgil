@@ -28,6 +28,7 @@ export default function HomePage() {
   const [placesLoading, setPlacesLoading] = useState(true);
   const [selectedLocation, setSelectedLocation] = useState(DEFAULT_LOCATION);
   const [anchorPlace, setAnchorPlace] = useState(null);
+  const [gpsStatus, setGpsStatus] = useState('idle'); // 'idle'|'loading'|'active'|'denied'|'error'|'unsupported'
 
   const mapRef = useRef(null);
   const [vh, setVh] = useState(0);
@@ -80,6 +81,26 @@ export default function HomePage() {
   const count = filterCount(filters);
   const langShort = LANGUAGES.find((l) => l.code === lang)?.short ?? 'EN';
 
+  function handleGpsClick() {
+    if (!navigator.geolocation) {
+      setGpsStatus('unsupported');
+      return;
+    }
+    setGpsStatus('loading');
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const { latitude: lat, longitude: lng } = pos.coords;
+        setSelectedLocation({ key: 'current_location', label: 'Current location', lat, lng, source: 'gps', address: null });
+        setAnchorPlace(null);
+        setGpsStatus('active');
+      },
+      (err) => {
+        setGpsStatus(err.code === err.PERMISSION_DENIED ? 'denied' : 'error');
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 30000 },
+    );
+  }
+
   function handleSearchSelect(loc) {
     const kakaoResult = loc.source === 'search' && loc.categoryGroupCode
       ? { category_group_code: loc.categoryGroupCode, y: String(loc.lat), x: String(loc.lng), place_name: loc.label }
@@ -88,11 +109,13 @@ export default function HomePage() {
     setSelectedLocation(loc);
     setAnchorPlace(anchor);
     setIsSearching(false);
+    setGpsStatus('idle');
   }
 
   function handleLocationPresetSelect(loc) {
     setSelectedLocation(loc);
     setAnchorPlace(null);
+    setGpsStatus('idle');
   }
 
   return (
@@ -161,6 +184,9 @@ export default function HomePage() {
         onSelectCourse={(c) => setActiveCourseId(c.id)}
         selectedLocation={selectedLocation}
         isLoading={placesLoading}
+        gpsStatus={gpsStatus}
+        onGpsClick={handleGpsClick}
+        onGpsStatusChange={setGpsStatus}
       />
 
       {/* full-screen search overlay — rendered before modals so modals stack on top */}
