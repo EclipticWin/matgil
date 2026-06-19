@@ -16,6 +16,13 @@ const HIDDEN_TAGS = new Set([
   '포장 가능',
   '주차 가능',
   '영업시간 있음',
+  'restaurant',
+  'has photo',
+  'has location',
+  'has menu info',
+  'parking available',
+  'takeout available',
+  'has open time',
 ]);
 
 function distLabel(place, selectedLocation) {

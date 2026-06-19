@@ -36,7 +36,7 @@ export default function HomePage() {
 
   useEffect(() => {
     let cancelled = false;
-    getPlaces('ko')
+    getPlaces('en')
       .then((data) => {
         if (!cancelled) {
           setPlaces(data);
@@ -229,6 +229,7 @@ export default function HomePage() {
         onClose={() => setIsSearching(false)}
         filterCount={count}
         onFilterClick={() => setSheet('filters')}
+        places={places}
       />
 
       {/* filter sheet */}

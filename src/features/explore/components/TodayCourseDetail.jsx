@@ -79,7 +79,7 @@ export default function TodayCourseDetail({ course, selectedLocation, onBack, on
           />
 
           {course.stops.map((stop, i) => {
-            const subtitle = stop.firstMenu || stop.tags?.[0] || '음식점';
+            const subtitle = stop.firstMenu || 'Restaurant';
             const dist = distLabel(stop);
 
             return (
