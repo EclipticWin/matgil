@@ -1,6 +1,7 @@
 /** Central route table — import these instead of hard-coding path strings. */
 export const ROUTES = {
   login: '/login',
+  signup: '/signup',
   home: '/',
   area: '/area',
   preference: '/preference',

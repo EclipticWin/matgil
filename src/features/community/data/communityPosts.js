@@ -15,7 +15,7 @@ export const COMMUNITY_POSTS = [
   },
   {
     id: 'p2',
-    kind: 'free',
+    kind: 'general',
     author: 'Kenji',
     from: 'Japan',
     ago: '5h',
@@ -59,7 +59,10 @@ export const COMMUNITY_FILTERS = [
   { key: 'popular', label: 'Popular' },
   { key: 'question', label: 'Questions' },
   { key: 'review', label: 'Reviews' },
-  { key: 'free', label: 'General' },
+  { key: 'tips', label: 'Tips' },
+  { key: 'food', label: 'Food' },
+  { key: 'routes', label: 'Routes' },
+  { key: 'general', label: 'General' },
 ];
 
 /** Apply a sub-tab filter to the posts. */

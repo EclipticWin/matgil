@@ -3,6 +3,7 @@ import { ROUTES } from '../shared/constants/routes.js';
 import AppLayout from '../shared/components/AppLayout.jsx';
 
 import LoginPage from '../pages/LoginPage.jsx';
+import SignUpPage from '../pages/SignUpPage.jsx';
 import HomePage from '../pages/HomePage.jsx';
 import AreaPage from '../pages/AreaPage.jsx';
 import PreferencePage from '../pages/PreferencePage.jsx';
@@ -26,6 +27,7 @@ export default function AppRouter() {
   return (
     <Routes>
       <Route path={ROUTES.login} element={<LoginPage />} />
+      <Route path={ROUTES.signup} element={<SignUpPage />} />
       <Route path={ROUTES.area} element={<AreaPage />} />
       <Route path={ROUTES.preference} element={<PreferencePage />} />
       <Route path={ROUTES.loading} element={<LoadingPage />} />

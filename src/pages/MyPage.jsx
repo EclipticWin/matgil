@@ -22,10 +22,11 @@ function Stat({ value, label, onClick }) {
 
 /** My tab: profile when logged in, otherwise redirect to the login page. */
 export default function MyPage() {
-  const { user, logout } = useAuth();
+  const { user, logout, loading } = useAuth();
   const { items } = useBookmarks();
   const navigate = useNavigate();
 
+  if (loading) return null;
   if (!user) return <Navigate to={ROUTES.login} replace />;
 
   return (
