@@ -252,9 +252,15 @@ export default function NearbySheet({
         ) : (
           /* ── 기본 목록 ── */
           <>
-            {/* Header */}
-            <div className="shrink-0 px-5 pb-1.5">
-              <h2 className="font-display text-[1.15rem] font-bold tracking-tight text-ink">
+            {/* Header — also draggable to expand the grab area */}
+            <div
+              className="shrink-0 cursor-grab touch-none px-5 pb-2 pt-0.5"
+              onPointerDown={onDown}
+              onPointerMove={onMove}
+              onPointerUp={onUp}
+              onPointerCancel={onUp}
+            >
+              <h2 className="select-none font-display text-[1.15rem] font-bold tracking-tight text-ink">
                 Eat near {selectedLocation?.label ?? 'here'}
               </h2>
             </div>

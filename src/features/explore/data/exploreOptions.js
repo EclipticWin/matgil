@@ -34,8 +34,6 @@ export const FEATURES = [
 export const LANGUAGES = [
   { code: 'EN', short: 'EN', name: 'English' },
   { code: 'KO', short: '한', name: '한국어' },
-  { code: 'ZH', short: '中', name: '中文' },
-  { code: 'JA', short: '日', name: '日本語' },
 ];
 
 export const EMPTY_FILTERS = { cat: [], price: [], features: [] };

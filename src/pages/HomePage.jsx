@@ -4,7 +4,6 @@ import {
   EMPTY_FILTERS,
   filterCount,
   applyFilters,
-  LANGUAGES,
 } from '../features/explore/data/exploreOptions.js';
 import { DEFAULT_LOCATION, sortPlacesByDistance } from '../features/explore/data/locations.js';
 import { buildRecommendedCourses } from '../features/explore/data/courseBuilder.js';
@@ -16,7 +15,7 @@ import LocationSheet from '../features/explore/components/LocationSheet.jsx';
 import SearchOverlay from '../features/explore/components/SearchOverlay.jsx';
 import NearbySheet from '../features/explore/components/NearbySheet.jsx';
 import KakaoMap from '../features/explore/components/KakaoMap.jsx';
-import { SearchIcon, FilterIcon, FlameIcon, GlobeIcon, ChevronRightIcon } from '../shared/components/Icon.jsx';
+import { SearchIcon, FilterIcon, FlameIcon, GlobeIcon } from '../shared/components/Icon.jsx';
 
 /** Map tab — full-bleed map with floating controls and a draggable "Eat near here" sheet. */
 export default function HomePage() {
@@ -29,8 +28,10 @@ export default function HomePage() {
   const [selectedLocation, setSelectedLocation] = useState(DEFAULT_LOCATION);
   const [anchorPlace, setAnchorPlace] = useState(null);
   const [gpsStatus, setGpsStatus] = useState('idle'); // 'idle'|'loading'|'active'|'denied'|'error'|'unsupported'
+  const [showFindHere, setShowFindHere] = useState(false);
 
   const mapRef = useRef(null);
+  const mapApiRef = useRef(null);
   const [vh, setVh] = useState(0);
 
   useEffect(() => {
@@ -79,7 +80,20 @@ export default function HomePage() {
     recommendedCourses.find((c) => c.id === activeCourseId) ?? recommendedCourses[0] ?? null;
 
   const count = filterCount(filters);
-  const langShort = LANGUAGES.find((l) => l.code === lang)?.short ?? 'EN';
+
+  function handleMapMoved() {
+    setShowFindHere(true);
+    setGpsStatus('idle');
+  }
+
+  function handleFindHere() {
+    const center = mapApiRef.current?.getCenter();
+    if (!center) return;
+    setSelectedLocation({ key: 'map_center', label: 'Selected area', lat: center.lat, lng: center.lng, source: 'map', address: null });
+    setAnchorPlace(null);
+    setGpsStatus('idle');
+    setShowFindHere(false);
+  }
 
   function handleGpsClick() {
     if (!navigator.geolocation) {
@@ -93,6 +107,7 @@ export default function HomePage() {
         setSelectedLocation({ key: 'current_location', label: 'Current location', lat, lng, source: 'gps', address: null });
         setAnchorPlace(null);
         setGpsStatus('active');
+        setShowFindHere(false);
       },
       (err) => {
         setGpsStatus(err.code === err.PERMISSION_DENIED ? 'denied' : 'error');
@@ -110,18 +125,20 @@ export default function HomePage() {
     setAnchorPlace(anchor);
     setIsSearching(false);
     setGpsStatus('idle');
+    setShowFindHere(false);
   }
 
   function handleLocationPresetSelect(loc) {
     setSelectedLocation(loc);
     setAnchorPlace(null);
     setGpsStatus('idle');
+    setShowFindHere(false);
   }
 
   return (
     <div ref={mapRef} className="relative h-full overflow-hidden bg-map-land">
       {/* Kakao Map */}
-      <KakaoMap selectedLocation={selectedLocation} course={activeCourse} />
+      <KakaoMap selectedLocation={selectedLocation} course={activeCourse} onMapMoved={handleMapMoved} mapApiRef={mapApiRef} />
 
       {/* floating controls */}
       <div className="absolute inset-x-0 top-0 z-20 px-4 pt-3.5">
@@ -153,8 +170,9 @@ export default function HomePage() {
           </button>
         </div>
 
-        <div className="mt-3 flex items-center justify-between">
-          {/* Hot place preset button */}
+        {/* Second row: flame | [Find routes here] | globe — 3-col grid keeps center slot fixed */}
+        <div className="mt-3 grid grid-cols-3 items-center">
+          {/* Left: Hot place preset */}
           <button
             type="button"
             aria-label="Choose a hot place"
@@ -164,15 +182,30 @@ export default function HomePage() {
             <FlameIcon size={20} className="text-coral" />
           </button>
 
-          <button
-            type="button"
-            onClick={() => setSheet('language')}
-            className="flex h-10 items-center gap-1.5 rounded-full bg-white px-3.5 shadow-soft"
-          >
-            <GlobeIcon className="text-ink-soft" />
-            <span className="text-[0.85rem] font-bold text-ink">{langShort}</span>
-            <ChevronRightIcon size={10} className="rotate-90 text-ink-faint" />
-          </button>
+          {/* Center: Find routes here — only when map was dragged */}
+          <div className="flex justify-center">
+            {showFindHere && (
+              <button
+                type="button"
+                onClick={handleFindHere}
+                className="whitespace-nowrap rounded-full bg-white px-4 py-2.5 text-[0.8rem] font-semibold text-ink shadow-soft"
+              >
+                Find routes here
+              </button>
+            )}
+          </div>
+
+          {/* Right: Language — icon only */}
+          <div className="flex justify-end">
+            <button
+              type="button"
+              aria-label="Choose language"
+              onClick={() => setSheet('language')}
+              className="flex h-10 w-10 items-center justify-center rounded-full bg-white shadow-soft"
+            >
+              <GlobeIcon size={20} className="text-ink-soft" />
+            </button>
+          </div>
         </div>
       </div>
 

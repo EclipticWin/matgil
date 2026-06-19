@@ -5,6 +5,7 @@ import { PinIcon } from '../../../shared/components/Icon.jsx';
 const INITIAL_LEVEL = 5;
 const CORAL = '#F8481F';
 
+
 function makeMarkerContent(number) {
   return `<div style="
     width:28px;height:28px;border-radius:50%;
@@ -39,13 +40,19 @@ function makeLocationMarkerContent() {
   </div>`;
 }
 
-export default function KakaoMap({ selectedLocation, course }) {
+export default function KakaoMap({ selectedLocation, course, onMapMoved, mapApiRef }) {
   const containerRef = useRef(null);
   const mapRef = useRef(null);
   const overlaysRef = useRef([]);
   const polylineRef = useRef(null);
   const locationMarkerRef = useRef(null);
+  const onMapMovedRef = useRef(onMapMoved);
   const [status, setStatus] = useState('idle'); // 'idle'|'loading'|'ready'|'no-key'|'error'
+
+  // Keep ref in sync so the dragend listener always calls the latest callback
+  useEffect(() => {
+    onMapMovedRef.current = onMapMoved;
+  }, [onMapMoved]);
 
   // ── Effect 1: SDK load + map initialisation (runs once on mount) ─────────────
   useEffect(() => {
@@ -59,6 +66,23 @@ export default function KakaoMap({ selectedLocation, course }) {
         const center = new kakao.maps.LatLng(selectedLocation.lat, selectedLocation.lng);
         const map = new kakao.maps.Map(containerRef.current, { center, level: INITIAL_LEVEL });
         mapRef.current = map;
+
+        // Expose getCenter() to parent so it can read the latest map center on demand
+        if (mapApiRef) {
+          mapApiRef.current = {
+            getCenter: () => {
+              if (!mapRef.current) return null;
+              const c = mapRef.current.getCenter();
+              return { lat: c.getLat(), lng: c.getLng() };
+            },
+          };
+        }
+
+        // Signal parent that user dragged the map — no coords needed (parent reads on click)
+        kakao.maps.event.addListener(map, 'dragend', () => {
+          onMapMovedRef.current?.();
+        });
+
         setStatus('ready');
       })
       .catch((err) => {
