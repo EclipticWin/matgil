@@ -4,11 +4,13 @@ import { ROUTES } from '../shared/constants/routes.js';
 import Thumbnail from '../shared/components/Thumbnail.jsx';
 import Button from '../shared/components/Button.jsx';
 import { BackIcon, PinIcon, WalkIcon, ClockIcon, StarIcon, NavIcon } from '../shared/components/Icon.jsx';
+import { useLocale } from '../shared/i18n/LocaleProvider.jsx';
 
 /** Full-screen course detail (동선코스 상세): tinted header + numbered route timeline. */
 export default function CourseDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { t } = useLocale();
   const course = getCourse(id);
 
   if (!course) return <Navigate to={ROUTES.courses} replace />;
@@ -30,14 +32,14 @@ export default function CourseDetailPage() {
             <BackIcon />
           </button>
           <div className="font-display text-[0.6875rem] font-extrabold uppercase tracking-wider opacity-90">
-            ★ Curated route
+            {t('courses.curatedRoute')}
           </div>
           <h1 className="mt-[0.4375rem] font-display text-[1.75rem] font-bold leading-[1.05] tracking-tight">
             {course.title}
           </h1>
           <div className="mt-3 flex items-center gap-4 text-[0.8125rem] font-semibold">
             <span className="inline-flex items-center gap-1.5">
-              <PinIcon size={14} /> {course.stops.length} stops
+              <PinIcon size={14} /> {t('courseDetail.stops', { n: course.stops.length })}
             </span>
             <span className="inline-flex items-center gap-1.5">
               <WalkIcon /> {course.km}
@@ -54,7 +56,7 @@ export default function CourseDetailPage() {
             {course.blurb}
           </p>
           <div className="mb-3 text-[0.78rem] font-extrabold uppercase tracking-wide text-ink-faint">
-            Route stops
+            {t('courseDetail.routeStops')}
           </div>
 
           <div className="relative">
@@ -68,7 +70,7 @@ export default function CourseDetailPage() {
             />
             {course.stops.map((stop, i) => (
               <div key={`${stop.id}-${i}`} className="relative flex items-center gap-3.5 py-2">
-                <div className="z-[1] flex h-[2.375rem] w-[2.375rem] shrink-0 items-center justify-center rounded-full bg-coral font-display text-[1.0625rem] font-bold text-white shadow-coral">
+                <div className="z-[1] flex h-[2.375rem] w-[2.375rem] shrink-0 items-center justify-center rounded-full bg-coral font-display text-[1.0625rem] font-bold text-white">
                   {i + 1}
                 </div>
                 <Thumbnail tint={stop.tint} className="h-14 w-14" />
@@ -88,7 +90,7 @@ export default function CourseDetailPage() {
       {/* sticky CTA */}
       <div className="shrink-0 border-t border-ink/5 bg-paper-soft px-5 pb-7 pt-3">
         <Button full>
-          <NavIcon /> Start this course
+          <NavIcon /> {t('courses.startCourse')}
         </Button>
       </div>
     </div>

@@ -11,7 +11,7 @@ import { cn } from '../../../shared/utils/classNames.js';
 import { useLocale } from '../../../shared/i18n/LocaleProvider.jsx';
 
 export default function VoiceHelpPlaceholder() {
-  const { t } = useLocale();
+  const { locale, t } = useLocale();
   const [status, setStatus] = useState('idle');
   // idle | listening | processing | done | error
   const [result, setResult] = useState(null);
@@ -37,7 +37,7 @@ export default function VoiceHelpPlaceholder() {
         setStatus('processing');
         try {
           const { data, error } = await supabase.functions.invoke('mg-voice-help', {
-            body: { transcript, userLanguage: 'en', context: 'Korean restaurant' },
+            body: { transcript, userLanguage: locale, context: 'Korean restaurant' },
           });
           if (error) throw error;
           setResult(data);

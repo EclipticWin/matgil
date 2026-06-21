@@ -65,6 +65,16 @@ export const DICTIONARY = {
       noodle: '{location} Noodle Walk',
       default: '{location} Food Walk',
     },
+    courses: {
+      title: 'Food courses',
+      subtitle: 'Hand-picked eating routes across Seoul',
+      curatedRoute: '★ Curated route',
+      startCourse: 'Start this course',
+    },
+    search: {
+      searching: 'Searching…',
+      noResults: 'No results',
+    },
     nav: {
       map: 'Map',
       courses: 'Courses',
@@ -142,6 +152,11 @@ export const DICTIONARY = {
       reviewsLeft: 'Reviews left',
       logout: 'Log out',
     },
+    bookmark: {
+      title: 'Saved spots',
+      empty: 'Nothing saved yet',
+      emptyHint: 'Tap the heart on any place to keep it here for later.',
+    },
   },
 
   ko: {
@@ -207,6 +222,16 @@ export const DICTIONARY = {
       bbq: '{location} 한국식 BBQ 동선',
       noodle: '{location} 면 요리 동선',
       default: '{location} 맛집 동선',
+    },
+    courses: {
+      title: '동선 코스',
+      subtitle: '서울 전역 엄선된 맛집 코스',
+      curatedRoute: '★ 큐레이션 코스',
+      startCourse: '이 코스 시작하기',
+    },
+    search: {
+      searching: '검색 중…',
+      noResults: '검색 결과가 없습니다.',
     },
     nav: {
       map: '지도',
@@ -284,6 +309,11 @@ export const DICTIONARY = {
       coursesWalked: '걸은 동선',
       reviewsLeft: '남긴 후기',
       logout: '로그아웃',
+    },
+    bookmark: {
+      title: '저장한 장소',
+      empty: '아직 저장된 장소가 없습니다.',
+      emptyHint: '마음에 드는 장소의 하트를 눌러 저장해 보세요.',
     },
   },
 };

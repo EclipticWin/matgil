@@ -141,9 +141,9 @@ export default function SearchOverlay({ open, onSelect, onClose, filterCount = 0
             </p>
           </div>
         ) : searching ? (
-          <p className="mt-6 text-center text-[0.85rem] text-ink-faint">Searching…</p>
+          <p className="mt-6 text-center text-[0.85rem] text-ink-faint">{t('search.searching')}</p>
         ) : results.length === 0 ? (
-          <p className="mt-6 text-center text-[0.85rem] text-ink-faint">No results</p>
+          <p className="mt-6 text-center text-[0.85rem] text-ink-faint">{t('search.noResults')}</p>
         ) : (
           results.map((r) => {
             const isEnglish = locale === 'en';

@@ -9,13 +9,29 @@ import { useLocale } from '../../../shared/i18n/LocaleProvider.jsx';
 const inputClass =
   'h-[3.25rem] w-full rounded-2xl border-[1.5px] border-ink/10 bg-white px-4 text-[0.95rem] text-ink outline-none transition-colors placeholder:text-ink-faint focus:border-coral';
 
+const AUTH_ERROR_KO = {
+  'Invalid login credentials': '이메일 또는 비밀번호를 확인해 주세요.',
+  'Email not confirmed': '이메일 인증을 완료해 주세요.',
+  'User already registered': '이미 가입된 이메일입니다.',
+  'Password should be at least 6 characters': '비밀번호는 6자 이상이어야 합니다.',
+  'Signup is disabled': '현재 회원가입을 사용할 수 없습니다.',
+};
+
+function mapAuthError(msg, locale) {
+  if (locale !== 'ko' || !msg) return msg;
+  for (const [en, ko] of Object.entries(AUTH_ERROR_KO)) {
+    if (msg.includes(en)) return ko;
+  }
+  return '요청을 처리하지 못했습니다. 잠시 후 다시 시도해 주세요.';
+}
+
 const socialClass =
   'flex h-[3.625rem] w-[3.625rem] items-center justify-center rounded-full bg-white shadow-soft border-[1.5px] border-ink/5 active:scale-95 transition-transform';
 
 export default function LoginForm({ onDone }) {
   const { login } = useAuth();
   const navigate = useNavigate();
-  const { t } = useLocale();
+  const { locale, t } = useLocale();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -31,7 +47,7 @@ export default function LoginForm({ onDone }) {
       await login({ email, password });
       onDone?.();
     } catch (err) {
-      setError(err.message || 'Login failed. Please check your credentials.');
+      setError(mapAuthError(err.message || 'Login failed. Please check your credentials.', locale));
     } finally {
       setBusy(false);
     }

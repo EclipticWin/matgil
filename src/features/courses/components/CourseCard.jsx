@@ -3,8 +3,10 @@ import { ROUTES } from '../../../shared/constants/routes.js';
 import Thumbnail from '../../../shared/components/Thumbnail.jsx';
 import { WalkIcon, ClockIcon } from '../../../shared/components/Icon.jsx';
 import { cn } from '../../../shared/utils/classNames.js';
+import { useLocale } from '../../../shared/i18n/LocaleProvider.jsx';
 
 function CourseCardInner({ course, isActive = true }) {
+  const { t } = useLocale();
   return (
     <>
       <div className="flex h-24">
@@ -26,7 +28,7 @@ function CourseCardInner({ course, isActive = true }) {
             isActive ? 'bg-coral text-white' : 'bg-ink/15 text-ink-soft',
           )}
         >
-          {course.stops.length} stops
+          {t('courseDetail.stops', { n: course.stops.length })}
         </span>
         <h3 className="mt-2 font-display text-[1.1875rem] font-bold tracking-tight text-ink">
           {course.title}

@@ -54,11 +54,11 @@ function InfoRow({ label, value }) {
 
 export default function PlaceDetailSheet({ place, selectedLocation, onBack }) {
   const { locale, t } = useLocale();
+  const rawCategory = place.matgilCategoryKeys?.[0] ?? null;
   const subtitle =
     place.firstMenu ||
-    place.tags?.find((t) => !HIDDEN_TAGS.has(t)) ||
-    place.matgilCategoryKeys?.[0] ||
-    null;
+    place.tags?.find((tag) => !HIDDEN_TAGS.has(tag)) ||
+    (rawCategory ? categoryLabel(rawCategory, locale) : null);
 
   const raw = distRaw(place);
   const locationLabel = (locale === 'ko' ? selectedLocation?.labelKo : null) || selectedLocation?.label;
@@ -79,7 +79,7 @@ export default function PlaceDetailSheet({ place, selectedLocation, onBack }) {
 
   const chips = [
     ...(place.matgilCategoryKeys ?? []),
-    ...(place.tags ?? []).filter((t) => !HIDDEN_TAGS.has(t)),
+    ...(place.tags ?? []).filter((tag) => !HIDDEN_TAGS.has(tag)),
   ].filter(Boolean);
   const uniqueChips = [...new Set(chips)];
 
