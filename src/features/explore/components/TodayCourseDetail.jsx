@@ -90,7 +90,7 @@ export default function TodayCourseDetail({ course, selectedLocation, onBack, on
                 className="relative flex w-full items-center gap-5 text-left"
               >
                 {/* 왼쪽: 번호 배지 — 카드 배경/border 없음 */}
-                <div className="z-[1] flex h-[2.125rem] w-[2.125rem] shrink-0 items-center justify-center rounded-full bg-coral font-display text-[0.9375rem] font-bold text-white shadow-coral">
+                <div className="z-[1] flex h-[2.125rem] w-[2.125rem] shrink-0 items-center justify-center rounded-full bg-coral font-display text-[0.9375rem] font-bold text-white shadow-[0_2px_6px_rgba(248,72,31,0.18)]">
                   {i + 1}
                 </div>
 
