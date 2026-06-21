@@ -87,19 +87,19 @@ export default function SearchOverlay({ open, onSelect, onClose, filterCount = 0
 
       {/* ── Search bar — same layout as the default search bar ── */}
       <div className="shrink-0 px-4 pt-3.5 pb-3">
-        <div className="flex h-[3.25rem] items-center gap-2 rounded-full bg-white px-3 shadow-soft">
-          {/* Left: brand pin icon */}
-          <PinIcon size={16} className="shrink-0 text-coral" />
-
-          {/* Middle: actual input */}
-          <input
-            ref={inputRef}
-            type="text"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search dishes, places…"
-            className="flex-1 bg-transparent text-[0.95rem] font-medium text-ink placeholder:text-ink-faint outline-none"
-          />
+        <div className="flex h-[3.25rem] items-center gap-1 rounded-full bg-ink/[0.07] px-3">
+          {/* Left: icon + input grouped — mirrors main search bar (pl-1 wrapper, gap-2.5) */}
+          <div className="flex min-w-0 flex-1 items-center gap-2.5 pl-1">
+            <PinIcon size={18} className="shrink-0 text-coral" />
+            <input
+              ref={inputRef}
+              type="text"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search dishes, places…"
+              className="flex-1 bg-transparent text-[0.95rem] font-medium text-ink placeholder:text-ink-faint outline-none"
+            />
+          </div>
 
           {/* Right: X (clears text or closes search mode) */}
           <button

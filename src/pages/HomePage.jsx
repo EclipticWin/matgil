@@ -150,7 +150,7 @@ export default function HomePage() {
             onClick={() => setIsSearching(true)}
             className="flex min-w-0 flex-1 items-center gap-2.5 px-1"
           >
-            <PinIcon size={16} className="shrink-0 text-coral" />
+            <PinIcon size={18} className="shrink-0 text-coral" />
             <span className="truncate text-[0.95rem] font-medium text-ink-faint">
               Search dishes, places…
             </span>

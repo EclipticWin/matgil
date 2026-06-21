@@ -36,11 +36,21 @@ export default function Modal({
   const [mounted, setMounted] = useState(open);
   const [closing, setClosing] = useState(false);
 
-  // Drag-to-close refs (only used when draggableClose=true)
   const sheetElRef = useRef(null);
-  const gestureRef = useRef(null); // { startY, isDragging, scrollEl, scrollTopAtStart, pointerId, currentOffset }
+
+  // Pointer-event gesture (desktop / mouse)
+  const gestureRef = useRef(null);
   const suppressClickRef = useRef(false);
 
+  // Touch-event gesture (mobile / DevTools simulation)
+  const isTouchActiveRef = useRef(false);
+  const touchGestureRef = useRef(null);
+
+  // Keep onClose current without re-running effects
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
+
+  // Mount / unmount with closing animation
   useEffect(() => {
     if (open) {
       setMounted(true);
@@ -52,12 +62,100 @@ export default function Modal({
     }
   }, [open, mounted]);
 
+  // Touch event listeners attached imperatively so touchmove can be non-passive.
+  // React's synthetic onTouchMove is passive and cannot call preventDefault to
+  // stop the browser's scroll gesture — native addEventListener with passive:false can.
+  useEffect(() => {
+    if (!draggableClose || !mounted) return;
+    const el = sheetElRef.current;
+    if (!el) return;
+
+    function onTouchStart(e) {
+      isTouchActiveRef.current = true;
+      suppressClickRef.current = false;
+      const scrollEl = findScrollParent(e.target, el);
+      touchGestureRef.current = {
+        startY: e.touches[0].clientY,
+        isDragging: false,
+        scrollEl,
+        scrollTopAtStart: scrollEl ? scrollEl.scrollTop : 0,
+        currentOffset: 0,
+      };
+    }
+
+    function onTouchMove(e) {
+      const g = touchGestureRef.current;
+      if (!g) return;
+
+      const offset = e.touches[0].clientY - g.startY; // positive = finger moved down
+
+      if (!g.isDragging) {
+        if (Math.abs(offset) < DRAG_THRESHOLD) return;
+        if (offset > 0) {
+          // Swiping down — if content is scrolled, let browser scroll it up first
+          if (g.scrollEl && g.scrollTopAtStart > 0) {
+            touchGestureRef.current = null;
+            return;
+          }
+          // scrollTop === 0: start drag-to-close
+          g.isDragging = true;
+          suppressClickRef.current = true;
+        } else {
+          // Swiping up: let browser scroll content down
+          touchGestureRef.current = null;
+          return;
+        }
+      }
+
+      if (g.isDragging) {
+        e.preventDefault(); // stop browser scroll during drag
+        g.currentOffset = offset;
+        const ty = Math.max(0, offset);
+        el.style.transition = 'none';
+        el.style.transform = `translateY(${ty}px)`;
+      }
+    }
+
+    function onTouchEnd() {
+      const g = touchGestureRef.current;
+      touchGestureRef.current = null;
+      isTouchActiveRef.current = false;
+
+      if (!g || !g.isDragging) return;
+
+      const offset = g.currentOffset;
+      if (offset > CLOSE_THRESHOLD) {
+        el.style.transition = '';
+        el.style.transform = '';
+        onCloseRef.current();
+      } else {
+        el.style.transition = 'transform 0.25s ease';
+        el.style.transform = 'translateY(0)';
+        setTimeout(() => {
+          if (el) { el.style.transition = ''; el.style.transform = ''; }
+        }, 250);
+      }
+    }
+
+    el.addEventListener('touchstart', onTouchStart, { passive: true });
+    el.addEventListener('touchmove', onTouchMove, { passive: false });
+    el.addEventListener('touchend', onTouchEnd, { passive: true });
+    el.addEventListener('touchcancel', onTouchEnd, { passive: true });
+
+    return () => {
+      el.removeEventListener('touchstart', onTouchStart);
+      el.removeEventListener('touchmove', onTouchMove);
+      el.removeEventListener('touchend', onTouchEnd);
+      el.removeEventListener('touchcancel', onTouchEnd);
+    };
+  }, [draggableClose, mounted]);
+
   if (!mounted) return null;
 
-  // ── Drag handlers ─────────────────────────────────────────────────────────
+  // ── Pointer-event drag handlers (desktop / mouse) ─────────────────────────
 
   function handlePointerDown(e) {
-    if (!draggableClose) return;
+    if (!draggableClose || isTouchActiveRef.current) return;
     suppressClickRef.current = false;
     const scrollEl = findScrollParent(e.target, sheetElRef.current);
     gestureRef.current = {
@@ -71,28 +169,24 @@ export default function Modal({
   }
 
   function handlePointerMove(e) {
-    if (!draggableClose) return;
+    if (!draggableClose || isTouchActiveRef.current) return;
     const g = gestureRef.current;
     if (!g) return;
 
-    const offset = e.clientY - g.startY; // positive = finger moved down
+    const offset = e.clientY - g.startY;
 
     if (!g.isDragging) {
       if (Math.abs(offset) < DRAG_THRESHOLD) return;
 
       if (offset > 0) {
-        // Swiping down — check scroll conflict
         if (g.scrollEl && g.scrollTopAtStart > 0) {
-          // Content scrolled: let browser scroll content upward
           gestureRef.current = null;
           return;
         }
-        // scrollTop === 0: start drag-to-close
         g.isDragging = true;
         suppressClickRef.current = true;
         sheetElRef.current?.setPointerCapture(g.pointerId);
       } else {
-        // Swiping up: let browser scroll content downward
         gestureRef.current = null;
         return;
       }
@@ -109,21 +203,19 @@ export default function Modal({
   }
 
   function handlePointerUpCancel() {
-    if (!draggableClose) return;
+    if (!draggableClose || isTouchActiveRef.current) return;
     const g = gestureRef.current;
     if (!g) return;
 
     if (g.isDragging) {
       const offset = g.currentOffset;
       if (offset > CLOSE_THRESHOLD) {
-        // Reset inline style so modal-out CSS animation plays cleanly
         if (sheetElRef.current) {
           sheetElRef.current.style.transition = '';
           sheetElRef.current.style.transform = '';
         }
         onClose();
       } else {
-        // Spring back to resting position
         const el = sheetElRef.current;
         if (el) {
           el.style.transition = 'transform 0.25s ease';
@@ -157,7 +249,7 @@ export default function Modal({
       {variant === 'sheet' ? (
         <div
           ref={sheetElRef}
-          className={`modal-sheet absolute inset-x-0 bottom-0 flex flex-col overflow-hidden rounded-t-[1.5rem] bg-paper-soft shadow-card${fullHeight ? '' : ' max-h-[84%]'}`}
+          className={`modal-sheet absolute inset-x-0 bottom-0 flex select-none flex-col overflow-hidden rounded-t-[1.5rem] bg-paper-soft shadow-card${fullHeight ? '' : ' max-h-[84%]'}`}
           style={fullHeight ? { height: 'calc(100% - 12px)' } : undefined}
           onPointerDownCapture={handlePointerDown}
           onPointerMoveCapture={handlePointerMove}
