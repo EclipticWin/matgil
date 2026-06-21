@@ -82,81 +82,94 @@ export default function ImageViewerModal({ imageUrls, initialIndex = 0, onClose 
   }, [imageUrls.length, resetScale]);
 
   return (
-    /* absolute — stays inside the app mobile frame (parent is position:relative) */
+    /*
+     * absolute inset-0 — nearest positioned ancestor is AppLayout's
+     * `relative flex h-full flex-col`, which fills the full app frame.
+     * The mobile frame has overflow-hidden so nothing bleeds outside.
+     */
     <div
-      className="absolute inset-0 z-[200] flex flex-col items-center justify-center bg-black/75"
+      className="absolute inset-0 z-[300] bg-black/75"
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
     >
-      {/* image box — badge / X / arrows positioned relative to this */}
-      <div className="relative w-full select-none px-3">
-        <img
-          key={idx}
-          src={imageUrls[idx]}
-          alt={`${idx + 1} / ${imageUrls.length}`}
-          draggable={false}
-          className="mx-auto block max-h-[78vh] w-full max-w-full object-contain"
-          style={{ transform: `scale(${scale})`, transformOrigin: 'center center' }}
-        />
+      {/* vertically+horizontally centering wrapper */}
+      <div className="flex h-full w-full flex-col items-center justify-center overflow-hidden">
 
-        {/* top-left: count badge */}
-        {imageUrls.length > 1 && (
-          <span className="absolute left-5 top-2 z-20 rounded-full bg-black/60 px-2 py-0.5 text-[0.6875rem] font-bold text-white">
-            {idx + 1}/{imageUrls.length}
-          </span>
-        )}
+        {/* image box: w-full so image fills app frame width.
+            relative so badge/X/arrows are positioned inside it. */}
+        <div className="relative w-full">
 
-        {/* top-right: close button */}
-        <button
-          type="button"
-          onClick={onClose}
-          aria-label={t('community.closeViewer')}
-          className="absolute right-5 top-2 z-30 flex h-8 w-8 items-center justify-center rounded-full bg-black/60 text-white"
-        >
-          <CloseIcon size={17} />
-        </button>
+          {/* image: block w-full h-auto — full width, height by aspect ratio.
+              scale transform only here, never on wrapper or controls. */}
+          <img
+            key={idx}
+            src={imageUrls[idx]}
+            alt={`${idx + 1} / ${imageUrls.length}`}
+            draggable={false}
+            className="block h-auto w-full select-none touch-none"
+            style={{ transform: `scale(${scale})`, transformOrigin: 'center center' }}
+          />
 
-        {/* left arrow */}
-        {imageUrls.length > 1 && idx > 0 && (
+          {/* badge: top-left of image */}
+          {imageUrls.length > 1 && (
+            <span className="absolute left-2 top-2 z-30 rounded-full bg-black/60 px-2 py-0.5 text-[0.6875rem] font-bold text-white">
+              {idx + 1}/{imageUrls.length}
+            </span>
+          )}
+
+          {/* X button: top-right of image */}
           <button
             type="button"
-            onClick={(e) => { e.stopPropagation(); goTo(idx - 1); }}
-            aria-label={t('community.prevImage')}
-            className="absolute left-5 top-1/2 z-20 -translate-y-1/2 flex h-8 w-8 items-center justify-center rounded-full bg-black/50 text-xl font-bold text-white"
+            onClick={onClose}
+            aria-label={t('community.closeViewer')}
+            className="absolute right-2 top-2 z-30 flex h-8 w-8 items-center justify-center rounded-full bg-black/60 text-white"
           >
-            ‹
+            <CloseIcon size={17} />
           </button>
-        )}
 
-        {/* right arrow */}
-        {imageUrls.length > 1 && idx < imageUrls.length - 1 && (
-          <button
-            type="button"
-            onClick={(e) => { e.stopPropagation(); goTo(idx + 1); }}
-            aria-label={t('community.nextImage')}
-            className="absolute right-5 top-1/2 z-20 -translate-y-1/2 flex h-8 w-8 items-center justify-center rounded-full bg-black/50 text-xl font-bold text-white"
-          >
-            ›
-          </button>
-        )}
-      </div>
-
-      {/* dot indicator */}
-      {imageUrls.length > 1 && (
-        <div className="mt-4 flex justify-center gap-1.5">
-          {imageUrls.map((_, i) => (
+          {/* prev arrow: left center of image */}
+          {imageUrls.length > 1 && idx > 0 && (
             <button
-              key={i}
               type="button"
-              onClick={() => goTo(i)}
-              className={`h-1.5 w-1.5 rounded-full transition-colors ${
-                i === idx ? 'bg-white' : 'bg-white/35'
-              }`}
-            />
-          ))}
+              onClick={(e) => { e.stopPropagation(); goTo(idx - 1); }}
+              aria-label={t('community.prevImage')}
+              className="absolute left-2 top-1/2 z-30 -translate-y-1/2 flex h-8 w-8 items-center justify-center rounded-full bg-black/50 text-xl font-bold leading-none text-white"
+            >
+              ‹
+            </button>
+          )}
+
+          {/* next arrow: right center of image */}
+          {imageUrls.length > 1 && idx < imageUrls.length - 1 && (
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); goTo(idx + 1); }}
+              aria-label={t('community.nextImage')}
+              className="absolute right-2 top-1/2 z-30 -translate-y-1/2 flex h-8 w-8 items-center justify-center rounded-full bg-black/50 text-xl font-bold leading-none text-white"
+            >
+              ›
+            </button>
+          )}
         </div>
-      )}
+
+        {/* dots: below image, small */}
+        {imageUrls.length > 1 && (
+          <div className="mt-3 flex justify-center gap-1.5">
+            {imageUrls.map((_, i) => (
+              <button
+                key={i}
+                type="button"
+                onClick={() => goTo(i)}
+                className={`h-1.5 w-1.5 rounded-full transition-colors ${
+                  i === idx ? 'bg-white' : 'bg-white/35'
+                }`}
+              />
+            ))}
+          </div>
+        )}
+
+      </div>
     </div>
   );
 }
