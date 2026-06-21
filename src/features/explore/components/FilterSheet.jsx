@@ -144,7 +144,7 @@ export default function FilterSheet({ value, onApply, onClose }) {
             onApply(draft);
             onClose();
           }}
-          className="h-[3.25rem] w-full rounded-[0.9375rem] bg-coral text-base font-bold text-white shadow-coral"
+          className="h-[3.25rem] w-full rounded-[0.9375rem] bg-coral text-base font-bold text-white shadow-[0_2px_6px_rgba(248,72,31,0.18)]"
         >
           Show results{count ? ` · ${count}` : ''}
         </button>

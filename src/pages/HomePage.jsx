@@ -159,7 +159,7 @@ export default function HomePage() {
             type="button"
             aria-label="Filters"
             onClick={() => setSheet('filters')}
-            className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-coral"
+            className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-ink-soft"
           >
             <FunnelIcon size={18} />
             {count > 0 && (
@@ -233,7 +233,7 @@ export default function HomePage() {
       />
 
       {/* filter sheet */}
-      <Modal open={sheet === 'filters'} onClose={() => setSheet(null)} variant="sheet">
+      <Modal open={sheet === 'filters'} onClose={() => setSheet(null)} variant="sheet" fullHeight draggableClose>
         <FilterSheet value={filters} onApply={setFilters} onClose={() => setSheet(null)} />
       </Modal>
 

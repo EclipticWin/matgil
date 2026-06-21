@@ -35,11 +35,16 @@ export function FilterIcon(p) {
   );
 }
 
-/** Funnel / sliders-style filter icon for use without a colored background. */
+/** Horizontal sliders / adjustments filter icon: 3 tracks with filled knobs at staggered positions. */
 export function FunnelIcon(p) {
   return (
     <Svg vb="0 0 20 20" {...p}>
-      <path d="M2.5 4.5h15l-6 7v5l-3-1.5v-3.5z" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" />
+      <line x1="2" y1="5" x2="18" y2="5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+      <circle cx="6" cy="5" r="2.5" fill="currentColor" />
+      <line x1="2" y1="10" x2="18" y2="10" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+      <circle cx="14" cy="10" r="2.5" fill="currentColor" />
+      <line x1="2" y1="15" x2="18" y2="15" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+      <circle cx="9" cy="15" r="2.5" fill="currentColor" />
     </Svg>
   );
 }

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { SearchIcon, CloseIcon, FilterIcon, PinIcon } from '../../../shared/components/Icon.jsx';
+import { CloseIcon, FunnelIcon, PinIcon } from '../../../shared/components/Icon.jsx';
 import { searchPlacesByKeyword } from '../services/kakaoPlaceSearchService.js';
 import { findAnchorPlace } from '../services/anchorMatchService.js';
 
@@ -87,9 +87,9 @@ export default function SearchOverlay({ open, onSelect, onClose, filterCount = 0
 
       {/* ── Search bar — same layout as the default search bar ── */}
       <div className="shrink-0 px-4 pt-3.5 pb-3">
-        <div className="flex h-[3.25rem] items-center gap-2.5 rounded-2xl bg-ink/[0.07] px-3.5">
-          {/* Left: search icon (same as default bar) */}
-          <SearchIcon className="shrink-0 text-ink-soft" />
+        <div className="flex h-[3.25rem] items-center gap-2 rounded-full bg-white px-3 shadow-soft">
+          {/* Left: brand pin icon */}
+          <PinIcon size={16} className="shrink-0 text-coral" />
 
           {/* Middle: actual input */}
           <input
@@ -101,7 +101,7 @@ export default function SearchOverlay({ open, onSelect, onClose, filterCount = 0
             className="flex-1 bg-transparent text-[0.95rem] font-medium text-ink placeholder:text-ink-faint outline-none"
           />
 
-          {/* Right side: X (clears text or closes search mode) + filter button */}
+          {/* Right: X (clears text or closes search mode) */}
           <button
             type="button"
             aria-label={query ? 'Clear' : 'Close search'}
@@ -111,15 +111,16 @@ export default function SearchOverlay({ open, onSelect, onClose, filterCount = 0
             <CloseIcon size={16} />
           </button>
 
+          {/* Right: filter button — matches main search bar style */}
           <button
             type="button"
             aria-label="Filters"
             onClick={onFilterClick}
-            className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-coral text-white shadow-[0_2px_6px_rgba(248,72,31,0.22)]"
+            className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-ink-soft"
           >
-            <FilterIcon />
+            <FunnelIcon size={18} />
             {filterCount > 0 && (
-              <span className="absolute -right-1.5 -top-1.5 flex h-[1.125rem] min-w-[1.125rem] items-center justify-center rounded-full border-2 border-white bg-ink px-1 text-[0.6rem] font-extrabold text-white">
+              <span className="absolute right-0.5 top-0.5 flex h-[1.125rem] min-w-[1.125rem] items-center justify-center rounded-full border-2 border-white bg-ink px-1 text-[0.6rem] font-extrabold text-white">
                 {filterCount}
               </span>
             )}
