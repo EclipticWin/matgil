@@ -6,6 +6,7 @@ import Card from '../shared/components/Card.jsx';
 import Button from '../shared/components/Button.jsx';
 import PageShell from '../shared/components/PageShell.jsx';
 import PageHeader from '../shared/components/PageHeader.jsx';
+import { useLocale } from '../shared/i18n/LocaleProvider.jsx';
 
 function Stat({ value, label, onClick }) {
   return (
@@ -25,13 +26,14 @@ export default function MyPage() {
   const { user, logout, loading } = useAuth();
   const { items } = useBookmarks();
   const navigate = useNavigate();
+  const { t } = useLocale();
 
   if (loading) return null;
   if (!user) return <Navigate to={ROUTES.login} replace />;
 
   return (
     <PageShell>
-      <PageHeader title="Your trip" titleClassName="mb-5" />
+      <PageHeader title={t('my.title')} titleClassName="mb-5" />
 
       <Card className="flex items-center gap-3.5 p-4">
         <div className="flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-amber to-coral font-display text-2xl font-bold text-white">
@@ -44,13 +46,13 @@ export default function MyPage() {
       </Card>
 
       <div className="mt-3.5 flex gap-2.5">
-        <Stat value={items.length} label="Saved places" onClick={() => navigate(ROUTES.bookmark)} />
-        <Stat value="2" label="Courses walked" />
-        <Stat value="14" label="Reviews left" />
+        <Stat value={items.length} label={t('my.savedPlaces')} onClick={() => navigate(ROUTES.bookmark)} />
+        <Stat value="2" label={t('my.coursesWalked')} />
+        <Stat value="14" label={t('my.reviewsLeft')} />
       </div>
 
       <Button variant="secondary" full className="mt-6" onClick={logout}>
-        Log out
+        {t('my.logout')}
       </Button>
     </PageShell>
   );

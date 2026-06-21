@@ -8,8 +8,10 @@ import {
   stopListening,
 } from '../services/speechRecognitionService.js';
 import { cn } from '../../../shared/utils/classNames.js';
+import { useLocale } from '../../../shared/i18n/LocaleProvider.jsx';
 
 export default function VoiceHelpPlaceholder() {
+  const { t } = useLocale();
   const [status, setStatus] = useState('idle');
   // idle | listening | processing | done | error
   const [result, setResult] = useState(null);
@@ -83,11 +85,11 @@ export default function VoiceHelpPlaceholder() {
       {/* Status text */}
       <p className="mt-8 text-sm font-semibold text-ink-soft">
         {!speechSupported
-          ? 'Voice input is not supported here.'
-          : status === 'idle'       ? 'Tap and speak.'
-          : status === 'listening'  ? 'Listening...'
-          : status === 'processing' ? 'Analyzing...'
-          : status === 'done'       ? 'Tap to speak again.'
+          ? t('phrases.voiceUnsupported')
+          : status === 'idle'       ? t('phrases.tapSpeak')
+          : status === 'listening'  ? t('phrases.listening')
+          : status === 'processing' ? t('phrases.analyzing')
+          : status === 'done'       ? t('phrases.tapAgain')
           : errorMsg}
       </p>
 
@@ -95,11 +97,11 @@ export default function VoiceHelpPlaceholder() {
       {showCard && (
         <div className="mt-8 w-full rounded-2xl border border-ink/8 bg-white px-4 py-4 text-sm">
           <p className="mb-3 text-[0.65rem] font-bold uppercase tracking-widest text-ink-faint">
-            {status === 'done' ? 'Analysis result' : 'Example result'}
+            {status === 'done' ? t('phrases.analysisResult') : t('phrases.exampleResult')}
           </p>
 
           <p className="text-[0.7rem] font-bold uppercase tracking-widest text-ink-faint">
-            Original phrase
+            {t('phrases.originalPhrase')}
           </p>
           <p className="mt-1 text-base font-bold text-ink">
             {status === 'done' ? result.originalPhrase : '선불입니다.'}
@@ -108,7 +110,7 @@ export default function VoiceHelpPlaceholder() {
           <div className="my-3 border-t border-ink/8" />
 
           <p className="text-[0.7rem] font-bold uppercase tracking-widest text-ink-faint">
-            Meaning
+            {t('phrases.meaning')}
           </p>
           <p className="mt-1 text-sm text-ink-soft">
             {status === 'done' ? result.meaning : 'You need to pay before eating.'}
@@ -117,7 +119,7 @@ export default function VoiceHelpPlaceholder() {
           <div className="my-3 border-t border-ink/8" />
 
           <p className="text-[0.7rem] font-bold uppercase tracking-widest text-ink-faint">
-            Suggested reply
+            {t('phrases.suggestedReply')}
           </p>
           <div className="mt-1 flex items-start justify-between gap-2">
             <div>

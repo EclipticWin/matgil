@@ -9,21 +9,23 @@ import { isTTSSupported } from '../features/phrases/services/ttsService.js';
 import PageShell from '../shared/components/PageShell.jsx';
 import PageHeader from '../shared/components/PageHeader.jsx';
 import { cn } from '../shared/utils/classNames.js';
-
-const TOP_TABS = [
-  { id: 'common', label: 'Common phrases' },
-  { id: 'voice',  label: 'Voice help' },
-];
+import { useLocale } from '../shared/i18n/LocaleProvider.jsx';
 
 export default function PhrasesPage() {
+  const { t } = useLocale();
   const [activeTab, setActiveTab] = useState('common');
   const [category, setCategory] = useState('waiting');
+
+  const TOP_TABS = [
+    { id: 'common', label: t('phrases.common') },
+    { id: 'voice',  label: t('phrases.voice') },
+  ];
 
   const phrases = PHRASES.filter((p) => p.category === category);
 
   return (
     <PageShell>
-      <PageHeader title="Phrases" />
+      <PageHeader title={t('phrases.title')} />
 
       {/* Top-level tab switcher */}
       <div className="mt-3 flex rounded-xl bg-ink/5 p-1">
@@ -48,7 +50,7 @@ export default function PhrasesPage() {
         <>
           {isTTSSupported() && (
             <div className="mt-4 inline-flex items-center gap-1.5 rounded-xl bg-coral-tint px-3 py-1.5 text-[0.8rem] font-semibold text-coral-deep">
-              <SpeakerIcon size={15} className="text-coral" /> Tap to hear it in Korean
+              <SpeakerIcon size={15} className="text-coral" /> {t('phrases.tapToHear')}
             </div>
           )}
 

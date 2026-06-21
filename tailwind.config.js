@@ -12,8 +12,8 @@ export default {
         map: { land: '#F1E6D2', block: '#EADCC3', road: '#FFFBF5', park: '#CFE3B6', water: '#BBDDEC' },
       },
       fontFamily: {
-        display: ['"Bricolage Grotesque"', 'system-ui', 'sans-serif'],
-        sans: ['"Plus Jakarta Sans"', 'system-ui', 'sans-serif'],
+        display: ['Pretendard', '"Bricolage Grotesque"', 'system-ui', 'sans-serif'],
+        sans: ['Pretendard', '"Plus Jakarta Sans"', 'system-ui', 'sans-serif'],
       },
       maxWidth: {
         app: '22.5rem',

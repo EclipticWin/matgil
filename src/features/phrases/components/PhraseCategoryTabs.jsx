@@ -1,12 +1,15 @@
 import { cn } from '../../../shared/utils/classNames.js';
+import { useLocale } from '../../../shared/i18n/LocaleProvider.jsx';
 
 /** Horizontal, scrollable category selector. Receives categories as props. */
 export default function PhraseCategoryTabs({ categories, value, onChange }) {
+  const { locale } = useLocale();
   return (
     <div className="category-scroll w-full max-w-full touch-pan-x overflow-x-auto overscroll-x-contain pb-1">
       <div className="flex min-w-max gap-2">
         {categories.map((cat) => {
           const active = value === cat.id;
+          const label = locale === 'ko' ? (cat.labelKo ?? cat.label) : cat.label;
           return (
             <button
               key={cat.id}
@@ -19,7 +22,7 @@ export default function PhraseCategoryTabs({ categories, value, onChange }) {
                   : 'bg-white text-ink-soft',
               )}
             >
-              {cat.label}
+              {label}
             </button>
           );
         })}

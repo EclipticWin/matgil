@@ -55,14 +55,14 @@ export const COMMUNITY_POSTS = [
 ];
 
 export const COMMUNITY_FILTERS = [
-  { key: 'all', label: 'All' },
-  { key: 'popular', label: 'Popular' },
-  { key: 'question', label: 'Questions' },
-  { key: 'review', label: 'Reviews' },
-  { key: 'tips', label: 'Tips' },
-  { key: 'food', label: 'Food' },
-  { key: 'routes', label: 'Routes' },
-  { key: 'general', label: 'General' },
+  { key: 'all',      label: 'All',       labelKo: '전체' },
+  { key: 'popular',  label: 'Popular',   labelKo: '인기' },
+  { key: 'question', label: 'Questions', labelKo: '질문' },
+  { key: 'review',   label: 'Reviews',   labelKo: '후기' },
+  { key: 'tips',     label: 'Tips',      labelKo: '팁' },
+  { key: 'food',     label: 'Food',      labelKo: '음식' },
+  { key: 'routes',   label: 'Routes',    labelKo: '동선' },
+  { key: 'general',  label: 'General',   labelKo: '일반' },
 ];
 
 /** Apply a sub-tab filter to the posts. */

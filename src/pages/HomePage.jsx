@@ -20,7 +20,7 @@ import { PinIcon, FunnelIcon, FlameIcon, GlobeIcon } from '../shared/components/
 
 /** Map tab — full-bleed map with floating controls and a draggable "Eat near here" sheet. */
 export default function HomePage() {
-  const { locale } = useLocale();
+  const { locale, t } = useLocale();
   const [filters, setFilters] = useState(EMPTY_FILTERS);
   const [sheet, setSheet] = useState(null); // 'filters' | 'language' | 'location' | null
   const [isSearching, setIsSearching] = useState(false);
@@ -93,7 +93,7 @@ export default function HomePage() {
   function handleFindHere() {
     const center = mapApiRef.current?.getCenter();
     if (!center) return;
-    setSelectedLocation({ key: 'map_center', label: 'Selected area', lat: center.lat, lng: center.lng, source: 'map', address: null });
+    setSelectedLocation({ key: 'map_center', label: t('nearby.selectedArea'), labelKo: '선택한 지역', lat: center.lat, lng: center.lng, source: 'map', address: null });
     setAnchorPlace(null);
     setGpsStatus('idle');
     setShowFindHere(false);
@@ -108,7 +108,7 @@ export default function HomePage() {
     navigator.geolocation.getCurrentPosition(
       (pos) => {
         const { latitude: lat, longitude: lng } = pos.coords;
-        setSelectedLocation({ key: 'current_location', label: 'Current location', lat, lng, source: 'gps', address: null });
+        setSelectedLocation({ key: 'current_location', label: t('nearby.currentLocation'), labelKo: '현재 위치', lat, lng, source: 'gps', address: null });
         setAnchorPlace(null);
         setGpsStatus('active');
         setShowFindHere(false);
@@ -156,7 +156,7 @@ export default function HomePage() {
           >
             <PinIcon size={18} className="shrink-0 text-coral" />
             <span className="truncate text-[0.95rem] font-medium text-ink-faint">
-              Search dishes, places…
+              {t('nearby.searchPlaceholder')}
             </span>
           </button>
           <button
@@ -194,7 +194,7 @@ export default function HomePage() {
                 onClick={handleFindHere}
                 className="whitespace-nowrap rounded-full bg-white px-4 py-2.5 text-[0.8rem] font-semibold text-ink shadow-soft"
               >
-                Find routes here
+                {t('nearby.findRoutesHere')}
               </button>
             )}
           </div>

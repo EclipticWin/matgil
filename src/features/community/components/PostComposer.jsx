@@ -2,17 +2,19 @@ import { useState } from 'react';
 import { cn } from '../../../shared/utils/classNames.js';
 import Button from '../../../shared/components/Button.jsx';
 import { CloseIcon } from '../../../shared/components/Icon.jsx';
+import { useLocale } from '../../../shared/i18n/LocaleProvider.jsx';
 
 const WRITE_CATEGORIES = [
-  { key: 'question', label: 'Question' },
-  { key: 'review', label: 'Review' },
-  { key: 'tips', label: 'Tips' },
-  { key: 'food', label: 'Food' },
-  { key: 'routes', label: 'Routes' },
-  { key: 'general', label: 'General' },
+  { key: 'question', label: 'Question', labelKo: '질문' },
+  { key: 'review',   label: 'Review',   labelKo: '후기' },
+  { key: 'tips',     label: 'Tips',     labelKo: '팁' },
+  { key: 'food',     label: 'Food',     labelKo: '음식' },
+  { key: 'routes',   label: 'Routes',   labelKo: '동선' },
+  { key: 'general',  label: 'General',  labelKo: '일반' },
 ];
 
 export default function PostComposer({ onSubmit, onClose }) {
+  const { locale, t } = useLocale();
   const [category, setCategory] = useState('general');
   const [content, setContent] = useState('');
   const [error, setError] = useState('');
@@ -41,7 +43,7 @@ export default function PostComposer({ onSubmit, onClose }) {
         onClick={(e) => e.stopPropagation()}
       >
         <div className="mb-4 flex items-center justify-between">
-          <h2 className="font-display text-xl font-bold text-ink">New Post</h2>
+          <h2 className="font-display text-xl font-bold text-ink">{t('community.newPost')}</h2>
           <button
             type="button"
             onClick={onClose}
@@ -53,17 +55,17 @@ export default function PostComposer({ onSubmit, onClose }) {
 
         <div className="category-scroll mb-4 flex gap-2 overflow-x-auto overscroll-x-contain pb-1">
           <div className="flex min-w-max gap-2">
-            {WRITE_CATEGORIES.map(({ key, label }) => (
+            {WRITE_CATEGORIES.map((cat) => (
               <button
-                key={key}
+                key={cat.key}
                 type="button"
-                onClick={() => setCategory(key)}
+                onClick={() => setCategory(cat.key)}
                 className={cn(
                   'h-8 shrink-0 whitespace-nowrap rounded-full px-3.5 text-[0.8125rem] font-bold transition-colors',
-                  category === key ? 'bg-coral text-white' : 'bg-white text-ink-soft shadow-soft',
+                  category === cat.key ? 'bg-coral text-white' : 'bg-white text-ink-soft shadow-soft',
                 )}
               >
-                {label}
+                {locale === 'ko' ? (cat.labelKo ?? cat.label) : cat.label}
               </button>
             ))}
           </div>
@@ -71,7 +73,7 @@ export default function PostComposer({ onSubmit, onClose }) {
 
         <textarea
           autoFocus
-          placeholder="Share your experience or ask a question…"
+          placeholder={t('community.composePlaceholder')}
           value={content}
           onChange={(e) => setContent(e.target.value)}
           rows={5}
@@ -86,10 +88,10 @@ export default function PostComposer({ onSubmit, onClose }) {
 
         <div className="mt-3 flex gap-2.5">
           <Button variant="secondary" className="flex-1" onClick={onClose}>
-            Cancel
+            {t('community.cancel')}
           </Button>
           <Button className="flex-1" disabled={!canSubmit} onClick={handlePost}>
-            {busy ? 'Posting…' : 'Post'}
+            {busy ? t('community.posting') : t('community.post')}
           </Button>
         </div>
       </div>

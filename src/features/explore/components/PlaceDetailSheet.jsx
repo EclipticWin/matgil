@@ -7,6 +7,13 @@ import {
 } from '../../../shared/components/Icon.jsx';
 import Thumbnail from '../../../shared/components/Thumbnail.jsx';
 import { useLocale } from '../../../shared/i18n/LocaleProvider.jsx';
+import { CATEGORIES } from '../data/exploreOptions.js';
+
+function categoryLabel(key, locale) {
+  const cat = CATEGORIES.find((c) => c.key === key);
+  if (!cat) return key;
+  return locale === 'ko' ? (cat.labelKo ?? cat.label) : cat.label;
+}
 
 // 사용자에게 보이면 안 되는 내부 상태성 태그
 const HIDDEN_TAGS = new Set([
@@ -172,7 +179,7 @@ export default function PlaceDetailSheet({ place, selectedLocation, onBack }) {
                   key={chip}
                   className="rounded-xl bg-ink/5 px-3 py-1 text-xs font-semibold text-ink-soft"
                 >
-                  {chip}
+                  {categoryLabel(chip, locale)}
                 </span>
               ))}
             </div>

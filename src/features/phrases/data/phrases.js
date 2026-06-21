@@ -1,13 +1,13 @@
 /** Restaurant phrases grouped by situation. `korean` is spoken via TTS. */
 export const PHRASE_CATEGORIES = [
-  { id: 'waiting',  label: 'Waiting' },
-  { id: 'arriving', label: 'Getting seated' },
-  { id: 'menu',     label: 'Choosing menu' },
-  { id: 'allergy',  label: 'Allergy & dietary needs' },
-  { id: 'ordering', label: 'Ordering' },
-  { id: 'extra',    label: 'Extra requests' },
-  { id: 'paying',   label: 'Paying' },
-  { id: 'leaving',  label: 'Leaving' },
+  { id: 'waiting',  label: 'Waiting',                 labelKo: '대기' },
+  { id: 'arriving', label: 'Getting seated',           labelKo: '자리 잡기' },
+  { id: 'menu',     label: 'Choosing menu',            labelKo: '메뉴 선택' },
+  { id: 'allergy',  label: 'Allergy & dietary needs',  labelKo: '알러지 & 식이 제한' },
+  { id: 'ordering', label: 'Ordering',                 labelKo: '주문하기' },
+  { id: 'extra',    label: 'Extra requests',           labelKo: '추가 요청' },
+  { id: 'paying',   label: 'Paying',                   labelKo: '계산하기' },
+  { id: 'leaving',  label: 'Leaving',                  labelKo: '퇴장하기' },
 ];
 
 export const PHRASES = [

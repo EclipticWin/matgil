@@ -1,18 +1,21 @@
 import { PRESET_LOCATIONS } from '../data/locations.js';
 import { PinIcon, CheckIcon } from '../../../shared/components/Icon.jsx';
 import { cn } from '../../../shared/utils/classNames.js';
+import { useLocale } from '../../../shared/i18n/LocaleProvider.jsx';
 
 export default function LocationSheet({ value, onSelect, onClose }) {
+  const { locale, t } = useLocale();
   return (
     <>
       <div className="shrink-0 px-5 pb-1 pt-2.5">
         <div className="mx-auto mb-3 h-[5px] w-10 rounded-full bg-ink/15" />
-        <h2 className="font-display text-[1.375rem] font-bold tracking-tight text-ink">Choose a hot place</h2>
+        <h2 className="font-display text-[1.375rem] font-bold tracking-tight text-ink">{t('location.title')}</h2>
       </div>
 
       <div className="no-scrollbar flex-1 overflow-y-auto px-3.5 pb-5 pt-1">
         {PRESET_LOCATIONS.map((loc) => {
           const active = value?.key === loc.key;
+          const displayLabel = locale === 'ko' ? (loc.labelKo ?? loc.label) : loc.label;
           return (
             <button
               key={loc.key}
@@ -32,7 +35,7 @@ export default function LocationSheet({ value, onSelect, onClose }) {
                 <PinIcon size={15} />
               </span>
               <span className={cn('flex-1 text-[0.95rem]', active ? 'font-bold text-ink' : 'font-semibold text-ink')}>
-                {loc.label}
+                {displayLabel}
               </span>
               {active && (
                 <span className="flex h-[1.625rem] w-[1.625rem] items-center justify-center rounded-full bg-coral text-white">

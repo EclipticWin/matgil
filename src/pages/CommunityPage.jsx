@@ -9,6 +9,7 @@ import PostComposer from '../features/community/components/PostComposer.jsx';
 import { PencilIcon } from '../shared/components/Icon.jsx';
 import PageHeader from '../shared/components/PageHeader.jsx';
 import { ROUTES } from '../shared/constants/routes.js';
+import { useLocale } from '../shared/i18n/LocaleProvider.jsx';
 
 const POST_TINTS = ['#FFE3D4', '#FFEFC9', '#E6E9F7', '#E2F1DE'];
 
@@ -40,6 +41,7 @@ function normalizeDbPost(p, i) {
 export default function CommunityPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const { t } = useLocale();
   const [filter, setFilter] = useState('all');
   const [dbPosts, setDbPosts] = useState(null);
   const [composing, setComposing] = useState(false);
@@ -81,8 +83,8 @@ export default function CommunityPage() {
       <div className="pb-[6.5rem] pt-6">
         <div className="px-5">
           <PageHeader
-            title="Community"
-            subtitle="Tips from travellers eating in Seoul"
+            title={t('community.title')}
+            subtitle={t('community.subtitle')}
             subtitleClassName="[text-wrap:pretty]"
           />
         </div>
@@ -92,7 +94,7 @@ export default function CommunityPage() {
         <div className="flex flex-col gap-3.5 px-5 pt-3.5">
           {posts.length === 0 ? (
             <div className="py-12 text-center text-sm font-semibold text-ink-faint">
-              No matches yet
+              {t('community.noMatches')}
             </div>
           ) : (
             posts.map((post, i) => <PostCard key={post.id} post={post} index={i} />)
@@ -106,7 +108,7 @@ export default function CommunityPage() {
         onClick={handlePostButtonClick}
         className="absolute bottom-[5.5rem] right-5 z-30 inline-flex h-12 items-center gap-1.5 rounded-3xl bg-coral px-5 text-[0.9375rem] font-bold text-white shadow-[0_2px_6px_rgba(248,72,31,0.22)]"
       >
-        <PencilIcon /> Post
+        <PencilIcon /> {t('community.post')}
       </button>
 
       {/* login prompt sheet */}
@@ -120,23 +122,23 @@ export default function CommunityPage() {
             onClick={(e) => e.stopPropagation()}
           >
             <p className="mb-2 text-center font-display text-lg font-bold text-ink">
-              Log in to post
+              {t('community.loginToPost')}
             </p>
             <p className="mb-5 text-center text-sm text-ink-soft">
-              Join the community to share tips and ask questions.
+              {t('community.joinPrompt')}
             </p>
             <div className="flex gap-2.5">
               <button
                 className="flex-1 rounded-2xl border-[1.5px] border-coral py-3.5 font-bold text-coral"
                 onClick={() => setLoginPrompt(false)}
               >
-                Later
+                {t('community.later')}
               </button>
               <button
                 className="flex-1 rounded-2xl bg-coral py-3.5 font-bold text-white"
                 onClick={() => { setLoginPrompt(false); navigate(ROUTES.login); }}
               >
-                Log in
+                {t('community.login')}
               </button>
             </div>
           </div>

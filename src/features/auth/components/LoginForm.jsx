@@ -4,6 +4,7 @@ import { useAuth } from '../hooks/useAuth.jsx';
 import Button from '../../../shared/components/Button.jsx';
 import { GoogleIcon, FacebookIcon, PinIcon } from '../../../shared/components/Icon.jsx';
 import { ROUTES } from '../../../shared/constants/routes.js';
+import { useLocale } from '../../../shared/i18n/LocaleProvider.jsx';
 
 const inputClass =
   'h-[3.25rem] w-full rounded-2xl border-[1.5px] border-ink/10 bg-white px-4 text-[0.95rem] text-ink outline-none transition-colors placeholder:text-ink-faint focus:border-coral';
@@ -14,6 +15,7 @@ const socialClass =
 export default function LoginForm({ onDone }) {
   const { login } = useAuth();
   const navigate = useNavigate();
+  const { t } = useLocale();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -36,22 +38,19 @@ export default function LoginForm({ onDone }) {
   };
 
   const handleSocial = () => {
-    alert('Coming soon! Social login is not yet available.');
+    alert(t('login.socialComingSoon'));
   };
 
   return (
     <div className="flex flex-col">
       {/* brand */}
-      <div className="mb-7 flex flex-col items-center">
+      <div className="mb-5 flex flex-col items-center">
         <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-[1.25rem] bg-gradient-to-br from-amber to-coral text-white">
           <PinIcon size={30} />
         </div>
         <h1 className="text-center font-display text-2xl font-bold tracking-tight text-ink">
-          Welcome to Matgil
+          {t('login.welcome')}
         </h1>
-        <p className="mt-2 max-w-[16rem] text-center text-sm leading-relaxed text-ink-soft">
-          Log in to save spots, routes and reviews
-        </p>
       </div>
 
       {/* email form */}
@@ -59,7 +58,7 @@ export default function LoginForm({ onDone }) {
         <input
           type="email"
           autoComplete="email"
-          placeholder="Email"
+          placeholder={t('login.email')}
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           className={inputClass}
@@ -67,7 +66,7 @@ export default function LoginForm({ onDone }) {
         <input
           type="password"
           autoComplete="current-password"
-          placeholder="Password"
+          placeholder={t('login.password')}
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           className={inputClass}
@@ -77,8 +76,8 @@ export default function LoginForm({ onDone }) {
             {error}
           </p>
         )}
-        <Button type="submit" full disabled={!canSubmit} className="mt-1">
-          {busy ? 'Logging in…' : 'Log in'}
+        <Button type="submit" full disabled={!canSubmit} className="mt-1 !shadow-none">
+          {busy ? t('login.loggingIn') : t('login.login')}
         </Button>
         <Button
           type="button"
@@ -86,14 +85,14 @@ export default function LoginForm({ onDone }) {
           full
           onClick={() => navigate(ROUTES.signup)}
         >
-          Sign up with email
+          {t('login.signupWithEmail')}
         </Button>
       </form>
 
       {/* divider */}
       <div className="my-5 flex items-center gap-3">
         <span className="h-px flex-1 bg-ink/10" />
-        <span className="text-xs font-semibold text-ink-faint">or continue with</span>
+        <span className="text-xs font-semibold text-ink-faint">{t('login.orContinueWith')}</span>
         <span className="h-px flex-1 bg-ink/10" />
       </div>
 

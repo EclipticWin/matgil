@@ -27,7 +27,7 @@ function formatSeoulDistrictAddress(addressStr) {
 }
 
 export default function SearchOverlay({ open, onSelect, onClose, filterCount = 0, onFilterClick, places = [] }) {
-  const { locale } = useLocale();
+  const { locale, t } = useLocale();
   const [mounted, setMounted] = useState(open);
   const [closing, setClosing] = useState(false);
   const [query, setQuery] = useState('');
@@ -98,7 +98,7 @@ export default function SearchOverlay({ open, onSelect, onClose, filterCount = 0
               type="text"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search dishes, places…"
+              placeholder={t('nearby.searchPlaceholder')}
               className="flex-1 bg-transparent text-[0.95rem] font-medium text-ink placeholder:text-ink-faint outline-none"
             />
           </div>
@@ -135,7 +135,9 @@ export default function SearchOverlay({ open, onSelect, onClose, filterCount = 0
         {!query.trim() ? (
           <div className="mt-1 rounded-2xl bg-coral-tint px-4 py-3.5">
             <p className="text-[0.82rem] leading-relaxed text-ink-soft">
-              Pick up to 3 food types, then search for any place in Seoul to discover matching restaurants nearby.
+              {locale === 'ko'
+                ? '음식 종류를 최대 3개 선택하고, 서울 내 원하는 장소를 검색해 주변 맛집을 찾아보세요.'
+                : 'Pick up to 3 food types, then search for any place in Seoul to discover matching restaurants nearby.'}
             </p>
           </div>
         ) : searching ? (
@@ -147,9 +149,9 @@ export default function SearchOverlay({ open, onSelect, onClose, filterCount = 0
             const isEnglish = locale === 'en';
             const matched = isEnglish ? findAnchorPlace(r, places) : null;
             const displayName = matched ? matched.name : r.place_name;
-            const displayAddress = matched
-              ? matched.address
-              : formatSeoulDistrictAddress(r.address_name || r.road_address_name);
+            const displayAddress = isEnglish
+              ? (matched ? matched.address : formatSeoulDistrictAddress(r.address_name || r.road_address_name))
+              : (r.road_address_name || r.address_name);
             return (
               <button
                 key={r.id}

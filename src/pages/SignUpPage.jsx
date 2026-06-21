@@ -5,6 +5,7 @@ import { ROUTES } from '../shared/constants/routes.js';
 import Button from '../shared/components/Button.jsx';
 import TopBar from '../shared/components/TopBar.jsx';
 import BottomNavigation from '../features/navigation/components/BottomNavigation.jsx';
+import { useLocale } from '../shared/i18n/LocaleProvider.jsx';
 
 const inputClass =
   'h-[3.25rem] w-full rounded-2xl border-[1.5px] border-ink/10 bg-white px-4 text-[0.95rem] text-ink outline-none transition-colors placeholder:text-ink-faint focus:border-coral';
@@ -12,6 +13,7 @@ const inputClass =
 export default function SignUpPage() {
   const { signUp } = useAuth();
   const navigate = useNavigate();
+  const { t } = useLocale();
   const [displayName, setDisplayName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -58,8 +60,8 @@ export default function SignUpPage() {
       <main className="no-scrollbar flex-1 overflow-y-auto">
         <div className="flex min-h-full flex-col justify-center px-6 pb-10 pt-10">
           <div className="mb-7 text-center">
-            <h1 className="font-display text-2xl font-bold text-ink">Create Account</h1>
-            <p className="mt-2 text-sm text-ink-soft">Join the Matgil community</p>
+            <h1 className="font-display text-2xl font-bold text-ink">{t('signup.title')}</h1>
+            <p className="mt-2 text-sm text-ink-soft">{t('signup.subtitle')}</p>
           </div>
 
           {success ? (
@@ -77,7 +79,7 @@ export default function SignUpPage() {
               <input
                 type="text"
                 autoComplete="nickname"
-                placeholder="Display name (optional)"
+                placeholder={t('signup.displayName')}
                 value={displayName}
                 onChange={(e) => setDisplayName(e.target.value)}
                 className={inputClass}
@@ -85,7 +87,7 @@ export default function SignUpPage() {
               <input
                 type="email"
                 autoComplete="email"
-                placeholder="Email"
+                placeholder={t('signup.email')}
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 className={inputClass}
@@ -93,7 +95,7 @@ export default function SignUpPage() {
               <input
                 type="password"
                 autoComplete="new-password"
-                placeholder="Password (min 6 characters)"
+                placeholder={t('signup.password')}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 className={inputClass}
@@ -101,7 +103,7 @@ export default function SignUpPage() {
               <input
                 type="password"
                 autoComplete="new-password"
-                placeholder="Confirm password"
+                placeholder={t('signup.confirmPassword')}
                 value={confirm}
                 onChange={(e) => setConfirm(e.target.value)}
                 className={inputClass}
@@ -112,7 +114,7 @@ export default function SignUpPage() {
                 </p>
               )}
               <Button type="submit" full disabled={!canSubmit} className="mt-1">
-                {busy ? 'Creating account…' : 'Sign up'}
+                {busy ? t('signup.creating') : t('signup.signup')}
               </Button>
               <Button
                 type="button"
@@ -120,7 +122,7 @@ export default function SignUpPage() {
                 full
                 onClick={() => navigate(ROUTES.login)}
               >
-                Back to Login
+                {t('signup.backToLogin')}
               </Button>
             </form>
           )}
