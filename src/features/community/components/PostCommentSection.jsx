@@ -57,7 +57,7 @@ export default function PostCommentSection({ post, user, onLoginClick, onComment
   const handleDelete = async (id) => {
     if (!window.confirm(t('community.confirmDeleteComment'))) return;
     try {
-      await deleteComment(id);
+      await deleteComment(id, user?.id);
       await load();
       onCommentAdded?.();
     } catch {

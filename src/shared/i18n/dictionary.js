@@ -134,6 +134,11 @@ export const DICTIONARY = {
       noComments: 'No comments yet',
       confirmDeleteComment: 'Delete this comment?',
       submitComment: 'Submit',
+      reply: 'Reply',
+      cancelReply: 'Cancel reply',
+      beFirstToComment: 'Be the first to comment',
+      deletedComment: 'Deleted comment',
+      ownCommentNoLike: 'You cannot like your own comment',
     },
     login: {
       welcome: 'Welcome to Matgil',
@@ -306,6 +311,11 @@ export const DICTIONARY = {
       noComments: '아직 댓글이 없습니다',
       confirmDeleteComment: '댓글을 삭제하시겠습니까?',
       submitComment: '등록',
+      reply: '답글',
+      cancelReply: '답글 취소',
+      beFirstToComment: '첫 댓글을 남겨보세요',
+      deletedComment: '삭제된 댓글입니다',
+      ownCommentNoLike: '내 댓글에는 좋아요를 누를 수 없습니다',
     },
     login: {
       welcome: '맛길에 오신 것을 환영합니다',

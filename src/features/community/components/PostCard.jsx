@@ -10,6 +10,13 @@ const AVATAR_GRADIENTS = [
   'from-green to-[#5FB8E8]',
 ];
 
+function stableIdx(str, len) {
+  if (!str) return 0;
+  let h = 0;
+  for (let i = 0; i < str.length; i++) h = (Math.imul(31, h) + str.charCodeAt(i)) | 0;
+  return Math.abs(h) % len;
+}
+
 export default function PostCard({
   post,
   index = 0,
@@ -21,7 +28,7 @@ export default function PostCard({
   onToggleComments,
 }) {
   const { t } = useLocale();
-  const gradient = AVATAR_GRADIENTS[index % AVATAR_GRADIENTS.length];
+  const gradient = AVATAR_GRADIENTS[stableIdx(post.userId || post.author, AVATAR_GRADIENTS.length)];
   const isDbPost = post.userId !== undefined;
   const isOwn = isDbPost && user && user.id === post.userId;
   const canLike = isDbPost && user && !isOwn;

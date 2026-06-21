@@ -1,12 +1,22 @@
 import { supabase } from '../../../lib/supabase.js';
 
-export async function fetchPosts(locale) {
-  const { data, error } = await supabase
+export async function fetchPosts({ locale, popular = false }) {
+  let query = supabase
     .from('mg_community_posts')
     .select('*')
     .eq('is_published', true)
-    .eq('locale', locale)
-    .order('created_at', { ascending: false });
+    .eq('locale', locale);
+
+  if (popular) {
+    query = query
+      .order('like_count', { ascending: false })
+      .order('comment_count', { ascending: false })
+      .order('created_at', { ascending: true });
+  } else {
+    query = query.order('created_at', { ascending: false });
+  }
+
+  const { data, error } = await query;
   if (error) throw error;
   return data;
 }
@@ -32,11 +42,16 @@ export async function updatePost(id, { category, content }) {
   return data;
 }
 
-export async function deletePost(id) {
+export async function deletePost(id, userId) {
   const { error } = await supabase
     .from('mg_community_posts')
-    .delete()
-    .eq('id', id);
+    .update({
+      is_published: false,
+      deleted_at: new Date().toISOString(),
+      deleted_by: userId,
+    })
+    .eq('id', id)
+    .eq('user_id', userId);
   if (error) throw error;
 }
 
@@ -70,25 +85,63 @@ export async function fetchComments(postId) {
     .from('mg_community_comments')
     .select('*')
     .eq('post_id', Number(postId))
+    .is('deleted_at', null)
     .order('created_at', { ascending: true });
   if (error) throw error;
   return data;
 }
 
-export async function createComment({ postId, userId, authorName, content }) {
+export async function createComment({ postId, userId, authorName, content, parentCommentId = null }) {
   const { data, error } = await supabase
     .from('mg_community_comments')
-    .insert({ post_id: Number(postId), user_id: userId, author_name: authorName, content })
+    .insert({
+      post_id: Number(postId),
+      user_id: userId,
+      author_name: authorName,
+      content,
+      parent_comment_id: parentCommentId ? Number(parentCommentId) : null,
+    })
     .select()
     .single();
   if (error) throw error;
   return data;
 }
 
-export async function deleteComment(id) {
+export async function deleteComment(id, userId) {
   const { error } = await supabase
     .from('mg_community_comments')
+    .update({
+      deleted_at: new Date().toISOString(),
+      deleted_by: userId,
+    })
+    .eq('id', id)
+    .eq('user_id', userId);
+  if (error) throw error;
+}
+
+export async function fetchLikedCommentIds(userId, commentIds) {
+  if (!commentIds || commentIds.length === 0) return new Set();
+  const { data, error } = await supabase
+    .from('mg_community_comment_likes')
+    .select('comment_id')
+    .eq('user_id', userId)
+    .in('comment_id', commentIds);
+  if (error) throw error;
+  return new Set(data.map((r) => String(r.comment_id)));
+}
+
+export async function likeComment(commentId, userId) {
+  const { error } = await supabase
+    .from('mg_community_comment_likes')
+    .insert({ comment_id: Number(commentId), user_id: userId });
+  if (error) throw error;
+}
+
+export async function unlikeComment(commentId, userId) {
+  const { error } = await supabase
+    .from('mg_community_comment_likes')
     .delete()
-    .eq('id', id);
+    .eq('comment_id', Number(commentId))
+    .eq('user_id', userId);
   if (error) throw error;
 }

@@ -14,7 +14,7 @@ import {
 import CommunityTabs from '../features/community/components/CommunityTabs.jsx';
 import PostCard from '../features/community/components/PostCard.jsx';
 import PostComposer from '../features/community/components/PostComposer.jsx';
-import PostCommentSection from '../features/community/components/PostCommentSection.jsx';
+import CommentBottomSheet from '../features/community/components/CommentBottomSheet.jsx';
 import { PencilIcon } from '../shared/components/Icon.jsx';
 import PageHeader from '../shared/components/PageHeader.jsx';
 import { ROUTES } from '../shared/constants/routes.js';
@@ -58,16 +58,18 @@ export default function CommunityPage() {
   const [composing, setComposing] = useState(false);
   const [editingPost, setEditingPost] = useState(null);
   const [loginPrompt, setLoginPrompt] = useState(false);
-  const [openCommentPostId, setOpenCommentPostId] = useState(null);
+  const [commentPost, setCommentPost] = useState(null); // post object for CommentBottomSheet
+
+  const isPopular = filter === 'popular';
 
   const loadPosts = useCallback(async () => {
     try {
-      const rows = await fetchPosts(locale);
+      const rows = await fetchPosts({ locale, popular: isPopular });
       setDbPosts(rows);
     } catch {
       setDbPosts([]);
     }
-  }, [locale]);
+  }, [locale, isPopular]);
 
   const loadLikedIds = useCallback(async () => {
     if (!user) { setLikedPostIds(new Set()); return; }
@@ -88,7 +90,7 @@ export default function CommunityPage() {
       : filterPostsByLocale(COMMUNITY_POSTS, locale);
   const posts = filterPosts(sourcePosts, filter);
 
-  // — compose (new post) —
+  // — compose —
   const handlePostButtonClick = () => {
     if (!user) { setLoginPrompt(true); return; }
     setComposing(true);
@@ -109,11 +111,11 @@ export default function CommunityPage() {
     loadPosts();
   };
 
-  // — delete —
+  // — delete (soft) —
   const handleDelete = async (post) => {
     if (!window.confirm(t('community.confirmDelete'))) return;
     try {
-      await deletePost(post.id);
+      await deletePost(post.id, user.id);
       loadPosts();
     } catch {
       // silent
@@ -145,9 +147,9 @@ export default function CommunityPage() {
     }
   };
 
-  // — comments toggle —
+  // — comments —
   const handleToggleComments = (post) => {
-    setOpenCommentPostId((prev) => (prev === post.id ? null : post.id));
+    setCommentPost((prev) => (prev?.id === post.id ? null : post));
   };
 
   return (
@@ -163,35 +165,24 @@ export default function CommunityPage() {
 
         <CommunityTabs value={filter} onChange={setFilter} />
 
-        <div className="flex flex-col gap-3.5 px-0 pt-3.5">
+        <div className="flex flex-col gap-3.5 px-5 pt-3.5">
           {posts.length === 0 ? (
             <div className="py-12 text-center text-sm font-semibold text-ink-faint">
               {t('community.noMatches')}
             </div>
           ) : (
             posts.map((post, i) => (
-              <div key={post.id}>
-                <div className="px-5">
-                  <PostCard
-                    post={post}
-                    index={i}
-                    user={user}
-                    likedByMe={likedPostIds.has(post.id)}
-                    onEdit={handleEdit}
-                    onDelete={handleDelete}
-                    onLike={handleLike}
-                    onToggleComments={handleToggleComments}
-                  />
-                </div>
-                {openCommentPostId === post.id && (
-                  <PostCommentSection
-                    post={post}
-                    user={user}
-                    onLoginClick={() => { setLoginPrompt(true); }}
-                    onCommentAdded={loadPosts}
-                  />
-                )}
-              </div>
+              <PostCard
+                key={post.id}
+                post={post}
+                index={i}
+                user={user}
+                likedByMe={likedPostIds.has(post.id)}
+                onEdit={handleEdit}
+                onDelete={handleDelete}
+                onLike={handleLike}
+                onToggleComments={handleToggleComments}
+              />
             ))
           )}
         </div>
@@ -253,6 +244,17 @@ export default function CommunityPage() {
           initialCategory={editingPost.kind}
           onSubmit={handleEditSubmit}
           onClose={() => setEditingPost(null)}
+        />
+      )}
+
+      {/* comment bottom sheet */}
+      {commentPost && (
+        <CommentBottomSheet
+          post={commentPost}
+          user={user}
+          onClose={() => setCommentPost(null)}
+          onCommentAdded={loadPosts}
+          onLoginClick={() => { setCommentPost(null); setLoginPrompt(true); }}
         />
       )}
     </>

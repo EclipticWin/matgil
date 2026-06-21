@@ -5,12 +5,12 @@ import { CloseIcon } from '../../../shared/components/Icon.jsx';
 import { useLocale } from '../../../shared/i18n/LocaleProvider.jsx';
 
 const WRITE_CATEGORIES = [
+  { key: 'general',  label: 'General',  labelKo: '일반' },
   { key: 'question', label: 'Question', labelKo: '질문' },
   { key: 'review',   label: 'Review',   labelKo: '후기' },
   { key: 'tips',     label: 'Tips',     labelKo: '팁' },
   { key: 'food',     label: 'Food',     labelKo: '음식' },
   { key: 'routes',   label: 'Routes',   labelKo: '동선' },
-  { key: 'general',  label: 'General',  labelKo: '일반' },
 ];
 
 export default function PostComposer({
