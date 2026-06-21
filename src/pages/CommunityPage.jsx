@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../features/auth/hooks/useAuth.jsx';
-import { COMMUNITY_POSTS, filterPosts, filterPostsByLocale } from '../features/community/data/communityPosts.js';
+import { COMMUNITY_POSTS, filterPosts } from '../features/community/data/communityPosts.js';
+import { formatRelativeOrAbsolute } from '../shared/utils/formatTime.js';
 import {
   fetchPosts,
   createPost,
@@ -10,6 +11,7 @@ import {
   fetchLikedPostIds,
   likePost,
   unlikePost,
+  normalizeCommunityImageUrls,
 } from '../features/community/services/communityService.js';
 import CommunityTabs from '../features/community/components/CommunityTabs.jsx';
 import PostCard from '../features/community/components/PostCard.jsx';
@@ -23,27 +25,20 @@ import { useLocale } from '../shared/i18n/LocaleProvider.jsx';
 const POST_TINTS = ['#FFE3D4', '#FFEFC9', '#E6E9F7', '#E2F1DE'];
 
 function normalizeDbPost(p, i) {
-  const diff = Date.now() - new Date(p.created_at).getTime();
-  const mins = Math.floor(diff / 60000);
-  const ago =
-    mins < 60
-      ? `${Math.max(1, mins)}m`
-      : mins < 1440
-        ? `${Math.floor(mins / 60)}h`
-        : `${Math.floor(mins / 1440)}d`;
   return {
     id: String(p.id),
     userId: String(p.user_id),
     kind: p.category,
     author: p.author_name || 'Traveller',
     from: p.country || '',
-    ago,
+    ago: formatRelativeOrAbsolute(p.created_at),
     text: p.content,
     place: null,
     likes: p.like_count ?? 0,
     comments: p.comment_count ?? 0,
     photo: false,
     tint: POST_TINTS[i % POST_TINTS.length],
+    imageUrls: normalizeCommunityImageUrls(p.image_urls),
   };
 }
 
@@ -64,7 +59,10 @@ export default function CommunityPage() {
 
   const loadPosts = useCallback(async () => {
     try {
-      const rows = await fetchPosts({ locale, popular: isPopular });
+      let rows = await fetchPosts({ locale, popular: isPopular });
+      if (rows.length === 0) {
+        rows = await fetchPosts({ popular: isPopular });
+      }
       setDbPosts(rows);
     } catch {
       setDbPosts([]);
@@ -87,7 +85,7 @@ export default function CommunityPage() {
   const sourcePosts =
     dbPosts && dbPosts.length > 0
       ? dbPosts.map(normalizeDbPost)
-      : filterPostsByLocale(COMMUNITY_POSTS, locale);
+      : COMMUNITY_POSTS;
   const posts = filterPosts(sourcePosts, filter);
 
   // — compose —
@@ -96,8 +94,8 @@ export default function CommunityPage() {
     setComposing(true);
   };
 
-  const handleSubmit = async ({ category, content }) => {
-    await createPost({ userId: user.id, category, locale, content, authorName: user.name });
+  const handleSubmit = async ({ category, content, imageUrls = [] }) => {
+    await createPost({ userId: user.id, category, locale, content, authorName: user.name, imageUrls });
     setComposing(false);
     loadPosts();
   };
@@ -105,8 +103,8 @@ export default function CommunityPage() {
   // — edit —
   const handleEdit = (post) => setEditingPost(post);
 
-  const handleEditSubmit = async ({ category, content }) => {
-    await updatePost(editingPost.id, { category, content });
+  const handleEditSubmit = async ({ category, content, imageUrls }) => {
+    await updatePost(editingPost.id, { category, content, imageUrls });
     setEditingPost(null);
     loadPosts();
   };
@@ -192,7 +190,7 @@ export default function CommunityPage() {
       <button
         type="button"
         onClick={handlePostButtonClick}
-        className="absolute bottom-[5.5rem] right-5 z-30 inline-flex h-12 items-center gap-1.5 rounded-3xl bg-coral px-5 text-[0.9375rem] font-bold text-white shadow-[0_2px_6px_rgba(248,72,31,0.22)]"
+        className="absolute bottom-[5.5rem] right-5 z-30 inline-flex h-12 items-center gap-1.5 rounded-3xl bg-coral px-5 text-[0.9375rem] font-bold text-white shadow-[0_2px_6px_rgba(248,72,31,0.16)]"
       >
         <PencilIcon /> {t('community.post')}
       </button>
@@ -233,7 +231,11 @@ export default function CommunityPage() {
 
       {/* new post composer */}
       {composing && (
-        <PostComposer onSubmit={handleSubmit} onClose={() => setComposing(false)} />
+        <PostComposer
+          onSubmit={handleSubmit}
+          onClose={() => setComposing(false)}
+          userId={user?.id}
+        />
       )}
 
       {/* edit post composer */}
@@ -242,8 +244,10 @@ export default function CommunityPage() {
           isEditing
           initialContent={editingPost.text}
           initialCategory={editingPost.kind}
+          initialImageUrls={editingPost.imageUrls}
           onSubmit={handleEditSubmit}
           onClose={() => setEditingPost(null)}
+          userId={user?.id}
         />
       )}
 

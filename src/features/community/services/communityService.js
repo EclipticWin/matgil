@@ -1,11 +1,12 @@
 import { supabase } from '../../../lib/supabase.js';
 
-export async function fetchPosts({ locale, popular = false }) {
+export async function fetchPosts({ locale, popular = false } = {}) {
   let query = supabase
     .from('mg_community_posts')
     .select('*')
-    .eq('is_published', true)
-    .eq('locale', locale);
+    .eq('is_published', true);
+
+  if (locale) query = query.eq('locale', locale);
 
   if (popular) {
     query = query
@@ -21,20 +22,78 @@ export async function fetchPosts({ locale, popular = false }) {
   return data;
 }
 
-export async function createPost({ userId, category, locale, content, authorName }) {
+function imageExt(mimeType) {
+  if (mimeType === 'image/jpeg') return 'jpg';
+  if (mimeType === 'image/png') return 'png';
+  if (mimeType === 'image/webp') return 'webp';
+  if (mimeType === 'image/gif') return 'gif';
+  if (mimeType === 'image/heic') return 'heic';
+  return 'png';
+}
+
+export async function uploadPostImages(files, userId) {
+  if (!files || files.length === 0) return [];
+  if (files.length > 3) throw new Error('tooMany');
+  const urls = [];
+  for (const file of files) {
+    if (!file.type.startsWith('image/')) throw new Error('invalidType');
+    if (file.size > 5 * 1024 * 1024) throw new Error('tooLarge');
+    // Path: userId/YYYYMMDDHHmmss-uuid.ext — no original filename, no device/locale info
+    const ts = new Date().toISOString().replace(/[-:T.Z]/g, '').slice(0, 14);
+    const uuid = (crypto?.randomUUID?.()) ?? `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+    const ext = imageExt(file.type);
+    const path = `${userId}/${ts}-${uuid}.${ext}`;
+    const { error } = await supabase.storage
+      .from('community-post-images')
+      .upload(path, file, { cacheControl: '3600', upsert: false });
+    if (error) throw error;
+    const { data: urlData } = supabase.storage
+      .from('community-post-images')
+      .getPublicUrl(path);
+    const publicUrl = urlData?.publicUrl;
+    if (typeof publicUrl !== 'string' || !publicUrl.startsWith('http')) {
+      throw new Error('Could not get public URL after upload');
+    }
+    urls.push(encodeURI(publicUrl));
+  }
+  return urls;
+}
+
+/** Sanitize image_urls from DB — returns only valid, encodable public URL strings. */
+export function normalizeCommunityImageUrls(raw) {
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .filter((v) => typeof v === 'string' && v.trim().length > 0)
+    .map((v) => v.trim())
+    .filter((v) => !v.startsWith('blob:'))
+    .map((v) => {
+      if (v.startsWith('http')) return encodeURI(v);
+      // Looks like a storage path — reconstruct public URL
+      const cleanPath = v.replace(/^community-post-images\//, '');
+      const { data } = supabase.storage
+        .from('community-post-images')
+        .getPublicUrl(cleanPath);
+      return data?.publicUrl ? encodeURI(data.publicUrl) : null;
+    })
+    .filter(Boolean);
+}
+
+export async function createPost({ userId, category, locale, content, authorName, imageUrls = [] }) {
   const { data, error } = await supabase
     .from('mg_community_posts')
-    .insert({ user_id: userId, category, locale, content, author_name: authorName })
+    .insert({ user_id: userId, category, locale, content, author_name: authorName, image_urls: imageUrls })
     .select()
     .single();
   if (error) throw error;
   return data;
 }
 
-export async function updatePost(id, { category, content }) {
+export async function updatePost(id, { category, content, imageUrls }) {
+  const updates = { category, content, updated_at: new Date().toISOString() };
+  if (imageUrls !== undefined) updates.image_urls = imageUrls;
   const { data, error } = await supabase
     .from('mg_community_posts')
-    .update({ category, content, updated_at: new Date().toISOString() })
+    .update(updates)
     .eq('id', id)
     .select()
     .single();
@@ -85,7 +144,7 @@ export async function fetchComments(postId) {
     .from('mg_community_comments')
     .select('*')
     .eq('post_id', Number(postId))
-    .is('deleted_at', null)
+    .or('deleted_at.is.null,parent_comment_id.is.null')
     .order('created_at', { ascending: true });
   if (error) throw error;
   return data;

@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { CloseIcon, HeartIcon } from '../../../shared/components/Icon.jsx';
 import { useLocale } from '../../../shared/i18n/LocaleProvider.jsx';
+import { avatarGradient } from '../../../shared/utils/avatarColor.js';
+import { formatRelativeOrAbsolute } from '../../../shared/utils/formatTime.js';
 import {
   fetchComments,
   createComment,
@@ -9,28 +11,6 @@ import {
   likeComment,
   unlikeComment,
 } from '../services/communityService.js';
-
-const AVATAR_GRADIENTS = [
-  'from-[#5FB8E8] to-green',
-  'from-amber to-coral',
-  'from-[#B58BE0] to-coral',
-  'from-green to-[#5FB8E8]',
-];
-
-function stableIdx(str, len) {
-  if (!str) return 0;
-  let h = 0;
-  for (let i = 0; i < str.length; i++) h = (Math.imul(31, h) + str.charCodeAt(i)) | 0;
-  return Math.abs(h) % len;
-}
-
-function timeAgo(isoStr) {
-  const diff = Date.now() - new Date(isoStr).getTime();
-  const mins = Math.floor(diff / 60000);
-  if (mins < 60) return `${Math.max(1, mins)}m`;
-  if (mins < 1440) return `${Math.floor(mins / 60)}h`;
-  return `${Math.floor(mins / 1440)}d`;
-}
 
 export default function CommentBottomSheet({ post, user, onClose, onCommentAdded, onLoginClick }) {
   const { locale, t } = useLocale();
@@ -97,7 +77,7 @@ export default function CommentBottomSheet({ post, user, onClose, onCommentAdded
 
   const handleLikeComment = async (comment) => {
     if (!user) { onLoginClick?.(); return; }
-    if (comment.user_id === user.id) return; // 내 댓글 좋아요 불가
+    if (comment.user_id === user.id) return;
     const alreadyLiked = likedCommentIds.has(String(comment.id));
     setLikedCommentIds((prev) => {
       const next = new Set(prev);
@@ -120,11 +100,9 @@ export default function CommentBottomSheet({ post, user, onClose, onCommentAdded
     }
   };
 
-  // Build 1-depth thread
-  // fetchComments only returns non-deleted comments.
-  // Replies whose parent was deleted will appear in repliesMap but not in roots.
+  // fetchComments returns: non-deleted rows + deleted root rows (parent_comment_id IS NULL)
+  // Build thread: roots (all parent_comment_id=null), replies map
   const roots = comments.filter((c) => !c.parent_comment_id);
-  const rootIds = new Set(roots.map((r) => String(r.id)));
   const repliesMap = {};
   comments.forEach((c) => {
     if (c.parent_comment_id) {
@@ -133,8 +111,10 @@ export default function CommentBottomSheet({ post, user, onClose, onCommentAdded
       repliesMap[key].push(c);
     }
   });
-  // Parent IDs that have replies but whose parent comment is deleted (not in roots)
-  const orphanedParentIds = Object.keys(repliesMap).filter((pid) => !rootIds.has(pid));
+  // Only show deleted roots if they have replies; skip deleted roots with no replies
+  const visibleRoots = roots.filter((r) => !r.deleted_at || repliesMap[String(r.id)]?.length > 0);
+  const activeCommentCount = comments.filter((c) => !c.deleted_at).length;
+  const hasAnyComments = visibleRoots.length > 0;
 
   const replyPlaceholder = replyTo
     ? locale === 'ko'
@@ -146,10 +126,7 @@ export default function CommentBottomSheet({ post, user, onClose, onCommentAdded
     const liked = likedCommentIds.has(String(comment.id));
     const isOwn = user && user.id === comment.user_id;
     const canLike = !!user && !isOwn;
-    const gradient = AVATAR_GRADIENTS[stableIdx(
-      String(comment.user_id || '') || comment.author_name || '',
-      AVATAR_GRADIENTS.length,
-    )];
+    const gradient = avatarGradient(String(comment.user_id || '') || comment.author_name || '');
 
     return (
       <div key={comment.id} className={`flex items-start gap-2.5${isReply ? ' ml-9' : ''}`}>
@@ -159,18 +136,19 @@ export default function CommentBottomSheet({ post, user, onClose, onCommentAdded
           {(comment.author_name || 'T').charAt(0)}
         </div>
         <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-baseline gap-x-1.5">
+          <div className="flex items-center gap-1.5">
             <span className="text-[0.82rem] font-bold text-ink">
               {comment.author_name || 'Traveller'}
             </span>
-            <span className="text-[0.72rem] text-ink-faint">{timeAgo(comment.created_at)}</span>
+            <span className="text-[0.72rem] text-ink-faint">{formatRelativeOrAbsolute(comment.created_at)}</span>
             {isOwn && (
               <button
                 type="button"
                 onClick={() => handleDeleteComment(comment)}
-                className="text-[0.72rem] text-ink-faint"
+                aria-label={t('community.deleteCommentLabel')}
+                className="ml-auto flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-ink/8 text-ink-faint"
               >
-                {t('community.delete')}
+                <CloseIcon size={10} />
               </button>
             )}
           </div>
@@ -213,7 +191,7 @@ export default function CommentBottomSheet({ post, user, onClose, onCommentAdded
         <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-ink/10">
           <span className="text-[0.75rem] text-ink-faint">–</span>
         </div>
-        <p className="text-[0.82rem] italic text-ink-faint">{t('community.deletedComment')}</p>
+        <p className="text-[0.82rem] text-ink-faint">{t('community.deletedComment')}</p>
       </div>
       {replies.map((reply) => (
         <div key={reply.id} className="mt-2">
@@ -222,8 +200,6 @@ export default function CommentBottomSheet({ post, user, onClose, onCommentAdded
       ))}
     </div>
   );
-
-  const hasAnyComments = roots.length > 0 || orphanedParentIds.length > 0;
 
   return (
     <div
@@ -243,8 +219,8 @@ export default function CommentBottomSheet({ post, user, onClose, onCommentAdded
         <div className="flex items-center justify-between px-5 pb-3 pt-2">
           <h2 className="font-display text-lg font-bold text-ink">
             {t('community.comments')}
-            {comments.length > 0 && (
-              <span className="ml-1.5 text-sm font-normal text-ink-soft">({comments.length})</span>
+            {activeCommentCount > 0 && (
+              <span className="ml-1.5 text-sm font-normal text-ink-soft">({activeCommentCount})</span>
             )}
           </h2>
           <button
@@ -266,19 +242,22 @@ export default function CommentBottomSheet({ post, user, onClose, onCommentAdded
             </p>
           ) : (
             <div className="flex flex-col gap-4">
-              {roots.map((root) => (
+              {visibleRoots.map((root) => (
                 <div key={root.id}>
-                  {renderComment(root, false)}
-                  {repliesMap[String(root.id)]?.map((reply) => (
-                    <div key={reply.id} className="mt-2">
-                      {renderComment(reply, true)}
-                    </div>
-                  ))}
+                  {root.deleted_at
+                    ? renderDeletedPlaceholder(repliesMap[String(root.id)] ?? [])
+                    : (
+                      <>
+                        {renderComment(root, false)}
+                        {repliesMap[String(root.id)]?.map((reply) => (
+                          <div key={reply.id} className="mt-2">
+                            {renderComment(reply, true)}
+                          </div>
+                        ))}
+                      </>
+                    )}
                 </div>
               ))}
-              {orphanedParentIds.map((pid) =>
-                renderDeletedPlaceholder(repliesMap[pid])
-              )}
             </div>
           )}
         </div>
@@ -301,7 +280,7 @@ export default function CommentBottomSheet({ post, user, onClose, onCommentAdded
           </div>
         )}
 
-        {/* input area — pb-4 to match pt-3, avoids excess white space */}
+        {/* input area */}
         <div className="flex-none border-t border-ink/8 px-5 pb-4 pt-3">
           {user ? (
             <div className="flex items-center gap-2">

@@ -1,7 +1,7 @@
 import { cn } from '../utils/classNames.js';
 
 const VARIANTS = {
-  primary: 'bg-coral text-white shadow-coral active:bg-coral-deep disabled:bg-coral/40 disabled:shadow-none',
+  primary: 'bg-coral text-white shadow-[0_2px_6px_rgba(248,72,31,0.16)] active:bg-coral-deep disabled:bg-coral/40 disabled:shadow-none',
   secondary: 'border-[1.5px] border-coral text-coral bg-transparent active:bg-coral-tint',
   soft: 'bg-white text-ink shadow-soft active:bg-paper',
   ghost: 'text-ink-soft',
