@@ -126,23 +126,40 @@ function calcScore(stops, selectedLocation, foodTypes) {
 
 // ─── title generation ────────────────────────────────────────────────────────
 
-function makeTitle(stops, locationLabel) {
+const KO_TITLES = {
+  cafeAndBites: (loc) => `${loc} 카페 & 맛집`,
+  streetFood:   (loc) => `${loc} 길거리 음식 탐방`,
+  bbq:          (loc) => `${loc} 한국식 BBQ 동선`,
+  noodle:       (loc) => `${loc} 면 요리 동선`,
+  default:      (loc) => `${loc} 맛집 동선`,
+};
+
+const EN_TITLES = {
+  cafeAndBites: (loc) => `${loc} Cafe & Bites`,
+  streetFood:   (loc) => `${loc} Street Food Tour`,
+  bbq:          (loc) => `${loc} Korean BBQ Route`,
+  noodle:       (loc) => `${loc} Noodle Walk`,
+  default:      (loc) => `${loc} Food Walk`,
+};
+
+function makeTitle(stops, locationLabel, locale = 'en') {
+  const titles = locale === 'ko' ? KO_TITLES : EN_TITLES;
   const allCats = stops.flatMap((s) => s.matgilCategoryKeys ?? []);
   const hasCafe = allCats.includes('cafe');
   const hasNonCafe = stops.some((s) =>
     (s.matgilCategoryKeys ?? []).some((k) => k !== 'cafe' && k !== 'other'),
   );
-  if (hasCafe && hasNonCafe) return `${locationLabel} Cafe & Bites`;
+  if (hasCafe && hasNonCafe) return titles.cafeAndBites(locationLabel);
 
   const mealCats = allCats.filter((k) => k !== 'cafe' && k !== 'other');
   const freq = {};
   for (const cat of mealCats) freq[cat] = (freq[cat] ?? 0) + 1;
   const dominant = Object.entries(freq).sort((a, b) => b[1] - a[1])[0]?.[0];
 
-  if (dominant === 'street') return `${locationLabel} Street Food Tour`;
-  if (dominant === 'bbq')    return `${locationLabel} Korean BBQ Route`;
-  if (dominant === 'noodle') return `${locationLabel} Noodle Walk`;
-  return `${locationLabel} Food Walk`;
+  if (dominant === 'street') return titles.streetFood(locationLabel);
+  if (dominant === 'bbq')    return titles.bbq(locationLabel);
+  if (dominant === 'noodle') return titles.noodle(locationLabel);
+  return titles.default(locationLabel);
 }
 
 // ─── private: radius-tier candidate selection ─────────────────────────────────
@@ -166,7 +183,7 @@ function selectCandidates(validPlaces, selectedLocation) {
 
 // ─── private: build one course from a given candidate array ──────────────────
 
-function buildOneCourse(candidates, selectedLocation, foodTypes, courseId, accent, anchorPlace = null) {
+function buildOneCourse(candidates, selectedLocation, foodTypes, courseId, accent, anchorPlace = null, locale = 'en') {
   if (candidates.length === 0) return null;
 
   const stopCount = Math.min(DEFAULT_STOP_COUNT, candidates.length);
@@ -219,7 +236,8 @@ function buildOneCourse(candidates, selectedLocation, foodTypes, courseId, accen
   }
 
   const { stops, score, dist } = chosen;
-  const title = makeTitle(stops, selectedLocation.label);
+  const locationLabel = (locale === 'ko' ? selectedLocation.labelKo : null) || selectedLocation.label;
+  const title = makeTitle(stops, locationLabel, locale);
 
   return {
     id: courseId,
@@ -238,12 +256,12 @@ function buildOneCourse(candidates, selectedLocation, foodTypes, courseId, accen
 // ─── public API ──────────────────────────────────────────────────────────────
 
 /** Builds a single "today's pick" course. Preserved for backwards compatibility. */
-export function buildTodayCourse({ places, selectedLocation, selectedFoodTypes }) {
+export function buildTodayCourse({ places, selectedLocation, selectedFoodTypes, locale = 'en' }) {
   const foodTypes = Array.isArray(selectedFoodTypes) ? selectedFoodTypes : [];
   const validPlaces = places.filter((p) => p && p.latitude != null && p.longitude != null);
   if (validPlaces.length === 0) return null;
   const candidates = selectCandidates(validPlaces, selectedLocation);
-  return buildOneCourse(candidates, selectedLocation, foodTypes, 'today-pick', COURSE_ACCENTS[0]);
+  return buildOneCourse(candidates, selectedLocation, foodTypes, 'today-pick', COURSE_ACCENTS[0], null, locale);
 }
 
 /**
@@ -263,6 +281,7 @@ export function buildRecommendedCourses({
   selectedFoodTypes,
   maxCourses = 3,
   anchorPlace = null,
+  locale = 'en',
 }) {
   const foodTypes = Array.isArray(selectedFoodTypes) ? selectedFoodTypes : [];
   const validPlaces = places.filter((p) => p && p.latitude != null && p.longitude != null);
@@ -294,6 +313,7 @@ export function buildRecommendedCourses({
       `recommended-${i + 1}`,
       COURSE_ACCENTS[i % COURSE_ACCENTS.length],
       useAnchor ? anchorPlace : null,
+      locale,
     );
     if (!course) break;
 

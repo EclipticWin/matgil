@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { CATEGORIES, PRICES, FEATURES, EMPTY_FILTERS, filterCount } from '../data/exploreOptions.js';
 import CategoryIcon from './CategoryIcon.jsx';
 import { cn } from '../../../shared/utils/classNames.js';
+import { useLocale } from '../../../shared/i18n/LocaleProvider.jsx';
 
 function SectionLabel({ children }) {
   return (
@@ -29,6 +30,7 @@ function Pill({ active, onClick, children }) {
 /** Bottom-sheet filter form (food type / price / good-for). Edits a draft and
  *  commits on "Show results". */
 export default function FilterSheet({ value, onApply, onClose }) {
+  const { locale, t } = useLocale();
   const [draft, setDraft] = useState(value);
   const [catLimitHit, setCatLimitHit] = useState(false);
   const limitTimerRef = useRef(null);
@@ -56,13 +58,13 @@ export default function FilterSheet({ value, onApply, onClose }) {
       <div className="shrink-0 px-5 pb-1 pt-2.5">
         <div className="mx-auto mb-3 h-[5px] w-10 rounded-full bg-ink/15" />
         <div className="flex items-center justify-between">
-          <h2 className="font-display text-[1.375rem] font-bold tracking-tight text-ink">Filters</h2>
+          <h2 className="font-display text-[1.375rem] font-bold tracking-tight text-ink">{t('filter.title')}</h2>
           <button
             type="button"
             onClick={() => { setDraft(EMPTY_FILTERS); clearLimitToast(); }}
             className={cn('text-[0.84rem] font-bold', count ? 'text-coral' : 'text-ink-faint')}
           >
-            Reset
+            {t('filter.reset')}
           </button>
         </div>
         {catLimitHit && (
@@ -71,13 +73,13 @@ export default function FilterSheet({ value, onApply, onClose }) {
             aria-live="polite"
             className="mt-2.5 rounded-xl bg-coral/10 px-3.5 py-2 text-[0.8rem] font-semibold text-coral"
           >
-            You can select up to 3 food types.
+            {t('filter.catLimit')}
           </div>
         )}
       </div>
 
       <div className="no-scrollbar flex-1 overflow-y-auto px-5 pb-2">
-        <SectionLabel>Food type</SectionLabel>
+        <SectionLabel>{t('filter.foodType')}</SectionLabel>
         <div className="flex flex-wrap gap-2">
           {CATEGORIES.map((c) => {
             const isAll = c.key === 'all';
@@ -109,13 +111,13 @@ export default function FilterSheet({ value, onApply, onClose }) {
                 }}
               >
                 <CategoryIcon name={c.key} className={active ? 'text-white' : 'text-coral'} />
-                {c.label}
+                {locale === 'ko' ? (c.labelKo ?? c.label) : c.label}
               </Pill>
             );
           })}
         </div>
 
-        <SectionLabel>Price</SectionLabel>
+        <SectionLabel>{t('filter.price')}</SectionLabel>
         <div className="flex gap-2">
           {PRICES.map((p) => {
             const active = draft.price.includes(p);
@@ -127,11 +129,11 @@ export default function FilterSheet({ value, onApply, onClose }) {
           })}
         </div>
 
-        <SectionLabel>Good for</SectionLabel>
+        <SectionLabel>{t('filter.goodFor')}</SectionLabel>
         <div className="flex flex-wrap gap-2">
           {FEATURES.map((f) => (
             <Pill key={f.id} active={draft.features.includes(f.id)} onClick={() => toggleArr('features', f.id)}>
-              {f.label}
+              {locale === 'ko' ? (f.labelKo ?? f.label) : f.label}
             </Pill>
           ))}
         </div>
@@ -146,7 +148,7 @@ export default function FilterSheet({ value, onApply, onClose }) {
           }}
           className="h-[3.25rem] w-full rounded-[0.9375rem] bg-coral text-base font-bold text-white shadow-[0_2px_6px_rgba(248,72,31,0.18)]"
         >
-          Show results{count ? ` · ${count}` : ''}
+          {t('filter.showResults')}{count ? ` · ${count}` : ''}
         </button>
       </div>
     </>

@@ -1,14 +1,14 @@
 export const PRESET_LOCATIONS = [
-  { key: 'city_hall',      label: 'Seoul City Hall', lat: 37.5663, lng: 126.9779, type: 'landmark' },
-  { key: 'myeongdong',     label: 'Myeongdong',      lat: 37.5636, lng: 126.9834, type: 'area' },
-  { key: 'hongdae',        label: 'Hongdae',          lat: 37.5563, lng: 126.9236, type: 'area' },
-  { key: 'gangnam',        label: 'Gangnam',          lat: 37.4979, lng: 127.0276, type: 'area' },
-  { key: 'seongsu',        label: 'Seongsu',          lat: 37.5446, lng: 127.0557, type: 'area' },
-  { key: 'jongno',         label: 'Jongno',           lat: 37.5704, lng: 126.9922, type: 'area' },
-  { key: 'gyeongbokgung',  label: 'Gyeongbokgung',   lat: 37.5796, lng: 126.9770, type: 'landmark' },
-  { key: 'itaewon',        label: 'Itaewon',          lat: 37.5345, lng: 126.9946, type: 'area' },
-  { key: 'dongdaemun',     label: 'Dongdaemun',       lat: 37.5700, lng: 127.0095, type: 'area' },
-  { key: 'yeouido',        label: 'Yeouido',          lat: 37.5219, lng: 126.9246, type: 'area' },
+  { key: 'city_hall',      label: 'Seoul City Hall', labelKo: '서울시청',    lat: 37.5663, lng: 126.9779, type: 'landmark' },
+  { key: 'myeongdong',     label: 'Myeongdong',      labelKo: '명동',        lat: 37.5636, lng: 126.9834, type: 'area' },
+  { key: 'hongdae',        label: 'Hongdae',          labelKo: '홍대',        lat: 37.5563, lng: 126.9236, type: 'area' },
+  { key: 'gangnam',        label: 'Gangnam',          labelKo: '강남',        lat: 37.4979, lng: 127.0276, type: 'area' },
+  { key: 'seongsu',        label: 'Seongsu',          labelKo: '성수',        lat: 37.5446, lng: 127.0557, type: 'area' },
+  { key: 'jongno',         label: 'Jongno',           labelKo: '종로',        lat: 37.5704, lng: 126.9922, type: 'area' },
+  { key: 'gyeongbokgung',  label: 'Gyeongbokgung',   labelKo: '경복궁',      lat: 37.5796, lng: 126.9770, type: 'landmark' },
+  { key: 'itaewon',        label: 'Itaewon',          labelKo: '이태원',      lat: 37.5345, lng: 126.9946, type: 'area' },
+  { key: 'dongdaemun',     label: 'Dongdaemun',       labelKo: '동대문',      lat: 37.5700, lng: 127.0095, type: 'area' },
+  { key: 'yeouido',        label: 'Yeouido',          labelKo: '여의도',      lat: 37.5219, lng: 126.9246, type: 'area' },
 ];
 
 export const DEFAULT_LOCATION = PRESET_LOCATIONS[0];

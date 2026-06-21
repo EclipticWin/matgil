@@ -2,10 +2,17 @@ import { supabase } from "../lib/supabase.js";
 
 function normalizePlace(row, locale = "ko") {
   const texts = row.mg_place_texts ?? [];
+
+  // Primary text for the requested locale; fallback to the other locale.
+  const fallbackLocale = locale === "en" ? "ko" : "en";
   const text =
     texts.find((t) => t.locale === locale) ||
-    texts.find((t) => t.locale === "ko") ||
+    texts.find((t) => t.locale === fallbackLocale) ||
     {};
+
+  // Always store the Korean name regardless of locale — used by
+  // anchorMatchService to match Kakao results (which always return Korean names).
+  const textKo = texts.find((t) => t.locale === "ko") ?? {};
 
   const details = (row.mg_place_food_details ?? [])[0] ?? {};
 
@@ -18,6 +25,7 @@ function normalizePlace(row, locale = "ko") {
   return {
     id: row.id,
     name: text.name ?? null,
+    nameKo: textKo.name ?? null,
     address: text.address ?? null,
     description: text.description ?? null,
     imageUrl,

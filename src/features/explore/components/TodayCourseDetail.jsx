@@ -6,6 +6,7 @@ import {
   ClockIcon,
   ChevronRightIcon,
 } from '../../../shared/components/Icon.jsx';
+import { useLocale } from '../../../shared/i18n/LocaleProvider.jsx';
 
 function distLabel(stop) {
   if (stop.distanceKm != null) {
@@ -19,8 +20,10 @@ function distLabel(stop) {
 /** Map Bottom Sheet 내부 코스 상세 콘텐츠.
  *  todayCourse.stops 기반이므로 mock CourseDetailPage와 별개로 유지한다. */
 export default function TodayCourseDetail({ course, selectedLocation, onBack, onSelectPlace }) {
+  const { locale, t } = useLocale();
   const stopCount = course.stopCount ?? course.stops.length;
-  const blurb = `A short food walk near ${selectedLocation?.label ?? 'here'}.`;
+  const locationLabel = (locale === 'ko' ? selectedLocation?.labelKo : null) || (selectedLocation?.label ?? 'here');
+  const blurb = t('courseDetail.blurb', { location: locationLabel });
 
   return (
     <div className="flex h-full flex-col">
@@ -36,14 +39,14 @@ export default function TodayCourseDetail({ course, selectedLocation, onBack, on
         </button>
 
         <div className="font-display text-[0.6875rem] font-extrabold uppercase tracking-wider text-coral">
-          ★ Today's pick
+          {t('courseDetail.label')}
         </div>
         <h2 className="mt-1.5 font-display text-[1.5rem] font-bold leading-[1.1] tracking-tight text-ink">
           {course.title}
         </h2>
         <div className="mt-2.5 flex items-center gap-4 text-[0.8rem] font-semibold text-ink-soft">
           <span className="inline-flex items-center gap-1.5">
-            <PinIcon size={13} /> {stopCount} stops
+            <PinIcon size={13} /> {t('courseDetail.stops', { n: stopCount })}
           </span>
           <span className="inline-flex items-center gap-1.5">
             <WalkIcon /> {course.km}
@@ -59,7 +62,7 @@ export default function TodayCourseDetail({ course, selectedLocation, onBack, on
         <p className="mb-4 text-sm leading-relaxed text-ink-soft">{blurb}</p>
 
         <div className="mb-2 text-[0.72rem] font-extrabold uppercase tracking-wide text-ink-faint">
-          Route stops
+          {t('courseDetail.routeStops')}
         </div>
 
         {/*
@@ -79,7 +82,7 @@ export default function TodayCourseDetail({ course, selectedLocation, onBack, on
           />
 
           {course.stops.map((stop, i) => {
-            const subtitle = stop.firstMenu || 'Restaurant';
+            const subtitle = stop.firstMenu || t('courseDetail.restaurantFallback');
             const dist = distLabel(stop);
 
             return (

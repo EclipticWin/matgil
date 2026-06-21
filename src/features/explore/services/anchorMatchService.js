@@ -10,6 +10,10 @@ export function isEligibleForAnchor(kakaoResult) {
 /**
  * Kakao 검색 결과가 FD6/CB2이고 우리 DB places와 좌표(150m) + 이름이 일치하면
  * 해당 DB place를 반환. 매칭 실패 시 null.
+ *
+ * Kakao는 항상 한국어 place_name을 반환한다. places가 EN locale로 로드된 경우
+ * p.name이 영어라 직접 비교가 실패하므로, placeApi에서 추가된 p.nameKo(한국어 이름)도
+ * 함께 비교해 EN 모드에서도 매칭이 깨지지 않도록 한다.
  */
 export function findAnchorPlace(kakaoResult, places) {
   if (!isEligibleForAnchor(kakaoResult)) return null;
@@ -26,14 +30,20 @@ export function findAnchorPlace(kakaoResult, places) {
 
   if (geoMatches.length === 0) return null;
 
-  // 2단계: 이름 매칭 (공백 제거 후 포함 관계)
+  // 2단계: 이름 매칭 — p.name(locale 기반) AND p.nameKo(항상 한국어) 모두 비교
   const nameMatches = geoMatches.filter((p) => {
     const dbName = (p.name ?? '').replace(/\s/g, '').toLowerCase();
-    return (
-      kakaoName === dbName ||
-      kakaoName.includes(dbName) ||
-      dbName.includes(kakaoName)
-    );
+    const dbNameKo = (p.nameKo ?? '').replace(/\s/g, '').toLowerCase();
+
+    const matchesName =
+      dbName &&
+      (kakaoName === dbName || kakaoName.includes(dbName) || dbName.includes(kakaoName));
+
+    const matchesNameKo =
+      dbNameKo &&
+      (kakaoName === dbNameKo || kakaoName.includes(dbNameKo) || dbNameKo.includes(kakaoName));
+
+    return matchesName || matchesNameKo;
   });
 
   if (nameMatches.length === 0) return null;

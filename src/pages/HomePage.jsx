@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { useLocale } from '../shared/i18n/LocaleProvider.jsx';
 import { getPlaces } from '../api/placeApi.js';
 import {
   EMPTY_FILTERS,
@@ -19,8 +20,8 @@ import { PinIcon, FunnelIcon, FlameIcon, GlobeIcon } from '../shared/components/
 
 /** Map tab — full-bleed map with floating controls and a draggable "Eat near here" sheet. */
 export default function HomePage() {
+  const { locale } = useLocale();
   const [filters, setFilters] = useState(EMPTY_FILTERS);
-  const [lang, setLang] = useState('EN');
   const [sheet, setSheet] = useState(null); // 'filters' | 'language' | 'location' | null
   const [isSearching, setIsSearching] = useState(false);
   const [places, setPlaces] = useState([]);
@@ -30,13 +31,18 @@ export default function HomePage() {
   const [gpsStatus, setGpsStatus] = useState('idle'); // 'idle'|'loading'|'active'|'denied'|'error'|'unsupported'
   const [showFindHere, setShowFindHere] = useState(false);
 
+  const [activeCourseId, setActiveCourseId] = useState(null);
+
   const mapRef = useRef(null);
   const mapApiRef = useRef(null);
   const [vh, setVh] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
-    getPlaces('en')
+    setPlacesLoading(true);
+    setAnchorPlace(null);
+    setActiveCourseId(null);
+    getPlaces(locale)
       .then((data) => {
         if (!cancelled) {
           setPlaces(data);
@@ -47,7 +53,7 @@ export default function HomePage() {
         if (!cancelled) setPlacesLoading(false);
       });
     return () => { cancelled = true; };
-  }, []);
+  }, [locale]);
 
   useLayoutEffect(() => {
     const el = mapRef.current;
@@ -65,11 +71,9 @@ export default function HomePage() {
   );
 
   const recommendedCourses = useMemo(
-    () => buildRecommendedCourses({ places: nearby, selectedLocation, selectedFoodTypes: filters.cat, maxCourses: 9, anchorPlace }),
-    [nearby, selectedLocation, filters.cat, anchorPlace],
+    () => buildRecommendedCourses({ places: nearby, selectedLocation, selectedFoodTypes: filters.cat, maxCourses: 9, anchorPlace, locale }),
+    [nearby, selectedLocation, filters.cat, anchorPlace, locale],
   );
-
-  const [activeCourseId, setActiveCourseId] = useState(null);
 
   // Reset to first course whenever location or food-type filter changes.
   useEffect(() => {
@@ -239,7 +243,7 @@ export default function HomePage() {
 
       {/* language modal */}
       <Modal open={sheet === 'language'} onClose={() => setSheet(null)} variant="center">
-        <LanguageModal value={lang} onSelect={setLang} onClose={() => setSheet(null)} />
+        <LanguageModal onClose={() => setSheet(null)} />
       </Modal>
 
       {/* hot place preset sheet */}

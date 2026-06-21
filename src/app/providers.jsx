@@ -1,17 +1,20 @@
+import { LocaleProvider } from '../shared/i18n/LocaleProvider.jsx';
 import { AuthProvider } from '../features/auth/hooks/useAuth.jsx';
 import { RecommendationProvider } from '../features/recommendation/hooks/useRecommendation.jsx';
 import { BookmarkProvider } from '../shared/hooks/useBookmarks.jsx';
 
 /**
  * Composes all global context providers in one place so App.jsx stays small.
- * Order is outer → inner; none depend on each other today.
+ * LocaleProvider is outermost so every tab page can read/set locale.
  */
 export default function Providers({ children }) {
   return (
-    <AuthProvider>
-      <RecommendationProvider>
-        <BookmarkProvider>{children}</BookmarkProvider>
-      </RecommendationProvider>
-    </AuthProvider>
+    <LocaleProvider>
+      <AuthProvider>
+        <RecommendationProvider>
+          <BookmarkProvider>{children}</BookmarkProvider>
+        </RecommendationProvider>
+      </AuthProvider>
+    </LocaleProvider>
   );
 }

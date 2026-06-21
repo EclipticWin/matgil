@@ -4,6 +4,7 @@ import TodayCourseDetail from './TodayCourseDetail.jsx';
 import PlaceDetailSheet from './PlaceDetailSheet.jsx';
 import { ChevronRightIcon, CloseIcon, LocateIcon } from '../../../shared/components/Icon.jsx';
 import { cn } from '../../../shared/utils/classNames.js';
+import { useLocale } from '../../../shared/i18n/LocaleProvider.jsx';
 
 const INITIAL_VISIBLE = 3;
 const LOAD_BATCH = 3;
@@ -24,20 +25,7 @@ function findScrollParent(startEl, boundary) {
   return null;
 }
 
-const GPS_MODAL_CONTENT = {
-  denied: {
-    title: 'Location permission is needed to use your current location.',
-    body: 'Please allow location access in your browser settings and try again.',
-  },
-  error: {
-    title: 'Could not get your current location.',
-    body: 'Please try again.',
-  },
-  unsupported: {
-    title: 'Location is not supported in this browser.',
-    body: null,
-  },
-};
+const GPS_STATUSES = new Set(['denied', 'error', 'unsupported']);
 
 export default function NearbySheet({
   vh,
@@ -50,6 +38,7 @@ export default function NearbySheet({
   onGpsClick,
   onGpsStatusChange,
 }) {
+  const { locale, t } = useLocale();
   const peek = vh ? Math.round(vh * 0.44) : 300;
   const full = vh ? vh - FULL_TOP_OFFSET_PX : 560;
 
@@ -99,7 +88,10 @@ export default function NearbySheet({
   const currentHeight = dragH != null ? dragH : snap === 'full' ? full : snap === 'peek' ? peek : 0;
   const isSheetFull = currentHeight > (peek + full) / 2;
   const isDragging = gestureRef.current?.isDragging ?? false;
-  const gpsModal = GPS_MODAL_CONTENT[gpsStatus] ?? null;
+  const locationLabel = (locale === 'ko' ? selectedLocation?.labelKo : null) || (selectedLocation?.label ?? 'here');
+  const gpsModal = GPS_STATUSES.has(gpsStatus)
+    ? { title: t(`gps.${gpsStatus}.title`), body: t(`gps.${gpsStatus}.body`) }
+    : null;
 
   // ── Universal drag handlers (capture phase on sheet root) ────────────────
 
@@ -321,7 +313,7 @@ export default function NearbySheet({
             {/* Header — cursor-grab is a visual hint; drag is handled by root */}
             <div className="shrink-0 cursor-grab touch-none px-5 pb-2 pt-0.5">
               <h2 className="select-none font-display text-[1.15rem] font-bold tracking-tight text-ink">
-                Eat near {selectedLocation?.label ?? 'here'}
+                {t('nearby.header', { location: locationLabel })}
               </h2>
             </div>
 
@@ -337,7 +329,7 @@ export default function NearbySheet({
                   return (
                     <>
                       <div className="mb-2 text-[0.7rem] font-extrabold uppercase tracking-wide text-ink-faint">
-                        ★ Today's picks
+                        {t('nearby.todayPicks')}
                       </div>
                       <div className="flex flex-col gap-3">
                         {visibleCourses.map((course) => {
@@ -374,13 +366,13 @@ export default function NearbySheet({
               ) : isLoading ? (
                 <div className="flex flex-col items-center justify-center px-4 py-12 text-center">
                   <div className="mb-3 h-8 w-8 animate-spin rounded-full border-2 border-ink/10 border-t-ink/30" />
-                  <p className="text-[0.85rem] text-ink-faint">Finding routes nearby…</p>
+                  <p className="text-[0.85rem] text-ink-faint">{t('nearby.loading')}</p>
                 </div>
               ) : (
                 <div className="flex flex-col items-center justify-center px-4 py-12 text-center">
-                  <p className="text-[0.95rem] font-semibold text-ink-soft">No routes found nearby.</p>
+                  <p className="text-[0.95rem] font-semibold text-ink-soft">{t('nearby.empty')}</p>
                   <p className="mt-1.5 text-[0.82rem] text-ink-faint">
-                    Try another area or remove some filters.
+                    {t('nearby.emptyHint')}
                   </p>
                 </div>
               )}

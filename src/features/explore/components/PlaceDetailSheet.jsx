@@ -6,6 +6,7 @@ import {
   WalkIcon,
 } from '../../../shared/components/Icon.jsx';
 import Thumbnail from '../../../shared/components/Thumbnail.jsx';
+import { useLocale } from '../../../shared/i18n/LocaleProvider.jsx';
 
 // 사용자에게 보이면 안 되는 내부 상태성 태그
 const HIDDEN_TAGS = new Set([
@@ -25,13 +26,11 @@ const HIDDEN_TAGS = new Set([
   'has open time',
 ]);
 
-function distLabel(place, selectedLocation) {
+function distRaw(place) {
   if (place.distanceKm == null) return null;
-  const raw =
-    place.distanceKm < 1
-      ? `${Math.round(place.distanceKm * 1000)} m`
-      : `${place.distanceKm.toFixed(1)} km`;
-  return selectedLocation?.label ? `${raw} from ${selectedLocation.label}` : raw;
+  return place.distanceKm < 1
+    ? `${Math.round(place.distanceKm * 1000)} m`
+    : `${place.distanceKm.toFixed(1)} km`;
 }
 
 function InfoRow({ label, value }) {
@@ -47,13 +46,18 @@ function InfoRow({ label, value }) {
 }
 
 export default function PlaceDetailSheet({ place, selectedLocation, onBack }) {
+  const { locale, t } = useLocale();
   const subtitle =
     place.firstMenu ||
     place.tags?.find((t) => !HIDDEN_TAGS.has(t)) ||
     place.matgilCategoryKeys?.[0] ||
     null;
 
-  const dist = distLabel(place, selectedLocation);
+  const raw = distRaw(place);
+  const locationLabel = (locale === 'ko' ? selectedLocation?.labelKo : null) || selectedLocation?.label;
+  const dist = raw && locationLabel
+    ? t('placeDetail.distFrom', { dist: raw, location: locationLabel })
+    : raw;
 
   const parkingText = place.parking || (place.hasParking === true ? '가능' : null);
   const packingText = place.packing || (place.hasPacking === true ? '가능' : null);
@@ -134,11 +138,11 @@ export default function PlaceDetailSheet({ place, selectedLocation, onBack }) {
         {(place.firstMenu || place.treatMenu) && (
           <div className="border-t border-ink/5 px-5 py-4">
             <h3 className="mb-3 inline-flex items-center gap-1.5 text-[0.78rem] font-extrabold tracking-wide text-ink-soft">
-              <SparkleIcon size={13} /> MENU
+              <SparkleIcon size={13} /> {t('placeDetail.menu')}
             </h3>
             <div className="flex flex-col gap-2">
-              <InfoRow label="Main" value={place.firstMenu} />
-              <InfoRow label="Serves" value={place.treatMenu} />
+              <InfoRow label={t('placeDetail.main')} value={place.firstMenu} />
+              <InfoRow label={t('placeDetail.serves')} value={place.treatMenu} />
             </div>
           </div>
         )}
@@ -147,14 +151,14 @@ export default function PlaceDetailSheet({ place, selectedLocation, onBack }) {
         {hasVisitInfo && (
           <div className="border-t border-ink/5 px-5 py-4">
             <h3 className="mb-3 inline-flex items-center gap-1.5 text-[0.78rem] font-extrabold tracking-wide text-ink-soft">
-              <ClockIcon size={13} /> VISIT INFO
+              <ClockIcon size={13} /> {t('placeDetail.visitInfo')}
             </h3>
             <div className="flex flex-col gap-2">
-              <InfoRow label="Hours" value={place.openTime} />
-              <InfoRow label="Rest day" value={place.restDate} />
-              <InfoRow label="Phone" value={place.tel} />
-              <InfoRow label="Parking" value={parkingText} />
-              <InfoRow label="Takeout" value={packingText} />
+              <InfoRow label={t('placeDetail.hours')} value={place.openTime} />
+              <InfoRow label={t('placeDetail.restDay')} value={place.restDate} />
+              <InfoRow label={t('placeDetail.phone')} value={place.tel} />
+              <InfoRow label={t('placeDetail.parking')} value={parkingText} />
+              <InfoRow label={t('placeDetail.takeout')} value={packingText} />
             </div>
           </div>
         )}

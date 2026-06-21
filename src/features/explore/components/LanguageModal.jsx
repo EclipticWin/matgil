@@ -1,14 +1,15 @@
 import { LANGUAGES } from '../data/exploreOptions.js';
 import { CloseIcon, CheckIcon } from '../../../shared/components/Icon.jsx';
 import { cn } from '../../../shared/utils/classNames.js';
+import { useLocale } from '../../../shared/i18n/LocaleProvider.jsx';
 
-/** Centered language picker. The app content stays in English; selecting a
- *  language updates the chip + highlight so the flow matches the web app. */
-export default function LanguageModal({ value, onSelect, onClose }) {
+/** Centered language picker. Reads and writes locale via LocaleProvider. */
+export default function LanguageModal({ onClose }) {
+  const { locale, setLocale, t } = useLocale();
   return (
     <>
       <div className="flex shrink-0 items-center justify-between px-5 pb-1.5 pt-5">
-        <h2 className="font-display text-[1.3125rem] font-bold tracking-tight text-ink">Language</h2>
+        <h2 className="font-display text-[1.3125rem] font-bold tracking-tight text-ink">{t('language.title')}</h2>
         <button type="button" aria-label="Close" onClick={onClose} className="p-1 text-ink-soft">
           <CloseIcon />
         </button>
@@ -16,13 +17,13 @@ export default function LanguageModal({ value, onSelect, onClose }) {
 
       <div className="no-scrollbar flex-1 overflow-y-auto px-3.5 pb-4 pt-1">
         {LANGUAGES.map((l) => {
-          const active = l.code === value;
+          const active = l.code === locale;
           return (
             <button
               key={l.code}
               type="button"
               onClick={() => {
-                onSelect(l.code);
+                setLocale(l.code);
                 onClose();
               }}
               className={cn(

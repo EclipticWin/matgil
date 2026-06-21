@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { CloseIcon, FunnelIcon, PinIcon } from '../../../shared/components/Icon.jsx';
 import { searchPlacesByKeyword } from '../services/kakaoPlaceSearchService.js';
 import { findAnchorPlace } from '../services/anchorMatchService.js';
+import { useLocale } from '../../../shared/i18n/LocaleProvider.jsx';
 
 const SEOUL_DISTRICT_EN = {
   강남구: 'Gangnam-gu',   강동구: 'Gangdong-gu',  강북구: 'Gangbuk-gu',
@@ -26,6 +27,7 @@ function formatSeoulDistrictAddress(addressStr) {
 }
 
 export default function SearchOverlay({ open, onSelect, onClose, filterCount = 0, onFilterClick, places = [] }) {
+  const { locale } = useLocale();
   const [mounted, setMounted] = useState(open);
   const [closing, setClosing] = useState(false);
   const [query, setQuery] = useState('');
@@ -142,7 +144,8 @@ export default function SearchOverlay({ open, onSelect, onClose, filterCount = 0
           <p className="mt-6 text-center text-[0.85rem] text-ink-faint">No results</p>
         ) : (
           results.map((r) => {
-            const matched = findAnchorPlace(r, places);
+            const isEnglish = locale === 'en';
+            const matched = isEnglish ? findAnchorPlace(r, places) : null;
             const displayName = matched ? matched.name : r.place_name;
             const displayAddress = matched
               ? matched.address
