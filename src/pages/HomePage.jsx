@@ -15,7 +15,7 @@ import LocationSheet from '../features/explore/components/LocationSheet.jsx';
 import SearchOverlay from '../features/explore/components/SearchOverlay.jsx';
 import NearbySheet from '../features/explore/components/NearbySheet.jsx';
 import KakaoMap from '../features/explore/components/KakaoMap.jsx';
-import { SearchIcon, FilterIcon, FlameIcon, GlobeIcon } from '../shared/components/Icon.jsx';
+import { PinIcon, FunnelIcon, FlameIcon, GlobeIcon } from '../shared/components/Icon.jsx';
 
 /** Map tab — full-bleed map with floating controls and a draggable "Eat near here" sheet. */
 export default function HomePage() {
@@ -143,14 +143,14 @@ export default function HomePage() {
       {/* floating controls */}
       <div className="absolute inset-x-0 top-0 z-20 px-4 pt-3.5">
         {/* Search bar — click opens full-screen SearchOverlay */}
-        <div className="flex h-[3.25rem] items-center gap-2.5 rounded-2xl bg-white px-3.5 shadow-soft">
+        <div className="flex h-[3.25rem] items-center gap-1 rounded-full bg-white px-3 shadow-soft">
           <button
             type="button"
             aria-label="Search places"
             onClick={() => setIsSearching(true)}
-            className="flex min-w-0 flex-1 items-center gap-2.5"
+            className="flex min-w-0 flex-1 items-center gap-2.5 px-1"
           >
-            <SearchIcon className="shrink-0 text-ink-soft" />
+            <PinIcon size={16} className="shrink-0 text-coral" />
             <span className="truncate text-[0.95rem] font-medium text-ink-faint">
               Search dishes, places…
             </span>
@@ -159,11 +159,11 @@ export default function HomePage() {
             type="button"
             aria-label="Filters"
             onClick={() => setSheet('filters')}
-            className="relative flex h-9 w-9 items-center justify-center rounded-xl bg-coral text-white shadow-[0_2px_6px_rgba(248,72,31,0.22)]"
+            className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-coral"
           >
-            <FilterIcon />
+            <FunnelIcon size={18} />
             {count > 0 && (
-              <span className="absolute -right-1.5 -top-1.5 flex h-[1.125rem] min-w-[1.125rem] items-center justify-center rounded-full border-2 border-white bg-ink px-1 text-[0.6rem] font-extrabold text-white">
+              <span className="absolute right-0.5 top-0.5 flex h-[1.125rem] min-w-[1.125rem] items-center justify-center rounded-full border-2 border-white bg-ink px-1 text-[0.6rem] font-extrabold text-white">
                 {count}
               </span>
             )}

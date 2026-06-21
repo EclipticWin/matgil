@@ -35,6 +35,15 @@ export function FilterIcon(p) {
   );
 }
 
+/** Funnel / sliders-style filter icon for use without a colored background. */
+export function FunnelIcon(p) {
+  return (
+    <Svg vb="0 0 20 20" {...p}>
+      <path d="M2.5 4.5h15l-6 7v5l-3-1.5v-3.5z" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" />
+    </Svg>
+  );
+}
+
 export function StarIcon(p) {
   return (
     <Svg vb="0 0 14 14" {...p}>

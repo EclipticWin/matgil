@@ -7,7 +7,7 @@ import { PinIcon } from './Icon.jsx';
  */
 export default function TopBar() {
   return (
-    <header className="flex h-[3.25rem] shrink-0 items-center justify-center gap-1.5 border-b border-ink/5 bg-paper-soft/95 backdrop-blur">
+    <header className="hidden h-[3.25rem] shrink-0 items-center justify-center gap-1.5 border-b border-ink/5 bg-paper-soft/95 backdrop-blur lg:flex">
       <PinIcon size={15} className="text-coral" />
       <span className="font-display text-[1.0625rem] font-extrabold tracking-tight text-ink">
         Matgil
