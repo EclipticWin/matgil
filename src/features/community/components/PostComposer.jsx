@@ -13,10 +13,16 @@ const WRITE_CATEGORIES = [
   { key: 'general',  label: 'General',  labelKo: '일반' },
 ];
 
-export default function PostComposer({ onSubmit, onClose }) {
+export default function PostComposer({
+  onSubmit,
+  onClose,
+  isEditing = false,
+  initialContent = '',
+  initialCategory = 'general',
+}) {
   const { locale, t } = useLocale();
-  const [category, setCategory] = useState('general');
-  const [content, setContent] = useState('');
+  const [category, setCategory] = useState(initialCategory);
+  const [content, setContent] = useState(initialContent);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const canSubmit = content.trim().length >= 5 && !busy;
@@ -28,10 +34,15 @@ export default function PostComposer({ onSubmit, onClose }) {
     try {
       await onSubmit({ category, content: content.trim() });
     } catch (err) {
-      setError(err.message || 'Failed to post. Please try again.');
+      setError(err.message || 'Failed. Please try again.');
       setBusy(false);
     }
   };
+
+  const title = isEditing ? t('community.editPost') : t('community.newPost');
+  const submitLabel = isEditing
+    ? (busy ? t('community.saving') : t('community.save'))
+    : (busy ? t('community.posting') : t('community.post'));
 
   return (
     <div
@@ -43,7 +54,7 @@ export default function PostComposer({ onSubmit, onClose }) {
         onClick={(e) => e.stopPropagation()}
       >
         <div className="mb-4 flex items-center justify-between">
-          <h2 className="font-display text-xl font-bold text-ink">{t('community.newPost')}</h2>
+          <h2 className="font-display text-xl font-bold text-ink">{title}</h2>
           <button
             type="button"
             onClick={onClose}
@@ -91,7 +102,7 @@ export default function PostComposer({ onSubmit, onClose }) {
             {t('community.cancel')}
           </Button>
           <Button className="flex-1" disabled={!canSubmit} onClick={handlePost}>
-            {busy ? t('community.posting') : t('community.post')}
+            {submitLabel}
           </Button>
         </div>
       </div>

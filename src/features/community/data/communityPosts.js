@@ -3,6 +3,7 @@ export const COMMUNITY_POSTS = [
   {
     id: 'p1',
     kind: 'review',
+    locale: 'en',
     author: 'Mia',
     from: 'United States',
     ago: '2h',
@@ -16,6 +17,7 @@ export const COMMUNITY_POSTS = [
   {
     id: 'p2',
     kind: 'general',
+    locale: 'en',
     author: 'Kenji',
     from: 'Japan',
     ago: '5h',
@@ -29,6 +31,7 @@ export const COMMUNITY_POSTS = [
   {
     id: 'p3',
     kind: 'review',
+    locale: 'en',
     author: 'Lena',
     from: 'Germany',
     ago: '1d',
@@ -42,6 +45,7 @@ export const COMMUNITY_POSTS = [
   {
     id: 'p4',
     kind: 'question',
+    locale: 'en',
     author: 'Sofia',
     from: 'Spain',
     ago: '2d',
@@ -70,4 +74,9 @@ export function filterPosts(posts, key) {
   if (key === 'popular') return [...posts].sort((a, b) => b.likes - a.likes);
   if (key === 'all') return posts;
   return posts.filter((p) => p.kind === key);
+}
+
+/** Filter mock posts by locale for fallback display. */
+export function filterPostsByLocale(posts, locale) {
+  return posts.filter((p) => p.locale === locale);
 }

@@ -1,11 +1,20 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../features/auth/hooks/useAuth.jsx';
-import { COMMUNITY_POSTS, filterPosts } from '../features/community/data/communityPosts.js';
-import { fetchPosts, createPost } from '../features/community/services/communityService.js';
+import { COMMUNITY_POSTS, filterPosts, filterPostsByLocale } from '../features/community/data/communityPosts.js';
+import {
+  fetchPosts,
+  createPost,
+  updatePost,
+  deletePost,
+  fetchLikedPostIds,
+  likePost,
+  unlikePost,
+} from '../features/community/services/communityService.js';
 import CommunityTabs from '../features/community/components/CommunityTabs.jsx';
 import PostCard from '../features/community/components/PostCard.jsx';
 import PostComposer from '../features/community/components/PostComposer.jsx';
+import PostCommentSection from '../features/community/components/PostCommentSection.jsx';
 import { PencilIcon } from '../shared/components/Icon.jsx';
 import PageHeader from '../shared/components/PageHeader.jsx';
 import { ROUTES } from '../shared/constants/routes.js';
@@ -24,6 +33,7 @@ function normalizeDbPost(p, i) {
         : `${Math.floor(mins / 1440)}d`;
   return {
     id: String(p.id),
+    userId: String(p.user_id),
     kind: p.category,
     author: p.author_name || 'Traveller',
     from: p.country || '',
@@ -37,45 +47,107 @@ function normalizeDbPost(p, i) {
   };
 }
 
-/** Community tab: post list + compose flow. Falls back to mock data until DB table is created. */
 export default function CommunityPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const { t } = useLocale();
+  const { locale, t } = useLocale();
+
   const [filter, setFilter] = useState('all');
   const [dbPosts, setDbPosts] = useState(null);
+  const [likedPostIds, setLikedPostIds] = useState(new Set());
   const [composing, setComposing] = useState(false);
+  const [editingPost, setEditingPost] = useState(null);
   const [loginPrompt, setLoginPrompt] = useState(false);
+  const [openCommentPostId, setOpenCommentPostId] = useState(null);
 
   const loadPosts = useCallback(async () => {
     try {
-      const rows = await fetchPosts();
+      const rows = await fetchPosts(locale);
       setDbPosts(rows);
     } catch {
       setDbPosts([]);
     }
-  }, []);
+  }, [locale]);
 
-  useEffect(() => {
-    loadPosts();
-  }, [loadPosts]);
+  const loadLikedIds = useCallback(async () => {
+    if (!user) { setLikedPostIds(new Set()); return; }
+    try {
+      const ids = await fetchLikedPostIds(user.id);
+      setLikedPostIds(ids);
+    } catch {
+      setLikedPostIds(new Set());
+    }
+  }, [user]);
+
+  useEffect(() => { loadPosts(); }, [loadPosts]);
+  useEffect(() => { loadLikedIds(); }, [loadLikedIds]);
 
   const sourcePosts =
-    dbPosts && dbPosts.length > 0 ? dbPosts.map(normalizeDbPost) : COMMUNITY_POSTS;
+    dbPosts && dbPosts.length > 0
+      ? dbPosts.map(normalizeDbPost)
+      : filterPostsByLocale(COMMUNITY_POSTS, locale);
   const posts = filterPosts(sourcePosts, filter);
 
+  // — compose (new post) —
   const handlePostButtonClick = () => {
-    if (!user) {
-      setLoginPrompt(true);
-      return;
-    }
+    if (!user) { setLoginPrompt(true); return; }
     setComposing(true);
   };
 
   const handleSubmit = async ({ category, content }) => {
-    await createPost({ userId: user.id, category, content, authorName: user.name });
+    await createPost({ userId: user.id, category, locale, content, authorName: user.name });
     setComposing(false);
     loadPosts();
+  };
+
+  // — edit —
+  const handleEdit = (post) => setEditingPost(post);
+
+  const handleEditSubmit = async ({ category, content }) => {
+    await updatePost(editingPost.id, { category, content });
+    setEditingPost(null);
+    loadPosts();
+  };
+
+  // — delete —
+  const handleDelete = async (post) => {
+    if (!window.confirm(t('community.confirmDelete'))) return;
+    try {
+      await deletePost(post.id);
+      loadPosts();
+    } catch {
+      // silent
+    }
+  };
+
+  // — like —
+  const handleLike = async (post) => {
+    if (!user) return;
+    const alreadyLiked = likedPostIds.has(post.id);
+    setLikedPostIds((prev) => {
+      const next = new Set(prev);
+      alreadyLiked ? next.delete(post.id) : next.add(post.id);
+      return next;
+    });
+    try {
+      if (alreadyLiked) {
+        await unlikePost(post.id, user.id);
+      } else {
+        await likePost(post.id, user.id);
+      }
+      await loadPosts();
+    } catch {
+      setLikedPostIds((prev) => {
+        const next = new Set(prev);
+        alreadyLiked ? next.add(post.id) : next.delete(post.id);
+        return next;
+      });
+    }
+  };
+
+  // — comments toggle —
+  const handleToggleComments = (post) => {
+    setOpenCommentPostId((prev) => (prev === post.id ? null : post.id));
   };
 
   return (
@@ -91,13 +163,36 @@ export default function CommunityPage() {
 
         <CommunityTabs value={filter} onChange={setFilter} />
 
-        <div className="flex flex-col gap-3.5 px-5 pt-3.5">
+        <div className="flex flex-col gap-3.5 px-0 pt-3.5">
           {posts.length === 0 ? (
             <div className="py-12 text-center text-sm font-semibold text-ink-faint">
               {t('community.noMatches')}
             </div>
           ) : (
-            posts.map((post, i) => <PostCard key={post.id} post={post} index={i} />)
+            posts.map((post, i) => (
+              <div key={post.id}>
+                <div className="px-5">
+                  <PostCard
+                    post={post}
+                    index={i}
+                    user={user}
+                    likedByMe={likedPostIds.has(post.id)}
+                    onEdit={handleEdit}
+                    onDelete={handleDelete}
+                    onLike={handleLike}
+                    onToggleComments={handleToggleComments}
+                  />
+                </div>
+                {openCommentPostId === post.id && (
+                  <PostCommentSection
+                    post={post}
+                    user={user}
+                    onLoginClick={() => { setLoginPrompt(true); }}
+                    onCommentAdded={loadPosts}
+                  />
+                )}
+              </div>
+            ))
           )}
         </div>
       </div>
@@ -145,9 +240,20 @@ export default function CommunityPage() {
         </div>
       )}
 
-      {/* post composer sheet */}
+      {/* new post composer */}
       {composing && (
         <PostComposer onSubmit={handleSubmit} onClose={() => setComposing(false)} />
+      )}
+
+      {/* edit post composer */}
+      {editingPost && (
+        <PostComposer
+          isEditing
+          initialContent={editingPost.text}
+          initialCategory={editingPost.kind}
+          onSubmit={handleEditSubmit}
+          onClose={() => setEditingPost(null)}
+        />
       )}
     </>
   );
