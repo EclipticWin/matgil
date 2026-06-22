@@ -6,18 +6,29 @@ import { useLocale } from '../../../shared/i18n/LocaleProvider.jsx';
 export default function EditProfileSheet({ currentName, onSave, onClose }) {
   const { t } = useLocale();
   const [name, setName] = useState(currentName || '');
+  const [newPw, setNewPw] = useState('');
+  const [confirmPw, setConfirmPw] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
 
   const trimmed = name.trim();
-  const canSave = trimmed.length >= 2 && trimmed.length <= 30 && !busy;
+  const nameValid = trimmed.length >= 2 && trimmed.length <= 30;
+  const pwEmpty = newPw === '' && confirmPw === '';
+  const pwTooShort = newPw.length > 0 && newPw.length < 6;
+  const pwMismatch = confirmPw.length > 0 && newPw !== confirmPw;
+  const pwValid = newPw.length >= 6 && newPw === confirmPw;
+  const canSave = nameValid && (pwEmpty || pwValid) && !busy;
+
+  let pwError = '';
+  if (pwTooShort) pwError = t('my.passwordTooShort');
+  else if (pwMismatch) pwError = t('my.passwordMismatch');
 
   const handleSave = async () => {
     if (!canSave) return;
     setBusy(true);
     setError('');
     try {
-      await onSave(trimmed);
+      await onSave({ displayName: trimmed, newPassword: pwEmpty ? '' : newPw });
     } catch {
       setError(t('my.profileUpdateFailed'));
       setBusy(false);
@@ -44,6 +55,7 @@ export default function EditProfileSheet({ currentName, onSave, onClose }) {
           </button>
         </div>
 
+        {/* Nickname */}
         <label className="mb-1.5 block text-sm font-semibold text-ink-soft">
           {t('my.displayName')}
         </label>
@@ -57,6 +69,38 @@ export default function EditProfileSheet({ currentName, onSave, onClose }) {
           placeholder={t('my.displayName')}
         />
         <p className="mt-1 text-right text-xs text-ink-faint">{trimmed.length}/30</p>
+
+        {/* Divider */}
+        <div className="my-4 border-t border-stone-100" />
+
+        {/* Password */}
+        <label className="mb-1.5 block text-sm font-semibold text-ink-soft">
+          {t('my.newPassword')}
+        </label>
+        <input
+          type="password"
+          value={newPw}
+          onChange={(e) => setNewPw(e.target.value)}
+          className="w-full rounded-2xl border-[1.5px] border-stone-200 bg-white px-4 py-3 text-[0.95rem] text-ink outline-none placeholder:text-ink-faint focus:border-stone-400 focus:ring-1 focus:ring-stone-200"
+          placeholder="6자 이상"
+        />
+
+        <label className="mb-1.5 mt-2.5 block text-sm font-semibold text-ink-soft">
+          {t('my.confirmPassword')}
+        </label>
+        <input
+          type="password"
+          value={confirmPw}
+          onChange={(e) => setConfirmPw(e.target.value)}
+          className="w-full rounded-2xl border-[1.5px] border-stone-200 bg-white px-4 py-3 text-[0.95rem] text-ink outline-none placeholder:text-ink-faint focus:border-stone-400 focus:ring-1 focus:ring-stone-200"
+          placeholder={t('my.confirmPassword')}
+        />
+
+        {pwError && (
+          <p className="mt-2 rounded-xl bg-red-50 px-3 py-2 text-center text-xs text-red-600">
+            {pwError}
+          </p>
+        )}
 
         {error && (
           <p className="mt-2 rounded-xl bg-red-50 px-3 py-2 text-center text-xs text-red-600">

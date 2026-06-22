@@ -49,6 +49,11 @@ export function AuthProvider({ children }) {
     await supabase.auth.signOut();
   }, []);
 
+  const updatePassword = useCallback(async (newPassword) => {
+    const { error } = await supabase.auth.updateUser({ password: newPassword });
+    if (error) throw error;
+  }, []);
+
   const updateDisplayName = useCallback(async (displayName) => {
     const trimmed = displayName.trim();
     const { data, error } = await supabase.auth.updateUser({
@@ -70,8 +75,8 @@ export function AuthProvider({ children }) {
   }, []);
 
   const value = useMemo(
-    () => ({ user, loading, login, signUp, logout, updateDisplayName }),
-    [user, loading, login, signUp, logout, updateDisplayName],
+    () => ({ user, loading, login, signUp, logout, updateDisplayName, updatePassword }),
+    [user, loading, login, signUp, logout, updateDisplayName, updatePassword],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

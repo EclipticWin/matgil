@@ -31,7 +31,7 @@ function StatCard({ value, label, onClick, valueClassName }) {
 }
 
 export default function MyPage() {
-  const { user, logout, loading, updateDisplayName } = useAuth();
+  const { user, logout, loading, updateDisplayName, updatePassword } = useAuth();
   const { locale, t } = useLocale();
 
   const [view, setView] = useState('home'); // 'home' | 'myPosts' | 'likedPosts'
@@ -54,12 +54,17 @@ export default function MyPage() {
     loadCounts();
   }, [loadCounts]);
 
-  const handleSaveProfile = useCallback(async (displayName) => {
-    await updateDisplayName(displayName);
+  const handleSaveProfile = useCallback(async ({ displayName, newPassword }) => {
+    if (displayName !== user.name) {
+      await updateDisplayName(displayName);
+    }
+    if (newPassword) {
+      await updatePassword(newPassword);
+    }
     setEditingProfile(false);
     setToast(t('my.profileUpdated'));
     setTimeout(() => setToast(''), 3000);
-  }, [updateDisplayName, t]);
+  }, [updateDisplayName, updatePassword, user, t]);
 
   if (loading) return null;
   if (!user) return <Navigate to={ROUTES.login} replace />;
