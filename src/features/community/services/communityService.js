@@ -204,3 +204,75 @@ export async function unlikeComment(commentId, userId) {
     .eq('user_id', userId);
   if (error) throw error;
 }
+
+export async function fetchMyActivityCounts(userId) {
+  const [postsResult, likedPostsResult, likedCommentsResult] = await Promise.all([
+    supabase
+      .from('mg_community_posts')
+      .select('*', { count: 'exact', head: true })
+      .eq('user_id', userId)
+      .eq('is_published', true)
+      .is('deleted_at', null),
+    supabase
+      .from('mg_community_post_likes')
+      .select('*', { count: 'exact', head: true })
+      .eq('user_id', userId),
+    supabase
+      .from('mg_community_comment_likes')
+      .select('*', { count: 'exact', head: true })
+      .eq('user_id', userId),
+  ]);
+  if (postsResult.error) throw postsResult.error;
+  if (likedPostsResult.error) throw likedPostsResult.error;
+  if (likedCommentsResult.error) throw likedCommentsResult.error;
+  return {
+    myPosts: postsResult.count ?? 0,
+    likedPosts: likedPostsResult.count ?? 0,
+    likedComments: likedCommentsResult.count ?? 0,
+  };
+}
+
+export async function fetchMyLikedPosts(userId) {
+  const { data: likeRows, error: likeError } = await supabase
+    .from('mg_community_post_likes')
+    .select('post_id')
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false });
+  if (likeError) throw likeError;
+  if (!likeRows || likeRows.length === 0) return [];
+
+  const postIds = likeRows.map((r) => r.post_id);
+  const { data, error } = await supabase
+    .from('mg_community_posts')
+    .select('*')
+    .in('id', postIds)
+    .eq('is_published', true)
+    .is('deleted_at', null);
+  if (error) throw error;
+
+  // Re-sort to match most-recently-liked order
+  const orderMap = new Map(postIds.map((id, i) => [id, i]));
+  return (data || []).sort((a, b) => (orderMap.get(a.id) ?? 999) - (orderMap.get(b.id) ?? 999));
+}
+
+export async function fetchMyLikedComments(userId) {
+  const { data: likeRows, error: likeError } = await supabase
+    .from('mg_community_comment_likes')
+    .select('comment_id')
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false });
+  if (likeError) throw likeError;
+  if (!likeRows || likeRows.length === 0) return [];
+
+  const commentIds = likeRows.map((r) => r.comment_id);
+  const { data, error } = await supabase
+    .from('mg_community_comments')
+    .select('*, mg_community_posts(content, category)')
+    .in('id', commentIds)
+    .is('deleted_at', null);
+  if (error) throw error;
+
+  // Re-sort to match most-recently-liked order
+  const orderMap = new Map(commentIds.map((id, i) => [id, i]));
+  return (data || []).sort((a, b) => (orderMap.get(a.id) ?? 999) - (orderMap.get(b.id) ?? 999));
+}

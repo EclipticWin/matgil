@@ -149,7 +149,7 @@ export default function PostComposer({
           value={content}
           onChange={(e) => setContent(e.target.value)}
           rows={5}
-          className="w-full resize-none rounded-2xl border-[1.5px] border-ink/10 bg-white p-4 text-[0.95rem] text-ink outline-none placeholder:text-ink-faint focus:border-coral"
+          className="w-full resize-none rounded-2xl border-[1.5px] border-stone-200 bg-white p-4 text-[0.95rem] text-ink outline-none placeholder:text-ink-faint focus:border-stone-400 focus:ring-1 focus:ring-stone-200"
         />
 
         {/* image section: thumbnails + add button */}

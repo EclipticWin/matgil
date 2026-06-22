@@ -49,9 +49,29 @@ export function AuthProvider({ children }) {
     await supabase.auth.signOut();
   }, []);
 
+  const updateDisplayName = useCallback(async (displayName) => {
+    const trimmed = displayName.trim();
+    const { data, error } = await supabase.auth.updateUser({
+      data: { display_name: trimmed },
+    });
+    if (error) throw error;
+    setUser(normalizeUser(data.user));
+    // Best-effort author_name backfill — ignore RLS / network errors
+    try {
+      await supabase.from('mg_community_posts')
+        .update({ author_name: trimmed })
+        .eq('user_id', data.user.id);
+    } catch { /* ignore */ }
+    try {
+      await supabase.from('mg_community_comments')
+        .update({ author_name: trimmed })
+        .eq('user_id', data.user.id);
+    } catch { /* ignore */ }
+  }, []);
+
   const value = useMemo(
-    () => ({ user, loading, login, signUp, logout }),
-    [user, loading, login, signUp, logout],
+    () => ({ user, loading, login, signUp, logout, updateDisplayName }),
+    [user, loading, login, signUp, logout, updateDisplayName],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
