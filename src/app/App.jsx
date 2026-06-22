@@ -1,6 +1,7 @@
 import { BrowserRouter } from 'react-router-dom';
 import Providers from './providers.jsx';
 import AppRouter from './router.jsx';
+import DesktopIntroPanel from '../shared/components/DesktopIntroPanel.jsx';
 
 // dev: BASE_URL='/' → no basename needed
 // prod (GitHub Pages): BASE_URL='/matgil/' → basename='/matgil'
@@ -11,7 +12,8 @@ export default function App() {
   return (
     <Providers>
       <BrowserRouter basename={basename}>
-        <div className="flex min-h-[100svh] w-full justify-center">
+        <div className="flex min-h-[100svh] w-full items-stretch justify-center lg:gap-6">
+          <DesktopIntroPanel />
           <div className="relative h-[100svh] w-full max-w-app overflow-hidden bg-paper shadow-2xl">
             <AppRouter />
           </div>
