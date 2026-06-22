@@ -276,3 +276,28 @@ export async function fetchMyLikedComments(userId) {
   const orderMap = new Map(commentIds.map((id, i) => [id, i]));
   return (data || []).sort((a, b) => (orderMap.get(a.id) ?? 999) - (orderMap.get(b.id) ?? 999));
 }
+
+export async function fetchMyPosts(userId) {
+  const { data, error } = await supabase
+    .from('mg_community_posts')
+    .select('*')
+    .eq('user_id', userId)
+    .eq('is_published', true)
+    .is('deleted_at', null)
+    .order('created_at', { ascending: false });
+  if (error) throw error;
+  return data || [];
+}
+
+export async function softDeletePosts(ids, userId) {
+  const { error } = await supabase
+    .from('mg_community_posts')
+    .update({
+      is_published: false,
+      deleted_at: new Date().toISOString(),
+      deleted_by: userId,
+    })
+    .in('id', ids.map(Number))
+    .eq('user_id', userId);
+  if (error) throw error;
+}
