@@ -83,3 +83,21 @@ export async function checkCourseAlreadySaved({ userId, title }) {
     .limit(1);
   return Array.isArray(data) && data.length > 0;
 }
+
+export function isSameCourse(course, savedRow) {
+  try {
+    const courseIds = (course.stops ?? [])
+      .map((s) => Number(s.id ?? s.place_id ?? s.placeId))
+      .filter((id) => Number.isFinite(id) && id > 0);
+    const savedIds = (savedRow.place_ids ?? [])
+      .map((id) => Number(id))
+      .filter((id) => Number.isFinite(id) && id > 0);
+    if (courseIds.length > 0 && savedIds.length > 0 && courseIds.length === savedIds.length) {
+      return courseIds.every((id, i) => id === savedIds[i]);
+    }
+    const courseStopCount = course.stopCount ?? (course.stops?.length ?? 0);
+    return !!(course.title && savedRow.title === course.title && savedRow.stop_count === courseStopCount);
+  } catch {
+    return false;
+  }
+}

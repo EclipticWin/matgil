@@ -3,11 +3,11 @@ import { useNavigate } from 'react-router-dom';
 import CourseCard from '../../courses/components/CourseCard.jsx';
 import TodayCourseDetail from './TodayCourseDetail.jsx';
 import PlaceDetailSheet from './PlaceDetailSheet.jsx';
-import { ChevronRightIcon, CloseIcon, LocateIcon } from '../../../shared/components/Icon.jsx';
+import { CheckIcon, ChevronRightIcon, CloseIcon, LocateIcon } from '../../../shared/components/Icon.jsx';
 import { cn } from '../../../shared/utils/classNames.js';
 import { useLocale } from '../../../shared/i18n/LocaleProvider.jsx';
 import { useAuth } from '../../auth/hooks/useAuth.jsx';
-import { saveCourse, checkCourseAlreadySaved } from '../../courses/services/savedCourseService.js';
+import { saveCourse, checkCourseAlreadySaved, fetchSavedCourses, isSameCourse } from '../../courses/services/savedCourseService.js';
 import { normalizeCourseMetrics } from '../../courses/utils/courseMetrics.js';
 import { ROUTES } from '../../../shared/constants/routes.js';
 
@@ -66,6 +66,7 @@ export default function NearbySheet({
 
   // 'idle' | 'checking' | 'saving' | 'saved' | 'failed'
   const [saveState, setSaveState] = useState('idle');
+  const [savedRows, setSavedRows] = useState([]);
 
   useEffect(() => {
     setVisibleCount(INITIAL_VISIBLE);
@@ -98,6 +99,23 @@ export default function NearbySheet({
     if (!initialCourse) return;
     openDetail(initialCourse);
   }, [initialCourse]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Close detail when selected location changes (prevents stale course display on hot place switch)
+  useEffect(() => {
+    setSelectedCourse(null);
+    setSelectedPlace(null);
+    setSaveState('idle');
+  }, [selectedLocation]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Fetch saved courses for badge display on course list
+  useEffect(() => {
+    if (!user) { setSavedRows([]); return; }
+    let cancelled = false;
+    fetchSavedCourses({ userId: user.id })
+      .then((rows) => { if (!cancelled) setSavedRows(rows); })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [user?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Check if currently selected course is already saved
   useEffect(() => {
@@ -213,7 +231,7 @@ export default function NearbySheet({
     setSaveState('saving');
     try {
       const metrics = normalizeCourseMetrics(selectedCourse);
-      await saveCourse({
+      const savedRow = await saveCourse({
         userId: user.id,
         locale,
         course: selectedCourse,
@@ -221,6 +239,7 @@ export default function NearbySheet({
         metrics,
       });
       setSaveState('saved');
+      setSavedRows((prev) => [savedRow, ...prev]);
     } catch {
       setSaveState('failed');
       setTimeout(() => setSaveState('idle'), 3000);
@@ -364,10 +383,11 @@ export default function NearbySheet({
                       <div className="flex flex-col gap-3">
                         {visibleCourses.map((course) => {
                           const isActive = course.id === activeCourse?.id;
+                          const alreadySaved = savedRows.some((row) => isSameCourse(course, row));
                           return (
                             <div
                               key={course.id}
-                              className={cn('rounded-3xl', isActive && 'ring-2 ring-coral/55')}
+                              className={cn('relative rounded-3xl', isActive && 'ring-2 ring-coral/55')}
                             >
                               <CourseCard
                                 course={course}
@@ -378,6 +398,12 @@ export default function NearbySheet({
                                   openDetail(course);
                                 }}
                               />
+                              {alreadySaved && (
+                                <div className="pointer-events-none absolute right-3 top-3 flex items-center gap-1 rounded-full bg-coral px-2 py-0.5 text-[0.6rem] font-bold text-white shadow-sm">
+                                  <CheckIcon size={9} />
+                                  {t('savedCourses.saved')}
+                                </div>
+                              )}
                             </div>
                           );
                         })}

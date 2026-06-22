@@ -62,7 +62,6 @@ export default function SavedCourseDetailPage() {
   }
 
   const snapshot = savedCourse.course_snapshot ?? {};
-  const accent = snapshot.accent ?? '#F8481F';
   const stops = savedCourse.stops ?? snapshot.stops ?? [];
   const stopCount = savedCourse.stop_count ?? stops.length;
 
@@ -79,10 +78,7 @@ export default function SavedCourseDetailPage() {
     <div className="flex h-full flex-col bg-paper-soft">
       <div className="no-scrollbar flex-1 overflow-y-auto">
         {/* tinted header */}
-        <div
-          className="rounded-b-[1.625rem] px-5 pb-[1.375rem] pt-[3.625rem] text-white"
-          style={{ background: `linear-gradient(160deg, ${accent} 0%, #D5350E 120%)` }}
-        >
+        <div className="rounded-b-[1.625rem] bg-coral px-5 pb-[1.375rem] pt-[3.625rem] text-white">
           <button
             type="button"
             onClick={() => navigate(ROUTES.courses)}
