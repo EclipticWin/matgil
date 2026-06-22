@@ -1,18 +1,21 @@
 import { useEffect, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import CourseCard from '../../courses/components/CourseCard.jsx';
 import TodayCourseDetail from './TodayCourseDetail.jsx';
 import PlaceDetailSheet from './PlaceDetailSheet.jsx';
 import { ChevronRightIcon, CloseIcon, LocateIcon } from '../../../shared/components/Icon.jsx';
 import { cn } from '../../../shared/utils/classNames.js';
 import { useLocale } from '../../../shared/i18n/LocaleProvider.jsx';
+import { useAuth } from '../../auth/hooks/useAuth.jsx';
+import { saveCourse, checkCourseAlreadySaved } from '../../courses/services/savedCourseService.js';
+import { normalizeCourseMetrics } from '../../courses/utils/courseMetrics.js';
+import { ROUTES } from '../../../shared/constants/routes.js';
 
 const INITIAL_VISIBLE = 3;
 const LOAD_BATCH = 3;
-const DRAG_THRESHOLD = 7; // px vertical movement before switching from tap to drag
-const FULL_TOP_OFFSET_PX = 12; // px from top of map area left exposed in full state
+const DRAG_THRESHOLD = 7;
+const FULL_TOP_OFFSET_PX = 12;
 
-/** Walk up the DOM from startEl to boundary, returning the first element
- *  that has overflowing scrollable content (overflow-y: auto|scroll). */
 function findScrollParent(startEl, boundary) {
   let node = startEl;
   while (node && node !== boundary) {
@@ -37,27 +40,32 @@ export default function NearbySheet({
   gpsStatus = 'idle',
   onGpsClick,
   onGpsStatusChange,
+  initialCourse = null,
 }) {
   const { locale, t } = useLocale();
+  const { user } = useAuth();
+  const navigate = useNavigate();
+
   const peek = vh ? Math.round(vh * 0.44) : 300;
   const full = vh ? vh - FULL_TOP_OFFSET_PX : 560;
 
-  const [snap, setSnap] = useState('peek'); // 'collapsed' | 'peek' | 'full'
+  const [snap, setSnap] = useState('peek');
   const [dragH, setDragH] = useState(null);
   const [selectedCourse, setSelectedCourse] = useState(null);
   const [selectedPlace, setSelectedPlace] = useState(null);
   const preCollapseSnap = useRef('peek');
 
-  // Gesture tracking refs — mutated directly to avoid render cost
   const sheetRef = useRef(null);
-  const gestureRef = useRef(null); // { startY, startH, isDragging, scrollEl, scrollTopAtStart, pointerId }
+  const gestureRef = useRef(null);
   const suppressClickRef = useRef(false);
 
-  // ── Load-more state ──────────────────────────────────────────────────────
   const [visibleCount, setVisibleCount] = useState(INITIAL_VISIBLE);
   const [loadingMore, setLoadingMore] = useState(false);
   const scrollContainerRef = useRef(null);
   const sentinelRef = useRef(null);
+
+  // 'idle' | 'checking' | 'saving' | 'saved' | 'failed'
+  const [saveState, setSaveState] = useState('idle');
 
   useEffect(() => {
     setVisibleCount(INITIAL_VISIBLE);
@@ -85,6 +93,23 @@ export default function NearbySheet({
     return () => obs.disconnect();
   }, [courses, loadingMore, visibleCount]);
 
+  // Auto-open saved course when arriving from SavedCourseDetailPage
+  useEffect(() => {
+    if (!initialCourse) return;
+    openDetail(initialCourse);
+  }, [initialCourse]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Check if currently selected course is already saved
+  useEffect(() => {
+    if (!selectedCourse) { setSaveState('idle'); return; }
+    if (!user) { setSaveState('idle'); return; }
+
+    setSaveState('checking');
+    checkCourseAlreadySaved({ userId: user.id, title: selectedCourse.title })
+      .then((already) => setSaveState(already ? 'saved' : 'idle'))
+      .catch(() => setSaveState('idle'));
+  }, [selectedCourse?.id, user?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const currentHeight = dragH != null ? dragH : snap === 'full' ? full : snap === 'peek' ? peek : 0;
   const isSheetFull = currentHeight > (peek + full) / 2;
   const isDragging = gestureRef.current?.isDragging ?? false;
@@ -93,10 +118,8 @@ export default function NearbySheet({
     ? { title: t(`gps.${gpsStatus}.title`), body: t(`gps.${gpsStatus}.body`) }
     : null;
 
-  // ── Universal drag handlers (capture phase on sheet root) ────────────────
-
   function handleSheetPointerDown(e) {
-    suppressClickRef.current = false; // reset any leftover from prior incomplete gesture
+    suppressClickRef.current = false;
     const scrollEl = findScrollParent(e.target, sheetRef.current);
     gestureRef.current = {
       startY: e.clientY,
@@ -112,7 +135,7 @@ export default function NearbySheet({
     const g = gestureRef.current;
     if (!g) return;
 
-    const dy = g.startY - e.clientY; // positive = finger moved up = sheet expands
+    const dy = g.startY - e.clientY;
 
     if (!g.isDragging) {
       if (Math.abs(dy) < DRAG_THRESHOLD) return;
@@ -120,17 +143,8 @@ export default function NearbySheet({
       const isNearFull = g.startH > (peek + full) / 2;
 
       if (isNearFull && g.scrollEl) {
-        if (dy > 0) {
-          // Upward swipe in full state → browser scrolls content down
-          gestureRef.current = null;
-          return;
-        }
-        if (g.scrollTopAtStart > 0) {
-          // Downward swipe in full state with content scrolled → browser scrolls content up
-          gestureRef.current = null;
-          return;
-        }
-        // Downward swipe at scroll-top-0 in full state → collapse sheet
+        if (dy > 0) { gestureRef.current = null; return; }
+        if (g.scrollTopAtStart > 0) { gestureRef.current = null; return; }
       }
 
       g.isDragging = true;
@@ -164,7 +178,6 @@ export default function NearbySheet({
     gestureRef.current = null;
   }
 
-  // Suppress the click that follows a drag gesture
   function handleSheetClickCapture(e) {
     if (suppressClickRef.current) {
       suppressClickRef.current = false;
@@ -172,8 +185,6 @@ export default function NearbySheet({
       e.preventDefault();
     }
   }
-
-  // ── Navigation helpers ───────────────────────────────────────────────────
 
   const handleExpand = () => setSnap(preCollapseSnap.current || 'peek');
 
@@ -187,14 +198,38 @@ export default function NearbySheet({
   const closeDetail = () => {
     setSelectedCourse(null);
     setSelectedPlace(null);
+    setSaveState('idle');
   };
 
   const openPlace = (place) => setSelectedPlace(place);
   const closePlace = () => setSelectedPlace(null);
 
+  async function handleSave() {
+    if (saveState === 'saving' || saveState === 'saved' || saveState === 'checking') return;
+    if (!user) {
+      navigate(ROUTES.login);
+      return;
+    }
+    setSaveState('saving');
+    try {
+      const metrics = normalizeCourseMetrics(selectedCourse);
+      await saveCourse({
+        userId: user.id,
+        locale,
+        course: selectedCourse,
+        selectedLocation,
+        metrics,
+      });
+      setSaveState('saved');
+    } catch {
+      setSaveState('failed');
+      setTimeout(() => setSaveState('idle'), 3000);
+    }
+  }
+
   return (
     <>
-      {/* ── GPS error modal ──────────────────────────────────────────────────── */}
+      {/* GPS error modal */}
       {gpsModal && (
         <>
           <div className="absolute inset-0 z-40 bg-black/40" onClick={() => onGpsStatusChange?.('idle')} />
@@ -217,7 +252,7 @@ export default function NearbySheet({
         </>
       )}
 
-      {/* ── GPS floating button — hides when sheet is full ───────────────────── */}
+      {/* GPS floating button */}
       <div
         className={cn(
           'absolute right-4 z-30',
@@ -252,7 +287,7 @@ export default function NearbySheet({
         </button>
       </div>
 
-      {/* ── Pull-up handle — visible only when collapsed ─────────────────────── */}
+      {/* Pull-up handle */}
       {snap === 'collapsed' && dragH === null && (
         <div className="pointer-events-none absolute inset-x-0 bottom-0 z-30 flex justify-center">
           <button
@@ -266,7 +301,7 @@ export default function NearbySheet({
         </div>
       )}
 
-      {/* ── Main draggable sheet ─────────────────────────────────────────────── */}
+      {/* Main draggable sheet */}
       <div
         ref={sheetRef}
         className="absolute inset-x-0 bottom-0 z-30 flex select-none flex-col overflow-hidden rounded-t-[1.625rem] bg-paper-soft shadow-card"
@@ -280,15 +315,12 @@ export default function NearbySheet({
         onPointerCancelCapture={handleSheetPointerUpCancel}
         onClickCapture={handleSheetClickCapture}
       >
-        {/* ── Drag pill — visual affordance, touch-none to prevent browser interference */}
         <div className="flex shrink-0 cursor-grab justify-center touch-none pb-1.5 pt-2.5">
           <div className="h-[5px] w-10 rounded-full bg-ink/15" />
         </div>
 
-        {/* ── View content ─────────────────────────────────────────────────────── */}
         {selectedCourse ? (
           selectedPlace ? (
-            /* ── 장소 상세 ── */
             <div className="min-h-0 flex-1 overflow-hidden">
               <PlaceDetailSheet
                 place={selectedPlace}
@@ -297,27 +329,25 @@ export default function NearbySheet({
               />
             </div>
           ) : (
-            /* ── 코스 상세 ── */
             <div className="min-h-0 flex-1 overflow-hidden">
               <TodayCourseDetail
                 course={selectedCourse}
                 selectedLocation={selectedLocation}
                 onBack={closeDetail}
                 onSelectPlace={openPlace}
+                onSave={handleSave}
+                saveState={saveState}
               />
             </div>
           )
         ) : (
-          /* ── 기본 목록 ── */
           <>
-            {/* Header — cursor-grab is a visual hint; drag is handled by root */}
             <div className="shrink-0 cursor-grab touch-none px-5 pb-2 pt-0.5">
               <h2 className="select-none font-display text-[1.15rem] font-bold tracking-tight text-ink">
                 {t('nearby.header', { location: locationLabel })}
               </h2>
             </div>
 
-            {/* Scrollable course list */}
             <div
               ref={scrollContainerRef}
               className="no-scrollbar flex-1 overflow-y-auto px-5 pb-5 pt-1"

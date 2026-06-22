@@ -9,6 +9,7 @@ export const ROUTES = {
   result: '/result',
   courses: '/courses',
   courseDetail: (id) => `/courses/${id}`,
+  savedCourseDetail: (id) => `/saved-courses/${id}`,
   community: '/community',
   phrases: '/phrases',
   popular: '/popular',

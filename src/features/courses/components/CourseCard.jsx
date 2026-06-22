@@ -4,15 +4,18 @@ import Thumbnail from '../../../shared/components/Thumbnail.jsx';
 import { WalkIcon, ClockIcon } from '../../../shared/components/Icon.jsx';
 import { cn } from '../../../shared/utils/classNames.js';
 import { useLocale } from '../../../shared/i18n/LocaleProvider.jsx';
+import { getDisplayMetrics } from '../utils/courseMetrics.js';
 
 function CourseCardInner({ course, isActive = true }) {
-  const { t } = useLocale();
+  const { locale, t } = useLocale();
+  const { displayDistance, displayDuration } = getDisplayMetrics(course, locale);
+
   return (
     <>
       <div className="flex h-24">
         {course.stops.slice(0, 3).map((stop, i) => (
           <Thumbnail
-            key={stop.id}
+            key={stop.id ?? i}
             src={stop.imageUrl}
             tint={stop.tint}
             rounded="rounded-none"
@@ -35,10 +38,10 @@ function CourseCardInner({ course, isActive = true }) {
         </h3>
         <div className="mt-1.5 flex items-center gap-3.5 text-[0.78rem] font-semibold text-ink-soft">
           <span className="inline-flex items-center gap-1">
-            <WalkIcon className="text-ink-soft" /> {course.km}
+            <WalkIcon className="text-ink-soft" /> {displayDistance}
           </span>
           <span className="inline-flex items-center gap-1">
-            <ClockIcon className="text-ink-soft" /> {course.hr}
+            <ClockIcon className="text-ink-soft" /> {displayDuration}
           </span>
         </div>
       </div>

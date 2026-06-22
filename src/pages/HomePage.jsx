@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useLocale } from '../shared/i18n/LocaleProvider.jsx';
 import { getPlaces } from '../api/placeApi.js';
 import {
@@ -21,6 +22,8 @@ import { PinIcon, FunnelIcon, FlameIcon, GlobeIcon } from '../shared/components/
 /** Map tab — full-bleed map with floating controls and a draggable "Eat near here" sheet. */
 export default function HomePage() {
   const { locale, t } = useLocale();
+  const { state: routeState } = useLocation();
+  const navigate = useNavigate();
   const [filters, setFilters] = useState(EMPTY_FILTERS);
   const [sheet, setSheet] = useState(null); // 'filters' | 'language' | 'location' | null
   const [isSearching, setIsSearching] = useState(false);
@@ -32,6 +35,8 @@ export default function HomePage() {
   const [showFindHere, setShowFindHere] = useState(false);
 
   const [activeCourseId, setActiveCourseId] = useState(null);
+  // Saved course injected via router state from SavedCourseDetailPage
+  const [savedCourseForMap, setSavedCourseForMap] = useState(null);
 
   const mapRef = useRef(null);
   const mapApiRef = useRef(null);
@@ -78,10 +83,19 @@ export default function HomePage() {
   // Reset to first course whenever location or food-type filter changes.
   useEffect(() => {
     setActiveCourseId(null);
+    setSavedCourseForMap(null);
   }, [selectedLocation, filters.cat]);
 
+  // Process savedCourse from router state (navigating from SavedCourseDetailPage)
+  useEffect(() => {
+    if (!routeState?.savedCourse) return;
+    setSavedCourseForMap(routeState.savedCourse);
+    navigate('/', { replace: true, state: null });
+  }, [!!routeState?.savedCourse]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const activeCourse =
-    recommendedCourses.find((c) => c.id === activeCourseId) ?? recommendedCourses[0] ?? null;
+    savedCourseForMap ??
+    (recommendedCourses.find((c) => c.id === activeCourseId) ?? recommendedCourses[0] ?? null);
 
   const count = filterCount(filters);
 
@@ -218,12 +232,16 @@ export default function HomePage() {
         vh={vh}
         courses={recommendedCourses}
         activeCourse={activeCourse}
-        onSelectCourse={(c) => setActiveCourseId(c.id)}
+        onSelectCourse={(c) => {
+          setActiveCourseId(c.id);
+          setSavedCourseForMap(null);
+        }}
         selectedLocation={selectedLocation}
         isLoading={placesLoading}
         gpsStatus={gpsStatus}
         onGpsClick={handleGpsClick}
         onGpsStatusChange={setGpsStatus}
+        initialCourse={savedCourseForMap}
       />
 
       {/* full-screen search overlay — rendered before modals so modals stack on top */}

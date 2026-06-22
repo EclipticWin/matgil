@@ -5,8 +5,11 @@ import {
   WalkIcon,
   ClockIcon,
   ChevronRightIcon,
+  BookmarkIcon,
+  CheckIcon,
 } from '../../../shared/components/Icon.jsx';
 import { useLocale } from '../../../shared/i18n/LocaleProvider.jsx';
+import { getDisplayMetrics } from '../../courses/utils/courseMetrics.js';
 
 function distLabel(stop) {
   if (stop.distanceKm != null) {
@@ -18,12 +21,18 @@ function distLabel(stop) {
 }
 
 /** Map Bottom Sheet 내부 코스 상세 콘텐츠.
- *  todayCourse.stops 기반이므로 mock CourseDetailPage와 별개로 유지한다. */
-export default function TodayCourseDetail({ course, selectedLocation, onBack, onSelectPlace }) {
+ *  onSave: () => void — save button callback (omit to hide button)
+ *  saveState: 'idle' | 'checking' | 'saving' | 'saved' | 'failed' */
+export default function TodayCourseDetail({ course, selectedLocation, onBack, onSelectPlace, onSave, saveState = 'idle' }) {
   const { locale, t } = useLocale();
   const stopCount = course.stopCount ?? course.stops.length;
   const locationLabel = (locale === 'ko' ? selectedLocation?.labelKo : null) || (selectedLocation?.label ?? 'here');
   const blurb = t('courseDetail.blurb', { location: locationLabel });
+
+  const { displayDistance, displayDuration } = getDisplayMetrics(course, locale);
+
+  const isBusy = saveState === 'checking' || saveState === 'saving';
+  const isSaved = saveState === 'saved';
 
   return (
     <div className="flex h-full flex-col">
@@ -49,10 +58,10 @@ export default function TodayCourseDetail({ course, selectedLocation, onBack, on
             <PinIcon size={13} /> {t('courseDetail.stops', { n: stopCount })}
           </span>
           <span className="inline-flex items-center gap-1.5">
-            <WalkIcon /> {course.km}
+            <WalkIcon /> {displayDistance}
           </span>
           <span className="inline-flex items-center gap-1.5">
-            <ClockIcon /> {course.hr}
+            <ClockIcon /> {displayDuration}
           </span>
         </div>
       </div>
@@ -65,13 +74,6 @@ export default function TodayCourseDetail({ course, selectedLocation, onBack, on
           {t('courseDetail.routeStops')}
         </div>
 
-        {/*
-          왼쪽 배지 컬럼: connector만 통과, 카드 배경 없음
-          오른쪽 카드: 연한 bg-white/45 + rounded-2xl
-          connector: badge 34px, card 80px(py-3×2+h-14), space-y-3 12px
-          badge center = (80-34)/2+17 = 40px → top-10 / bottom-10
-          connector left=17px < card start=54px(badge34+gap-5 20) → 카드에 가리지 않음
-        */}
         <div className="relative space-y-3">
           <div
             className="absolute bottom-10 left-[1.0625rem] top-10 w-[2.5px]"
@@ -92,12 +94,10 @@ export default function TodayCourseDetail({ course, selectedLocation, onBack, on
                 onClick={() => onSelectPlace?.(stop)}
                 className="relative flex w-full items-center gap-5 text-left"
               >
-                {/* 왼쪽: 번호 배지 — 카드 배경/border 없음 */}
                 <div className="z-[1] flex h-[2.125rem] w-[2.125rem] shrink-0 items-center justify-center rounded-full bg-coral font-display text-[0.9375rem] font-bold text-white shadow-[0_2px_6px_rgba(248,72,31,0.18)]">
                   {i + 1}
                 </div>
 
-                {/* 오른쪽: 연한 카드 영역 */}
                 <div className="flex min-w-0 flex-1 items-center gap-3 rounded-2xl border border-ink/5 bg-white/45 px-3 py-3 shadow-[0_0.25rem_1rem_rgba(34,24,20,0.04)]">
                   <Thumbnail
                     src={stop.imageUrl}
@@ -121,6 +121,39 @@ export default function TodayCourseDetail({ course, selectedLocation, onBack, on
         </div>
       </div>
 
+      {/* Save 버튼 — onSave가 있을 때만 표시 */}
+      {onSave && (
+        <div className="shrink-0 border-t border-ink/5 bg-paper-soft px-5 pb-5 pt-3">
+          <button
+            type="button"
+            disabled={isBusy || isSaved}
+            onClick={onSave}
+            className={[
+              'inline-flex h-[3.25rem] w-full items-center justify-center gap-2 rounded-2xl px-5 text-base font-bold transition-colors disabled:cursor-default',
+              isSaved
+                ? 'bg-stone-100 text-stone-500'
+                : saveState === 'failed'
+                ? 'bg-stone-100 text-stone-400'
+                : 'bg-coral text-white shadow-[0_2px_6px_rgba(248,72,31,0.16)] active:bg-coral-deep disabled:bg-coral/40 disabled:shadow-none',
+            ].join(' ')}
+          >
+            {isBusy ? (
+              <div className="h-5 w-5 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+            ) : isSaved ? (
+              <CheckIcon size={18} />
+            ) : (
+              <BookmarkIcon size={18} />
+            )}
+            {isBusy
+              ? t('savedCourses.saving')
+              : isSaved
+              ? t('savedCourses.saved')
+              : saveState === 'failed'
+              ? t('savedCourses.saveFailed')
+              : t('savedCourses.save')}
+          </button>
+        </div>
+      )}
     </div>
   );
 }

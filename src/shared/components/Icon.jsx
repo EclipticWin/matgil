@@ -295,6 +295,14 @@ export function GoogleIcon({ size = 22 }) {
   );
 }
 
+export function TrashIcon(p) {
+  return (
+    <Svg vb="0 0 18 18" {...p}>
+      <path d="M3 5h12M7 5V3h4v2M7 8v6M11 8v6M4 5l1 10h8l1-10" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
+    </Svg>
+  );
+}
+
 export function LocateIcon(p) {
   return (
     <Svg vb="0 0 24 24" {...p}>

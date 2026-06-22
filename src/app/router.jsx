@@ -11,6 +11,7 @@ import LoadingPage from '../pages/LoadingPage.jsx';
 import ResultPage from '../pages/ResultPage.jsx';
 import CoursesPage from '../pages/CoursesPage.jsx';
 import CourseDetailPage from '../pages/CourseDetailPage.jsx';
+import SavedCourseDetailPage from '../pages/SavedCourseDetailPage.jsx';
 import CommunityPage from '../pages/CommunityPage.jsx';
 import PhrasesPage from '../pages/PhrasesPage.jsx';
 import PopularPage from '../pages/PopularPage.jsx';
@@ -33,6 +34,7 @@ export default function AppRouter() {
       <Route path={ROUTES.loading} element={<LoadingPage />} />
       <Route path={ROUTES.result} element={<ResultPage />} />
       <Route path={ROUTES.courseDetail(':id')} element={<CourseDetailPage />} />
+      <Route path="/saved-courses/:id" element={<SavedCourseDetailPage />} />
 
       <Route element={<AppLayout />}>
         <Route path={ROUTES.home} element={<HomePage />} />
