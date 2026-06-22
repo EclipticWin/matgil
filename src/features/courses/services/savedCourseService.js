@@ -20,6 +20,7 @@ export async function saveCourse({ userId, locale, course, selectedLocation, met
 
   const courseSnapshot = {
     ...course,
+    anchor_label: selectedLocation?.label ?? '',
     normalizedMetrics: {
       totalDistanceM,
       totalDurationMin,

@@ -3,6 +3,7 @@ import { useNavigate, useParams, Navigate } from 'react-router-dom';
 import { useAuth } from '../features/auth/hooks/useAuth.jsx';
 import { fetchSavedCourseById } from '../features/courses/services/savedCourseService.js';
 import { formatCourseDistance, formatCourseDuration } from '../features/courses/utils/courseMetrics.js';
+import { normalizeSavedCourseForDisplay } from '../features/courses/utils/courseDisplay.js';
 import { ROUTES } from '../shared/constants/routes.js';
 import Thumbnail from '../shared/components/Thumbnail.jsx';
 import Button from '../shared/components/Button.jsx';
@@ -61,17 +62,22 @@ export default function SavedCourseDetailPage() {
     );
   }
 
-  const snapshot = savedCourse.course_snapshot ?? {};
-  const stops = savedCourse.stops ?? snapshot.stops ?? [];
-  const stopCount = savedCourse.stop_count ?? stops.length;
+  const display = normalizeSavedCourseForDisplay(savedCourse, locale);
+  const snapshot = display.course_snapshot ?? {};
+  const stops = display.stops ?? [];
+  const stopCount = display.stop_count ?? stops.length;
 
-  const distM = savedCourse.total_distance_m ?? snapshot.normalizedMetrics?.totalDistanceM ?? null;
-  const durMin = savedCourse.total_duration_min ?? snapshot.normalizedMetrics?.totalDurationMin ?? null;
+  const distM = display.total_distance_m ?? snapshot.normalizedMetrics?.totalDistanceM ?? null;
+  const durMin = display.total_duration_min ?? snapshot.normalizedMetrics?.totalDurationMin ?? null;
   const displayDistance = distM != null ? formatCourseDistance(distM) : snapshot.km ?? '—';
   const displayDuration = durMin != null ? formatCourseDuration(durMin, locale) : snapshot.hr ?? '—';
 
   function handleViewOnMap() {
-    navigate(ROUTES.home, { state: { savedCourse: snapshot } });
+    // Pass raw snapshot with anchor_label so NearbySheet can re-localize
+    const rawSnap = savedCourse.course_snapshot ?? {};
+    navigate(ROUTES.home, {
+      state: { savedCourse: { ...rawSnap, anchor_label: savedCourse.anchor_label ?? rawSnap.anchor_label ?? '' } },
+    });
   }
 
   return (
@@ -91,7 +97,7 @@ export default function SavedCourseDetailPage() {
             {t('savedCourses.title')}
           </div>
           <h1 className="mt-[0.4375rem] font-display text-[1.75rem] font-bold leading-[1.05] tracking-tight">
-            {savedCourse.title}
+            {display.title}
           </h1>
           <div className="mt-3 flex items-center gap-4 text-[0.8125rem] font-semibold">
             <span className="inline-flex items-center gap-1.5">

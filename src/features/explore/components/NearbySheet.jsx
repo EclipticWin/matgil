@@ -8,6 +8,7 @@ import { cn } from '../../../shared/utils/classNames.js';
 import { useLocale } from '../../../shared/i18n/LocaleProvider.jsx';
 import { useAuth } from '../../auth/hooks/useAuth.jsx';
 import { saveCourse, checkCourseAlreadySaved, fetchSavedCourses, isSameCourse } from '../../courses/services/savedCourseService.js';
+import { localizeSnapshotForDisplay } from '../../courses/utils/courseDisplay.js';
 import { normalizeCourseMetrics } from '../../courses/utils/courseMetrics.js';
 import { ROUTES } from '../../../shared/constants/routes.js';
 
@@ -94,10 +95,11 @@ export default function NearbySheet({
     return () => obs.disconnect();
   }, [courses, loadingMore, visibleCount]);
 
-  // Auto-open saved course when arriving from SavedCourseDetailPage
+  // Auto-open saved course when arriving from SavedCourseDetailPage — re-localize to current locale
   useEffect(() => {
     if (!initialCourse) return;
-    openDetail(initialCourse);
+    const localized = localizeSnapshotForDisplay(initialCourse, locale) ?? initialCourse;
+    openDetail(localized);
   }, [initialCourse]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Close detail when selected location changes (prevents stale course display on hot place switch)

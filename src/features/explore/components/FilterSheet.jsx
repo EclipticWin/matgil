@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { CATEGORIES, PRICES, FEATURES, EMPTY_FILTERS, filterCount } from '../data/exploreOptions.js';
+import { CATEGORIES, EMPTY_FILTERS, filterCount } from '../data/exploreOptions.js';
 import CategoryIcon from './CategoryIcon.jsx';
 import { cn } from '../../../shared/utils/classNames.js';
 import { useLocale } from '../../../shared/i18n/LocaleProvider.jsx';
@@ -46,12 +46,6 @@ export default function FilterSheet({ value, onApply, onClose }) {
     setCatLimitHit(false);
     if (limitTimerRef.current) { clearTimeout(limitTimerRef.current); limitTimerRef.current = null; }
   };
-
-  const toggleArr = (key, val) =>
-    setDraft((d) => {
-      const a = d[key];
-      return { ...d, [key]: a.includes(val) ? a.filter((x) => x !== val) : [...a, val] };
-    });
 
   return (
     <>
@@ -117,26 +111,6 @@ export default function FilterSheet({ value, onApply, onClose }) {
           })}
         </div>
 
-        <SectionLabel>{t('filter.price')}</SectionLabel>
-        <div className="flex gap-2">
-          {PRICES.map((p) => {
-            const active = draft.price.includes(p);
-            return (
-              <Pill key={p} active={active} onClick={() => toggleArr('price', p)}>
-                <span className={cn('font-extrabold', active ? 'text-white' : 'text-green')}>{p}</span>
-              </Pill>
-            );
-          })}
-        </div>
-
-        <SectionLabel>{t('filter.goodFor')}</SectionLabel>
-        <div className="flex flex-wrap gap-2">
-          {FEATURES.map((f) => (
-            <Pill key={f.id} active={draft.features.includes(f.id)} onClick={() => toggleArr('features', f.id)}>
-              {locale === 'ko' ? (f.labelKo ?? f.label) : f.label}
-            </Pill>
-          ))}
-        </div>
       </div>
 
       <div className="shrink-0 border-t border-ink/5 px-5 pb-7 pt-3">

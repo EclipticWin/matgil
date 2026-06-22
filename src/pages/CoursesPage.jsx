@@ -11,6 +11,7 @@ import { RouteIcon, TrashIcon } from '../shared/components/Icon.jsx';
 import { useLocale } from '../shared/i18n/LocaleProvider.jsx';
 import { ROUTES } from '../shared/constants/routes.js';
 import { formatCourseDistance, formatCourseDuration } from '../features/courses/utils/courseMetrics.js';
+import { getLocalizedCourseTitle } from '../features/courses/utils/courseDisplay.js';
 
 function formatSavedDate(iso, locale) {
   if (!iso) return '';
@@ -81,10 +82,12 @@ export default function CoursesPage() {
         <div className="mt-5 flex flex-col gap-4">
           {courses.map((saved) => {
             const snapshot = saved.course_snapshot ?? {};
+            const rawStops = saved.stops ?? snapshot.stops ?? [];
+            const anchorLabel = saved.anchor_label ?? snapshot.anchor_label ?? '';
             const adaptedCourse = {
               id: saved.id,
-              title: saved.title,
-              stops: saved.stops ?? snapshot.stops ?? [],
+              title: getLocalizedCourseTitle(rawStops, anchorLabel, locale),
+              stops: rawStops,
               totalDistanceM: saved.total_distance_m,
               totalDurationMin: saved.total_duration_min,
               accent: snapshot.accent ?? '#F8481F',
