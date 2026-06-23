@@ -318,6 +318,88 @@ const setLocale = useCallback((code) => {
 - 계정 A 재로그인 → 계정 A preferred_locale 복원
 ```
 
+### 비밀번호 변경 기능 추가 (후속 작업 — 2026-06-23)
+
+#### 수정 파일
+
+```
+src/features/profile/components/EditProfileSheet.jsx
+src/features/auth/hooks/useAuth.jsx
+src/pages/MyPage.jsx
+src/shared/i18n/dictionary.js
+```
+
+#### 변경 내용
+
+닉네임만 변경 가능하던 `EditProfileSheet`에 비밀번호 변경 섹션을 추가했다.
+
+**EditProfileSheet 구조 변경**
+
+닉네임 입력 아래에 구분선(`border-t border-stone-100`)을 삽입하고, 그 아래 비밀번호 필드 2개를 추가했다:
+
+```
+닉네임 입력
+─────────────────
+새 비밀번호 입력
+비밀번호 확인 입력
+```
+
+**유효성 검사 로직**
+
+```js
+const pwEmpty = newPw === '' && confirmPw === '';
+const pwTooShort = newPw.length > 0 && newPw.length < 6;
+const pwMismatch = confirmPw.length > 0 && newPw !== confirmPw;
+const pwValid = newPw.length >= 6 && newPw === confirmPw;
+const canSave = nameValid && (pwEmpty || pwValid) && !busy;
+```
+
+- 비밀번호 필드가 모두 비어 있으면 닉네임만 저장
+- 비밀번호를 입력한 경우에만 유효성 검사 (6자 이상, 두 필드 일치)
+- 인라인 에러: `my.passwordTooShort`, `my.passwordMismatch` 키 사용
+
+**저장 호출 방식 변경**
+
+기존 `onSave(trimmed)` → `onSave({ displayName: trimmed, newPassword: pwEmpty ? '' : newPw })`
+
+**useAuth.jsx — updatePassword 추가**
+
+```js
+const updatePassword = useCallback(async (newPassword) => {
+  const { error } = await supabase.auth.updateUser({ password: newPassword });
+  if (error) throw error;
+}, []);
+```
+
+**MyPage.jsx — handleSaveProfile 변경**
+
+```js
+const handleSaveProfile = useCallback(async ({ displayName, newPassword }) => {
+  if (displayName !== user.name) {
+    await updateDisplayName(displayName);
+  }
+  if (newPassword) {
+    await updatePassword(newPassword);
+  }
+  setEditingProfile(false);
+  setToast(t('my.profileUpdated'));
+  setTimeout(() => setToast(''), 3000);
+}, [updateDisplayName, updatePassword, user, t]);
+```
+
+- 닉네임은 변경된 경우에만 API 호출
+- 비밀번호는 입력된 경우에만 API 호출
+
+**dictionary.js 추가 키 (EN/KO)**
+
+```
+my.newPassword          — 새 비밀번호 / New password
+my.confirmPassword      — 비밀번호 확인 / Confirm password
+my.passwordMismatch     — 비밀번호가 일치하지 않습니다 / Passwords do not match
+my.passwordTooShort     — 비밀번호는 6자 이상이어야 합니다 / Password must be at least 6 characters
+my.passwordUpdateFailed — 비밀번호 변경에 실패했습니다 / Failed to update password
+```
+
 ---
 
 ## 5. MyPage UI 마감
