@@ -1,5 +1,19 @@
 import { PRESET_LOCATIONS } from '../../explore/data/locations.js';
 
+/**
+ * Returns a short distance string for a course stop.
+ * e.g. "250 m" or "1.4 km". Returns null when distanceKm is unavailable.
+ * Falls back to stop.address if present.
+ */
+export function formatStopDistance(stop) {
+  if (stop.distanceKm != null) {
+    return stop.distanceKm < 1
+      ? `${Math.round(stop.distanceKm * 1000)} m`
+      : `${stop.distanceKm.toFixed(1)} km`;
+  }
+  return stop.address ?? null;
+}
+
 const ANCHOR_LABEL_KO = {
   'Selected area': '선택한 지역',
   'Current location': '현재 위치',

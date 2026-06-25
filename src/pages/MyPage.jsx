@@ -8,27 +8,13 @@ import { LANGUAGES } from '../features/explore/data/exploreOptions.js';
 import EditProfileSheet from '../features/profile/components/EditProfileSheet.jsx';
 import LikedPostsView from '../features/profile/components/LikedPostsView.jsx';
 import MyPostsView from '../features/profile/components/MyPostsView.jsx';
+import StatCard from '../features/profile/components/StatCard.jsx';
 import Card from '../shared/components/Card.jsx';
 import PageHeader from '../shared/components/PageHeader.jsx';
 import PageShell from '../shared/components/PageShell.jsx';
 import { ROUTES } from '../shared/constants/routes.js';
 import { useLocale } from '../shared/i18n/LocaleProvider.jsx';
 import { avatarGradient } from '../shared/utils/avatarColor.js';
-
-function StatCard({ value, label, onClick, valueClassName }) {
-  return (
-    <Card as="button" onClick={onClick} className="flex-1 active:opacity-80">
-      <div className="flex flex-col items-center justify-center px-1 py-4">
-        <div className="line-clamp-2 text-center text-[0.7rem] font-semibold leading-tight text-ink-soft">
-          {label}
-        </div>
-        <div className={`mt-1 font-display font-bold text-coral ${valueClassName ?? 'text-2xl'}`}>
-          {value === null ? '–' : value}
-        </div>
-      </div>
-    </Card>
-  );
-}
 
 export default function MyPage() {
   const { user, logout, loading, updateDisplayName, updatePassword } = useAuth();

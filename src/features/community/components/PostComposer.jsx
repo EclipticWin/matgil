@@ -4,15 +4,7 @@ import Button from '../../../shared/components/Button.jsx';
 import { CloseIcon } from '../../../shared/components/Icon.jsx';
 import { useLocale } from '../../../shared/i18n/LocaleProvider.jsx';
 import { uploadPostImages } from '../services/communityService.js';
-
-const WRITE_CATEGORIES = [
-  { key: 'general',  label: 'General',  labelKo: '일반' },
-  { key: 'question', label: 'Question', labelKo: '질문' },
-  { key: 'review',   label: 'Review',   labelKo: '후기' },
-  { key: 'tips',     label: 'Tips',     labelKo: '팁' },
-  { key: 'food',     label: 'Food',     labelKo: '음식' },
-  { key: 'routes',   label: 'Routes',   labelKo: '동선' },
-];
+import { WRITE_CATEGORIES } from '../data/communityConstants.js';
 
 export default function PostComposer({
   onSubmit,

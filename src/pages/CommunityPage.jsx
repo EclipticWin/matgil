@@ -2,7 +2,6 @@ import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../features/auth/hooks/useAuth.jsx';
 import { COMMUNITY_POSTS, filterPosts } from '../features/community/data/communityPosts.js';
-import { formatRelativeOrAbsolute } from '../shared/utils/formatTime.js';
 import {
   fetchPosts,
   createPost,
@@ -11,7 +10,7 @@ import {
   fetchLikedPostIds,
   likePost,
   unlikePost,
-  normalizeCommunityImageUrls,
+  normalizeDbPost,
 } from '../features/community/services/communityService.js';
 import CommunityTabs from '../features/community/components/CommunityTabs.jsx';
 import PostCard from '../features/community/components/PostCard.jsx';
@@ -21,26 +20,6 @@ import { PencilIcon } from '../shared/components/Icon.jsx';
 import PageHeader from '../shared/components/PageHeader.jsx';
 import { ROUTES } from '../shared/constants/routes.js';
 import { useLocale } from '../shared/i18n/LocaleProvider.jsx';
-
-const POST_TINTS = ['#FFE3D4', '#FFEFC9', '#E6E9F7', '#E2F1DE'];
-
-function normalizeDbPost(p, i) {
-  return {
-    id: String(p.id),
-    userId: String(p.user_id),
-    kind: p.category,
-    author: p.author_name || 'Traveller',
-    from: p.country || '',
-    ago: formatRelativeOrAbsolute(p.created_at),
-    text: p.content,
-    place: null,
-    likes: p.like_count ?? 0,
-    comments: p.comment_count ?? 0,
-    photo: false,
-    tint: POST_TINTS[i % POST_TINTS.length],
-    imageUrls: normalizeCommunityImageUrls(p.image_urls),
-  };
-}
 
 export default function CommunityPage() {
   const { user } = useAuth();

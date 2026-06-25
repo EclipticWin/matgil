@@ -3,10 +3,11 @@ import { useNavigate, useParams, Navigate } from 'react-router-dom';
 import { useAuth } from '../features/auth/hooks/useAuth.jsx';
 import { fetchSavedCourseById } from '../features/courses/services/savedCourseService.js';
 import { formatCourseDistance, formatCourseDuration } from '../features/courses/utils/courseMetrics.js';
-import { normalizeSavedCourseForDisplay } from '../features/courses/utils/courseDisplay.js';
+import { normalizeSavedCourseForDisplay, formatStopDistance } from '../features/courses/utils/courseDisplay.js';
 import { ROUTES } from '../shared/constants/routes.js';
 import Thumbnail from '../shared/components/Thumbnail.jsx';
 import Button from '../shared/components/Button.jsx';
+import Spinner from '../shared/components/Spinner.jsx';
 import {
   BackIcon,
   PinIcon,
@@ -16,15 +17,6 @@ import {
   ChevronRightIcon,
 } from '../shared/components/Icon.jsx';
 import { useLocale } from '../shared/i18n/LocaleProvider.jsx';
-
-function distLabel(stop) {
-  if (stop.distanceKm != null) {
-    return stop.distanceKm < 1
-      ? `${Math.round(stop.distanceKm * 1000)} m`
-      : `${stop.distanceKm.toFixed(1)} km`;
-  }
-  return stop.address ?? null;
-}
 
 export default function SavedCourseDetailPage() {
   const { id } = useParams();
@@ -57,7 +49,7 @@ export default function SavedCourseDetailPage() {
   if (fetchLoading || authLoading) {
     return (
       <div className="flex h-full items-center justify-center bg-paper-soft">
-        <div className="h-8 w-8 animate-spin rounded-full border-2 border-ink/10 border-t-ink/30" />
+        <Spinner className="h-8 w-8 border-ink/10 border-t-ink/30" />
       </div>
     );
   }
@@ -129,7 +121,7 @@ export default function SavedCourseDetailPage() {
 
             {stops.map((stop, i) => {
               const subtitle = stop.firstMenu || t('courseDetail.restaurantFallback');
-              const dist = distLabel(stop);
+              const dist = formatStopDistance(stop);
 
               return (
                 <div key={stop.id ?? i} className="relative flex items-center gap-5">

@@ -1,4 +1,6 @@
 import { supabase } from '../../../lib/supabase.js';
+import { formatRelativeOrAbsolute } from '../../../shared/utils/formatTime.js';
+import { POST_TINTS } from '../data/communityConstants.js';
 
 export async function fetchPosts({ locale, popular = false } = {}) {
   let query = supabase
@@ -300,4 +302,27 @@ export async function softDeletePosts(ids, userId) {
     .in('id', ids.map(Number))
     .eq('user_id', userId);
   if (error) throw error;
+}
+
+/**
+ * Converts a raw DB post row into the normalized shape used by PostCard.
+ * @param {object} p - raw row from mg_community_posts
+ * @param {number} i - index (used for tint cycling)
+ */
+export function normalizeDbPost(p, i) {
+  return {
+    id: String(p.id),
+    userId: String(p.user_id),
+    kind: p.category,
+    author: p.author_name || 'Traveller',
+    from: p.country || '',
+    ago: formatRelativeOrAbsolute(p.created_at),
+    text: p.content,
+    place: null,
+    likes: p.like_count ?? 0,
+    comments: p.comment_count ?? 0,
+    photo: false,
+    tint: POST_TINTS[i % POST_TINTS.length],
+    imageUrls: normalizeCommunityImageUrls(p.image_urls),
+  };
 }

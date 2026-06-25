@@ -34,7 +34,7 @@ export default function AppRouter() {
       <Route path={ROUTES.loading} element={<LoadingPage />} />
       <Route path={ROUTES.result} element={<ResultPage />} />
       <Route path={ROUTES.courseDetail(':id')} element={<CourseDetailPage />} />
-      <Route path="/saved-courses/:id" element={<SavedCourseDetailPage />} />
+      <Route path={ROUTES.savedCourseDetail(':id')} element={<SavedCourseDetailPage />} />
 
       <Route element={<AppLayout />}>
         <Route path={ROUTES.home} element={<HomePage />} />

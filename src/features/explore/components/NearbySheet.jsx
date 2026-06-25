@@ -11,23 +11,13 @@ import { saveCourse, checkCourseAlreadySaved, fetchSavedCourses, isSameCourse } 
 import { localizeSnapshotForDisplay } from '../../courses/utils/courseDisplay.js';
 import { normalizeCourseMetrics } from '../../courses/utils/courseMetrics.js';
 import { ROUTES } from '../../../shared/constants/routes.js';
+import { findScrollParent } from '../../../shared/utils/dom.js';
+import Spinner from '../../../shared/components/Spinner.jsx';
 
 const INITIAL_VISIBLE = 3;
 const LOAD_BATCH = 3;
 const DRAG_THRESHOLD = 7;
 const FULL_TOP_OFFSET_PX = 12;
-
-function findScrollParent(startEl, boundary) {
-  let node = startEl;
-  while (node && node !== boundary) {
-    const oy = window.getComputedStyle(node).overflowY;
-    if ((oy === 'auto' || oy === 'scroll') && node.scrollHeight > node.clientHeight) {
-      return node;
-    }
-    node = node.parentElement;
-  }
-  return null;
-}
 
 const GPS_STATUSES = new Set(['denied', 'error', 'unsupported']);
 
@@ -301,7 +291,7 @@ export default function NearbySheet({
           )}
         >
           {gpsStatus === 'loading' ? (
-            <div className="h-5 w-5 animate-spin rounded-full border-2 border-ink/10 border-t-ink/35" />
+            <Spinner className="h-5 w-5 border-ink/10 border-t-ink/35" />
           ) : (
             <LocateIcon size={20} />
           )}
@@ -415,7 +405,7 @@ export default function NearbySheet({
 
                       {loadingMore && (
                         <div className="flex justify-center py-4">
-                          <div className="h-7 w-7 animate-spin rounded-full border-2 border-ink/10 border-t-ink/30" />
+                          <Spinner className="h-7 w-7 border-ink/10 border-t-ink/30" />
                         </div>
                       )}
                     </>
@@ -423,7 +413,7 @@ export default function NearbySheet({
                 })()
               ) : isLoading ? (
                 <div className="flex flex-col items-center justify-center px-4 py-12 text-center">
-                  <div className="mb-3 h-8 w-8 animate-spin rounded-full border-2 border-ink/10 border-t-ink/30" />
+                  <Spinner className="mb-3 h-8 w-8 border-ink/10 border-t-ink/30" />
                   <p className="text-[0.85rem] text-ink-faint">{t('nearby.loading')}</p>
                 </div>
               ) : (

@@ -1,20 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
+import { findScrollParent } from '../../../shared/utils/dom.js';
 
 const DRAG_THRESHOLD = 7;    // px vertical before tap becomes drag
 const CLOSE_THRESHOLD = 80;  // px downward before release triggers close
-
-/** Walk up the DOM from startEl to boundary returning first scrollable ancestor. */
-function findScrollParent(startEl, boundary) {
-  let node = startEl;
-  while (node && node !== boundary) {
-    const oy = window.getComputedStyle(node).overflowY;
-    if ((oy === 'auto' || oy === 'scroll') && node.scrollHeight > node.clientHeight) {
-      return node;
-    }
-    node = node.parentElement;
-  }
-  return null;
-}
 
 /**
  * Overlay shell for bottom-sheet and center modals.

@@ -7,20 +7,13 @@ import PageShell from '../shared/components/PageShell.jsx';
 import PageHeader from '../shared/components/PageHeader.jsx';
 import EmptyState from '../shared/components/EmptyState.jsx';
 import Button from '../shared/components/Button.jsx';
+import Spinner from '../shared/components/Spinner.jsx';
 import { RouteIcon, TrashIcon } from '../shared/components/Icon.jsx';
 import { useLocale } from '../shared/i18n/LocaleProvider.jsx';
 import { ROUTES } from '../shared/constants/routes.js';
 import { formatCourseDistance, formatCourseDuration } from '../features/courses/utils/courseMetrics.js';
 import { getLocalizedCourseTitle } from '../features/courses/utils/courseDisplay.js';
-
-function formatSavedDate(iso, locale) {
-  if (!iso) return '';
-  return new Date(iso).toLocaleDateString(locale === 'ko' ? 'ko-KR' : 'en-US', {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-  });
-}
+import { formatSavedDate } from '../shared/utils/formatDate.js';
 
 export default function CoursesPage() {
   const { t, locale } = useLocale();
@@ -63,7 +56,7 @@ export default function CoursesPage() {
       {/* 로딩 */}
       {user && loading && (
         <div className="flex justify-center py-16">
-          <div className="h-8 w-8 animate-spin rounded-full border-2 border-ink/10 border-t-ink/30" />
+          <Spinner className="h-8 w-8 border-ink/10 border-t-ink/30" />
         </div>
       )}
 

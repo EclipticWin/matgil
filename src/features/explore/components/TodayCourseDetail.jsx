@@ -10,15 +10,8 @@ import {
 } from '../../../shared/components/Icon.jsx';
 import { useLocale } from '../../../shared/i18n/LocaleProvider.jsx';
 import { getDisplayMetrics } from '../../courses/utils/courseMetrics.js';
-
-function distLabel(stop) {
-  if (stop.distanceKm != null) {
-    return stop.distanceKm < 1
-      ? `${Math.round(stop.distanceKm * 1000)} m`
-      : `${stop.distanceKm.toFixed(1)} km`;
-  }
-  return stop.address ?? null;
-}
+import { formatStopDistance } from '../../courses/utils/courseDisplay.js';
+import Spinner from '../../../shared/components/Spinner.jsx';
 
 /** Map Bottom Sheet 내부 코스 상세 콘텐츠.
  *  onSave: () => void — save button callback (omit to hide button)
@@ -85,7 +78,7 @@ export default function TodayCourseDetail({ course, selectedLocation, onBack, on
 
           {course.stops.map((stop, i) => {
             const subtitle = stop.firstMenu || t('courseDetail.restaurantFallback');
-            const dist = distLabel(stop);
+            const dist = formatStopDistance(stop);
 
             return (
               <button
@@ -138,7 +131,7 @@ export default function TodayCourseDetail({ course, selectedLocation, onBack, on
             ].join(' ')}
           >
             {isBusy ? (
-              <div className="h-5 w-5 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+              <Spinner className="h-5 w-5 border-white/30 border-t-white" />
             ) : isSaved ? (
               <CheckIcon size={18} />
             ) : (
