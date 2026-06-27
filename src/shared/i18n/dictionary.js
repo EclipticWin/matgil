@@ -103,6 +103,11 @@ export const DICTIONARY = {
       meaning: 'Meaning',
       suggestedReply: 'Suggested reply',
       voiceFailed: 'Could not analyze. Please try again.',
+      bookmark: 'Save phrase',
+      bookmarkRemove: 'Remove saved phrase',
+      bookmarked: 'Saved',
+      loginToBookmark: 'Log in to save phrases.',
+      loadError: 'Could not load phrases.',
     },
     location: {
       title: 'Choose a hot place',
@@ -344,6 +349,11 @@ export const DICTIONARY = {
       meaning: '의미',
       suggestedReply: '추천 답변',
       voiceFailed: '분석하지 못했습니다. 다시 시도해주세요.',
+      bookmark: '표현 저장',
+      bookmarkRemove: '저장 해제',
+      bookmarked: '저장됨',
+      loginToBookmark: '로그인 후 표현을 저장할 수 있습니다.',
+      loadError: '표현을 불러오지 못했습니다.',
     },
     location: {
       title: '기준 위치 선택',
