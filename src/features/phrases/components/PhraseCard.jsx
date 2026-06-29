@@ -41,26 +41,19 @@ export default function PhraseCard({ phrase, onBookmark }) {
       </div>
       <div className="flex shrink-0 items-center gap-1.5">
         {onBookmark && (
-          <div className="flex flex-col items-center gap-0.5">
-            <button
-              type="button"
-              aria-label={phrase.isBookmarked ? 'Remove saved phrase' : 'Save phrase'}
-              onClick={handleBookmark}
-              disabled={bookmarking}
-              className={cn(
-                'flex h-9 w-9 items-center justify-center rounded-xl transition-transform active:scale-90',
-                phrase.isBookmarked ? 'text-coral' : 'text-ink-faint',
-                bookmarking && 'opacity-50',
-              )}
-            >
-              <HeartIcon active={phrase.isBookmarked} size={20} />
-            </button>
-            {phrase.bookmarkCount > 0 && (
-              <span className="text-[0.65rem] leading-none text-ink-faint">
-                {phrase.bookmarkCount}
-              </span>
+          <button
+            type="button"
+            aria-label={phrase.isBookmarked ? 'Remove saved phrase' : 'Save phrase'}
+            onClick={handleBookmark}
+            disabled={bookmarking}
+            className={cn(
+              'flex h-9 w-9 items-center justify-center rounded-xl transition-transform active:scale-90',
+              phrase.isBookmarked ? 'text-coral' : 'text-ink-faint',
+              bookmarking && 'opacity-50',
             )}
-          </div>
+          >
+            <HeartIcon active={phrase.isBookmarked} size={20} />
+          </button>
         )}
         <button
           type="button"

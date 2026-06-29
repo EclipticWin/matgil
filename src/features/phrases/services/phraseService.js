@@ -25,6 +25,25 @@ export async function fetchPhrasesByCategory(category) {
   return data ?? [];
 }
 
+export async function fetchPopularPhrases({ category = 'all', limit = 10 } = {}) {
+  let query = supabase
+    .from('mg_phrases')
+    .select('id, phrase_key, category, ko_text, romanization, en_text, note, bookmark_count, sort_order')
+    .eq('is_active', true)
+    .gt('bookmark_count', 0)
+    .order('bookmark_count', { ascending: false })
+    .order('id', { ascending: true })
+    .limit(limit);
+
+  if (category !== 'all') {
+    query = query.eq('category', category);
+  }
+
+  const { data, error } = await query;
+  if (error) throw error;
+  return data ?? [];
+}
+
 export function normalizePhrase(row, bookmarkedIds = []) {
   return {
     id: row.id,
