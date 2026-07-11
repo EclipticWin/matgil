@@ -33,6 +33,7 @@ export const DICTIONARY = {
       distFrom: '{dist} from {location}',
     },
     filter: {
+      all: 'All',
       title: 'Filters',
       reset: 'Reset',
       foodType: 'Food type',
@@ -57,13 +58,6 @@ export const DICTIONARY = {
         title: 'Location is not supported in this browser.',
         body: null,
       },
-    },
-    courseTitle: {
-      cafeAndBites: '{location} Cafe & Bites',
-      streetFood: '{location} Street Food Tour',
-      bbq: '{location} Korean BBQ Route',
-      noodle: '{location} Noodle Walk',
-      default: '{location} Food Walk',
     },
     courses: {
       title: 'Food courses',
@@ -285,6 +279,7 @@ export const DICTIONARY = {
       distFrom: '{location}에서 {dist}',
     },
     filter: {
+      all: '전체',
       title: '필터',
       reset: '초기화',
       foodType: '음식 종류',
@@ -309,13 +304,6 @@ export const DICTIONARY = {
         title: '이 브라우저에서는 위치 기능을 지원하지 않습니다.',
         body: null,
       },
-    },
-    courseTitle: {
-      cafeAndBites: '{location} 카페 & 맛집',
-      streetFood: '{location} 길거리 음식 탐방',
-      bbq: '{location} 한국식 BBQ 동선',
-      noodle: '{location} 면 요리 동선',
-      default: '{location} 맛집 동선',
     },
     courses: {
       title: '동선 코스',

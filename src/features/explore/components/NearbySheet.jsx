@@ -115,7 +115,7 @@ export default function NearbySheet({
     if (!user) { setSaveState('idle'); return; }
 
     setSaveState('checking');
-    checkCourseAlreadySaved({ userId: user.id, title: selectedCourse.title })
+    checkCourseAlreadySaved({ userId: user.id, course: selectedCourse })
       .then((already) => setSaveState(already ? 'saved' : 'idle'))
       .catch(() => setSaveState('idle'));
   }, [selectedCourse?.id, user?.id]); // eslint-disable-line react-hooks/exhaustive-deps

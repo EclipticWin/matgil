@@ -1,4 +1,5 @@
 import { calcDistanceKm } from './locations.js';
+import { getLocalizedCourseTitle } from '../../courses/utils/courseDisplay.js';
 
 const DEFAULT_STOP_COUNT = 3;
 const COURSE_CANDIDATE_LIMIT = 20;
@@ -126,42 +127,6 @@ function calcScore(stops, selectedLocation, foodTypes) {
 
 // ─── title generation ────────────────────────────────────────────────────────
 
-const KO_TITLES = {
-  cafeAndBites: (loc) => `${loc} 카페 & 맛집`,
-  streetFood:   (loc) => `${loc} 길거리 음식 탐방`,
-  bbq:          (loc) => `${loc} 한국식 BBQ 동선`,
-  noodle:       (loc) => `${loc} 면 요리 동선`,
-  default:      (loc) => `${loc} 맛집 동선`,
-};
-
-const EN_TITLES = {
-  cafeAndBites: (loc) => `${loc} Cafe & Bites`,
-  streetFood:   (loc) => `${loc} Street Food Tour`,
-  bbq:          (loc) => `${loc} Korean BBQ Route`,
-  noodle:       (loc) => `${loc} Noodle Walk`,
-  default:      (loc) => `${loc} Food Walk`,
-};
-
-function makeTitle(stops, locationLabel, locale = 'en') {
-  const titles = locale === 'ko' ? KO_TITLES : EN_TITLES;
-  const allCats = stops.flatMap((s) => s.matgilCategoryKeys ?? []);
-  const hasCafe = allCats.includes('cafe');
-  const hasNonCafe = stops.some((s) =>
-    (s.matgilCategoryKeys ?? []).some((k) => k !== 'cafe' && k !== 'other'),
-  );
-  if (hasCafe && hasNonCafe) return titles.cafeAndBites(locationLabel);
-
-  const mealCats = allCats.filter((k) => k !== 'cafe' && k !== 'other');
-  const freq = {};
-  for (const cat of mealCats) freq[cat] = (freq[cat] ?? 0) + 1;
-  const dominant = Object.entries(freq).sort((a, b) => b[1] - a[1])[0]?.[0];
-
-  if (dominant === 'street') return titles.streetFood(locationLabel);
-  if (dominant === 'bbq')    return titles.bbq(locationLabel);
-  if (dominant === 'noodle') return titles.noodle(locationLabel);
-  return titles.default(locationLabel);
-}
-
 // ─── private: radius-tier candidate selection ─────────────────────────────────
 //
 // Tier 1 (≤2 km, ≥3 places): use only tier1.
@@ -236,8 +201,7 @@ function buildOneCourse(candidates, selectedLocation, foodTypes, courseId, accen
   }
 
   const { stops, score, dist } = chosen;
-  const locationLabel = (locale === 'ko' ? selectedLocation.labelKo : null) || selectedLocation.label;
-  const title = makeTitle(stops, locationLabel, locale);
+  const title = getLocalizedCourseTitle(stops, selectedLocation.label, locale);
 
   return {
     id: courseId,

@@ -1,6 +1,7 @@
 /** Category glyphs for the filter sheet. Each inherits `currentColor`, so set
  *  the colour with a Tailwind text-* class on the icon. */
 const PATHS = {
+  default: <circle cx="9" cy="9" r="5" fill="currentColor" />,
   all: (
     <>
       <rect x="2.5" y="2.5" width="5" height="5" rx="1.4" fill="currentColor" />
@@ -56,7 +57,7 @@ const PATHS = {
 export default function CategoryIcon({ name, size = 17, className }) {
   return (
     <svg width={size} height={size} viewBox="0 0 18 18" fill="none" className={className}>
-      {PATHS[name] || PATHS.all}
+      {PATHS[name] || PATHS.default}
     </svg>
   );
 }

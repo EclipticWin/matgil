@@ -74,22 +74,31 @@ export async function softDeleteSavedCourse({ userId, courseId }) {
   if (error) throw error;
 }
 
-export async function checkCourseAlreadySaved({ userId, title }) {
-  const { data } = await supabase
+function getCoursePlaceIds(course) {
+  return (course?.stops ?? [])
+    .map((stop) => Number(stop.id ?? stop.place_id ?? stop.placeId))
+    .filter((id) => Number.isFinite(id) && id > 0);
+}
+
+export async function checkCourseAlreadySaved({ userId, course }) {
+  const placeIds = getCoursePlaceIds(course);
+  if (placeIds.length === 0) return false;
+  const { data, error } = await supabase
     .from('mg_saved_courses')
-    .select('id')
+    .select('place_ids')
     .eq('user_id', userId)
     .is('deleted_at', null)
-    .eq('title', title)
-    .limit(1);
-  return Array.isArray(data) && data.length > 0;
+    .contains('place_ids', placeIds);
+  if (error) throw error;
+  return (data ?? []).some((row) => {
+    const savedIds = (row.place_ids ?? []).map(Number).filter((id) => Number.isFinite(id) && id > 0);
+    return savedIds.length === placeIds.length && placeIds.every((id, index) => id === savedIds[index]);
+  });
 }
 
 export function isSameCourse(course, savedRow) {
   try {
-    const courseIds = (course.stops ?? [])
-      .map((s) => Number(s.id ?? s.place_id ?? s.placeId))
-      .filter((id) => Number.isFinite(id) && id > 0);
+    const courseIds = getCoursePlaceIds(course);
     const savedIds = (savedRow.place_ids ?? [])
       .map((id) => Number(id))
       .filter((id) => Number.isFinite(id) && id > 0);

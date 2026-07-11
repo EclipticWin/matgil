@@ -22,7 +22,7 @@ const ANCHOR_LABEL_KO = {
 const KO_TITLE_TEMPLATES = {
   cafeAndBites: (loc) => `${loc} 카페 & 맛집`,
   streetFood:   (loc) => `${loc} 길거리 음식 탐방`,
-  bbq:          (loc) => `${loc} 한국식 BBQ 동선`,
+  bbq:          (loc) => `${loc} 고기 구이 동선`,
   noodle:       (loc) => `${loc} 면 요리 동선`,
   default:      (loc) => `${loc} 맛집 동선`,
 };

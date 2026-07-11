@@ -1,8 +1,9 @@
 import { useState, useRef, useEffect } from 'react';
-import { CATEGORIES, EMPTY_FILTERS, filterCount } from '../data/exploreOptions.js';
+import { EMPTY_FILTERS, filterCount } from '../data/exploreOptions.js';
 import CategoryIcon from './CategoryIcon.jsx';
 import { cn } from '../../../shared/utils/classNames.js';
 import { useLocale } from '../../../shared/i18n/LocaleProvider.jsx';
+import { useFoodCategories } from '../context/FoodCategoryProvider.jsx';
 
 function SectionLabel({ children }) {
   return (
@@ -31,6 +32,8 @@ function Pill({ active, onClick, children }) {
  *  commits on "Show results". */
 export default function FilterSheet({ value, onApply, onClose }) {
   const { locale, t } = useLocale();
+  const { filterCategories, getCategoryLabel, getCategoryIconKey } = useFoodCategories();
+  const categories = [{ key: 'all' }, ...filterCategories];
   const [draft, setDraft] = useState(value);
   const [catLimitHit, setCatLimitHit] = useState(false);
   const limitTimerRef = useRef(null);
@@ -75,7 +78,7 @@ export default function FilterSheet({ value, onApply, onClose }) {
       <div className="no-scrollbar flex-1 overflow-y-auto px-5 pb-2">
         <SectionLabel>{t('filter.foodType')}</SectionLabel>
         <div className="flex flex-wrap gap-2">
-          {CATEGORIES.map((c) => {
+          {categories.map((c) => {
             const isAll = c.key === 'all';
             const cur = Array.isArray(draft.cat) ? draft.cat : [];
             const active = isAll ? cur.length === 0 : cur.includes(c.key);
@@ -104,8 +107,8 @@ export default function FilterSheet({ value, onApply, onClose }) {
                   }
                 }}
               >
-                <CategoryIcon name={c.key} className={active ? 'text-white' : 'text-coral'} />
-                {locale === 'ko' ? (c.labelKo ?? c.label) : c.label}
+                <CategoryIcon name={isAll ? 'all' : getCategoryIconKey(c.key)} className={active ? 'text-white' : 'text-coral'} />
+                {isAll ? t('filter.all') : getCategoryLabel(c.key, locale)}
               </Pill>
             );
           })}

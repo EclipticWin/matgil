@@ -7,13 +7,7 @@ import {
 } from '../../../shared/components/Icon.jsx';
 import Thumbnail from '../../../shared/components/Thumbnail.jsx';
 import { useLocale } from '../../../shared/i18n/LocaleProvider.jsx';
-import { CATEGORIES } from '../data/exploreOptions.js';
-
-function categoryLabel(key, locale) {
-  const cat = CATEGORIES.find((c) => c.key === key);
-  if (!cat) return key;
-  return locale === 'ko' ? (cat.labelKo ?? cat.label) : cat.label;
-}
+import { useFoodCategories } from '../context/FoodCategoryProvider.jsx';
 
 // 사용자에게 보이면 안 되는 내부 상태성 태그
 const HIDDEN_TAGS = new Set([
@@ -54,11 +48,12 @@ function InfoRow({ label, value }) {
 
 export default function PlaceDetailSheet({ place, selectedLocation, onBack }) {
   const { locale, t } = useLocale();
+  const { categoryMap, getCategoryLabel } = useFoodCategories();
   const rawCategory = place.matgilCategoryKeys?.[0] ?? null;
   const subtitle =
     place.firstMenu ||
     place.tags?.find((tag) => !HIDDEN_TAGS.has(tag)) ||
-    (rawCategory ? categoryLabel(rawCategory, locale) : null);
+    (rawCategory ? getCategoryLabel(rawCategory, locale) : null);
 
   const raw = distRaw(place);
   const locationLabel = (locale === 'ko' ? selectedLocation?.labelKo : null) || selectedLocation?.label;
@@ -179,7 +174,7 @@ export default function PlaceDetailSheet({ place, selectedLocation, onBack }) {
                   key={chip}
                   className="rounded-xl bg-ink/5 px-3 py-1 text-xs font-semibold text-ink-soft"
                 >
-                  {categoryLabel(chip, locale)}
+                  {categoryMap.has(chip) ? getCategoryLabel(chip, locale) : chip}
                 </span>
               ))}
             </div>
