@@ -1,10 +1,10 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../hooks/useAuth.jsx';
 import Button from '../../../shared/components/Button.jsx';
-import { GoogleIcon, FacebookIcon, PinIcon } from '../../../shared/components/Icon.jsx';
+import { FacebookIcon, GoogleIcon, PinIcon } from '../../../shared/components/Icon.jsx';
 import { ROUTES } from '../../../shared/constants/routes.js';
 import { useLocale } from '../../../shared/i18n/LocaleProvider.jsx';
+import { useAuth } from '../hooks/useAuth.jsx';
 
 const inputClass =
   'h-[3.25rem] w-full rounded-2xl border-[1.5px] border-ink/10 bg-white px-4 text-[0.95rem] text-ink outline-none transition-colors placeholder:text-ink-faint focus:border-coral';
