@@ -1,13 +1,25 @@
 import { supabase } from '../../../lib/supabase.js';
 
 const REVIEW_IMAGE_BUCKET = 'place-review-images';
+export const REVIEW_IMAGE_MAX_COUNT = 3;
+const REVIEW_IMAGE_MAX_SIZE = 5 * 1024 * 1024;
+const REVIEW_IMAGE_EXT_BY_MIME = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp' };
+
+function reviewImagePublicUrl(storagePath) {
+  return supabase.storage.from(REVIEW_IMAGE_BUCKET).getPublicUrl(storagePath).data?.publicUrl ?? null;
+}
 
 function normalizeReview(row) {
   const images = (row.mg_place_review_images ?? [])
     .slice()
     .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
-    .map((img) => supabase.storage.from(REVIEW_IMAGE_BUCKET).getPublicUrl(img.storage_path).data?.publicUrl)
-    .filter(Boolean);
+    .map((img) => ({
+      id: img.id,
+      storagePath: img.storage_path,
+      sortOrder: img.sort_order,
+      url: reviewImagePublicUrl(img.storage_path),
+    }))
+    .filter((img) => !!img.url);
 
   return {
     id: row.id,
@@ -34,13 +46,26 @@ export async function fetchPlaceReviewStats(placeId) {
   return data;
 }
 
+/** Same stats as fetchPlaceReviewStats, batched for a list of places (e.g. Saved
+ *  Places cards) — one query regardless of list size, keyed by place_id. Places with
+ *  no reviews simply have no row in the view and are absent from the returned map. */
+export async function fetchPlaceReviewStatsBatch(placeIds) {
+  if (!placeIds || placeIds.length === 0) return new Map();
+  const { data, error } = await supabase
+    .from('mg_place_review_stats')
+    .select('*')
+    .in('place_id', placeIds);
+  if (error) throw error;
+  return new Map((data ?? []).map((row) => [row.place_id, row]));
+}
+
 /** Reviews for one place, newest first (created_at desc, id desc — matches the
  *  partial index backing this query). Pass `cursor` (the last row of the previous
  *  page) for cursor-based pagination instead of offset pagination. */
 export async function fetchPlaceReviews({ placeId, cursor = null, limit = 5 }) {
   let query = supabase
     .from('mg_place_reviews')
-    .select('*, mg_place_review_images(storage_path, sort_order)')
+    .select('*, mg_place_review_images(id, storage_path, sort_order)')
     .eq('place_id', placeId)
     .order('created_at', { ascending: false })
     .order('id', { ascending: false })
@@ -62,7 +87,7 @@ export async function fetchPlaceReviews({ placeId, cursor = null, limit = 5 }) {
 export async function fetchMyPlaceReview({ placeId, userId }) {
   const { data, error } = await supabase
     .from('mg_place_reviews')
-    .select('*, mg_place_review_images(storage_path, sort_order)')
+    .select('*, mg_place_review_images(id, storage_path, sort_order)')
     .eq('place_id', placeId)
     .eq('user_id', userId)
     .maybeSingle();
@@ -77,7 +102,7 @@ export async function createPlaceReview({ placeId, rating, content, uiLocale }) 
   const { data, error } = await supabase
     .from('mg_place_reviews')
     .insert({ place_id: placeId, rating, content: content || null, ui_locale: uiLocale })
-    .select('*, mg_place_review_images(storage_path, sort_order)')
+    .select('*, mg_place_review_images(id, storage_path, sort_order)')
     .single();
   if (error) throw error;
   return normalizeReview(data);
@@ -93,7 +118,7 @@ export async function updatePlaceReview({ reviewId, rating, content }) {
     .from('mg_place_reviews')
     .update({ rating, content: content || null })
     .eq('id', reviewId)
-    .select('*, mg_place_review_images(storage_path, sort_order)')
+    .select('*, mg_place_review_images(id, storage_path, sort_order)')
     .single();
   if (error) throw error;
   return normalizeReview(data);
@@ -121,4 +146,77 @@ export async function fetchPlaceRatingDistribution(placeId) {
     if (counts[row.rating] != null) counts[row.rating] += 1;
   }
   return counts;
+}
+
+/** Checks one selected file against the review-photo rules (JPEG/PNG/WebP, 5MB max).
+ *  Returns null when valid, or an error code ('invalidType' | 'tooLarge') otherwise. */
+export function validateReviewImageFile(file) {
+  if (!REVIEW_IMAGE_EXT_BY_MIME[file.type]) return 'invalidType';
+  if (file.size > REVIEW_IMAGE_MAX_SIZE) return 'tooLarge';
+  return null;
+}
+
+/** Uploads one already-validated file to Storage at {userId}/{reviewId}/{uuid}.{ext}
+ *  (required by the bucket's RLS policy), then inserts its metadata row. If the
+ *  metadata insert fails, the just-uploaded Storage file is removed so no orphan survives. */
+async function uploadOneReviewImage({ userId, reviewId, file, sortOrder }) {
+  const uuid = crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+  const ext = REVIEW_IMAGE_EXT_BY_MIME[file.type];
+  const storagePath = `${userId}/${reviewId}/${uuid}.${ext}`;
+
+  const { error: uploadError } = await supabase.storage
+    .from(REVIEW_IMAGE_BUCKET)
+    .upload(storagePath, file, { cacheControl: '3600', upsert: false });
+  if (uploadError) {
+    await supabase.storage.from(REVIEW_IMAGE_BUCKET).remove([storagePath]).catch(() => {});
+    throw uploadError;
+  }
+
+  const { data, error: insertError } = await supabase
+    .from('mg_place_review_images')
+    .insert({ review_id: reviewId, storage_path: storagePath, sort_order: sortOrder })
+    .select('id, storage_path, sort_order')
+    .single();
+  if (insertError) {
+    await supabase.storage.from(REVIEW_IMAGE_BUCKET).remove([storagePath]).catch(() => {});
+    throw insertError;
+  }
+
+  return {
+    id: data.id,
+    storagePath: data.storage_path,
+    sortOrder: data.sort_order,
+    url: reviewImagePublicUrl(data.storage_path),
+  };
+}
+
+/** Uploads a batch of new review photos in order, starting right after
+ *  `startSortOrder`. Stops at the first failure — photos already uploaded
+ *  (Storage + metadata both written) are kept as-is; the failed one and any
+ *  after it are simply not uploaded. Callers show a "some photos failed"
+ *  notice when `allSucceeded` is false rather than rolling back the batch. */
+export async function uploadReviewImages({ userId, reviewId, files, startSortOrder = 0 }) {
+  const uploaded = [];
+  for (let i = 0; i < files.length; i += 1) {
+    try {
+      // eslint-disable-next-line no-await-in-loop
+      const image = await uploadOneReviewImage({ userId, reviewId, file: files[i], sortOrder: startSortOrder + i });
+      uploaded.push(image);
+    } catch {
+      return { uploaded, allSucceeded: false };
+    }
+  }
+  return { uploaded, allSucceeded: true };
+}
+
+/** Removes one existing review photo: the Storage file first, then its metadata
+ *  row — never the reverse, so a Storage failure never leaves an orphaned file
+ *  behind (a DB-delete failure after a successful Storage removal just leaves a
+ *  stale row pointing at a gone file, which the caller can surface and retry). */
+export async function deleteReviewImage({ id, storagePath }) {
+  const { error: storageError } = await supabase.storage.from(REVIEW_IMAGE_BUCKET).remove([storagePath]);
+  if (storageError) throw storageError;
+
+  const { error: dbError } = await supabase.from('mg_place_review_images').delete().eq('id', id);
+  if (dbError) throw dbError;
 }

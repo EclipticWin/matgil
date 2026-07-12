@@ -1,7 +1,50 @@
 import { useEffect, useRef, useState } from 'react';
 import { StarIcon, UserIcon, MoreIcon } from '../../../shared/components/Icon.jsx';
-import Thumbnail from '../../../shared/components/Thumbnail.jsx';
 import { formatSavedDate } from '../../../shared/utils/formatDate.js';
+import ImageViewerModal from '../../community/components/ImageViewerModal.jsx';
+
+const GRID_COLS = { 1: 'grid-cols-1', 2: 'grid-cols-2', 3: 'grid-cols-3' };
+
+/** Photo grid for one review — 1 photo is shown wide, 2/3 photos as equal columns.
+ *  A photo that fails to load is hidden entirely rather than showing a broken-image
+ *  icon; the grid re-flows around whatever remains. Tapping a photo opens it in the
+ *  shared full-screen viewer (reused from the community feature). */
+function ReviewPhotoGrid({ images }) {
+  const [brokenKeys, setBrokenKeys] = useState(() => new Set());
+  const [viewerIndex, setViewerIndex] = useState(null);
+
+  const visible = images.filter((img, i) => !brokenKeys.has(img.id ?? i));
+  if (visible.length === 0) return null;
+
+  return (
+    <>
+      <div className={`mt-2.5 grid gap-1.5 ${GRID_COLS[visible.length] ?? 'grid-cols-3'}`}>
+        {visible.map((img, i) => (
+          <button
+            key={img.id ?? i}
+            type="button"
+            onClick={() => setViewerIndex(i)}
+            className={`overflow-hidden rounded-2xl bg-ink/5 ${visible.length === 1 ? 'aspect-[16/10]' : 'aspect-square'}`}
+          >
+            <img
+              src={img.url}
+              alt=""
+              className="h-full w-full object-cover"
+              onError={() => setBrokenKeys((prev) => new Set(prev).add(img.id ?? i))}
+            />
+          </button>
+        ))}
+      </div>
+      {viewerIndex != null && (
+        <ImageViewerModal
+          imageUrls={visible.map((img) => img.url)}
+          initialIndex={viewerIndex}
+          onClose={() => setViewerIndex(null)}
+        />
+      )}
+    </>
+  );
+}
 
 // Lets an open menu tell every other ReviewCard instance to close itself —
 // avoids lifting "which card's menu is open" state up to the list-rendering
@@ -13,7 +56,7 @@ const CLOSE_MENUS_EVENT = 'matgil:review-card-close-menus';
  *  is where stars still make sense. */
 function RatingBadge({ rating }) {
   return (
-    <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-coral-tint px-2 py-0.5 text-[0.75rem] font-bold text-coral-deep">
+    <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-coral-tint px-2 py-0.5 text-[0.75rem] font-bold text-coral">
       <StarIcon size={9} />
       {rating}
     </span>
@@ -119,16 +162,10 @@ export default function ReviewCard({ review, locale, t, isOwn = false, onEdit, o
         </div>
       </div>
 
+      {review.images.length > 0 && <ReviewPhotoGrid images={review.images} />}
+
       {review.content && (
         <p className="mt-2.5 text-sm leading-relaxed text-ink-soft [text-wrap:pretty]">{review.content}</p>
-      )}
-
-      {review.images.length > 0 && (
-        <div className="mt-2.5 flex gap-2">
-          {review.images.map((url, i) => (
-            <Thumbnail key={i} src={url} className="h-16 w-16" />
-          ))}
-        </div>
       )}
     </div>
   );

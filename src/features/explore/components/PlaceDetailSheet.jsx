@@ -129,6 +129,14 @@ export default function PlaceDetailSheet({ place, selectedLocation, onBack }) {
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deleteBusy, setDeleteBusy] = useState(false);
   const [deleteFailed, setDeleteFailed] = useState(false);
+  const [photoWarning, setPhotoWarning] = useState(false);
+
+  // 사진 일부 업로드 실패 안내 배너 — 잠시 보여준 뒤 자동으로 닫는다.
+  useEffect(() => {
+    if (!photoWarning) return;
+    const timer = setTimeout(() => setPhotoWarning(false), 5000);
+    return () => clearTimeout(timer);
+  }, [photoWarning]);
 
   // 로그인 사용자가 이 가게에 이미 가진 활성 리뷰. null이 아니면 "Write a review"
   // 버튼을 숨긴다 — DB가 1인 1활성 리뷰만 허용하므로, 조회가 끝나기 전에는(로딩 중)
@@ -316,10 +324,11 @@ export default function PlaceDetailSheet({ place, selectedLocation, onBack }) {
     navigate(ROUTES.placeReviews(place.id), { state: { placeName: place.name } });
   }
 
-  function handleReviewEdited(updated) {
+  function handleReviewEdited(updated, meta) {
     setLatestReviews((prev) => prev.map((r) => (r.id === updated.id ? updated : r)));
     setMyReview(updated);
     setEditingReviewId(null);
+    if (meta?.photosFailed) setPhotoWarning(true);
     fetchPlaceReviewStats(place.id).then(setReviewStats).catch(() => {});
   }
 
@@ -522,6 +531,11 @@ export default function PlaceDetailSheet({ place, selectedLocation, onBack }) {
             return (
               <div {...wrapperProps}>
                 <SectionHeader Icon={Icon} label={label} />
+                {photoWarning && (
+                  <div className="mb-2 rounded-xl bg-red-50 px-3 py-2 text-center text-xs text-red-600">
+                    {t('placeDetail.reviewSavedPhotosFailed')}
+                  </div>
+                )}
                 {reviewsLoading ? (
                   <div className="flex justify-center py-6">
                     <Spinner className="h-6 w-6 border-ink/10 border-t-ink/30" />
@@ -556,6 +570,7 @@ export default function PlaceDetailSheet({ place, selectedLocation, onBack }) {
                           reviewId={review.id}
                           initialRating={review.rating}
                           initialContent={review.content ?? ''}
+                          initialImages={review.images}
                           onSubmitted={handleReviewEdited}
                           onCancel={() => setEditingReviewId(null)}
                         />

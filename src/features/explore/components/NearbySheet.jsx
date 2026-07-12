@@ -87,21 +87,29 @@ export default function NearbySheet({
     return () => obs.disconnect();
   }, [courses, loadingMore, visibleCount]);
 
-  // Auto-open saved course when arriving from SavedCourseDetailPage — re-localize to current locale
+  // Auto-open saved course when arriving from SavedCourseDetailPage — re-localize to current locale.
+  // Skipped when initialPlaceId is also set (Saved Places deep link) — the effect below opens
+  // straight to that place's detail sheet instead of stopping at the course detail view.
   useEffect(() => {
-    if (!initialCourse) return;
+    if (!initialCourse || initialPlaceId) return;
     const localized = localizeSnapshotForDisplay(initialCourse, locale) ?? initialCourse;
     openDetail(localized);
   }, [initialCourse]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Re-open a place's detail sheet after returning from /places/:id/reviews (see
-  // lastPlaceView.js). `courses` only has content once places finish loading, so this
-  // waits for that and then fires exactly once (ref guard survives StrictMode's dev
-  // double-effect and prevents re-opening if the user closes the sheet afterwards and
-  // `courses` later recomputes for an unrelated reason, e.g. a filter change).
+  // Re-open a place's detail sheet after returning from /places/:id/reviews, or after
+  // tapping a Saved Place card (see lastPlaceView.js). Looks in `initialCourse` first —
+  // a Saved Place deep link ships a synthetic single-stop course guaranteed to contain
+  // the place, so it doesn't depend on the place appearing in any recommended course —
+  // then falls back to `courses` (recommended courses, once they've loaded) for the
+  // reviews-page round-trip case. Fires exactly once (ref guard survives StrictMode's
+  // dev double-effect and prevents re-opening later for an unrelated reason, e.g. a
+  // filter change recomputing `courses`).
   useEffect(() => {
-    if (!initialPlaceId || initialPlaceConsumedRef.current || !courses || courses.length === 0) return;
-    for (const course of courses) {
+    if (!initialPlaceId || initialPlaceConsumedRef.current) return;
+    const pools = [];
+    if (initialCourse) pools.push(initialCourse);
+    if (courses && courses.length > 0) pools.push(...courses);
+    for (const course of pools) {
       const stop = (course.stops ?? []).find((s) => s.id === initialPlaceId);
       if (stop) {
         initialPlaceConsumedRef.current = true;
@@ -110,7 +118,7 @@ export default function NearbySheet({
         break;
       }
     }
-  }, [initialPlaceId, courses]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [initialPlaceId, initialCourse, courses]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Close detail when selected location changes (prevents stale course display on hot place switch)
   useEffect(() => {

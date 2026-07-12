@@ -70,6 +70,7 @@ export default function PlaceReviewsPage() {
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deleteBusy, setDeleteBusy] = useState(false);
   const [deleteFailed, setDeleteFailed] = useState(false);
+  const [photoWarning, setPhotoWarning] = useState(false);
 
   const cursorRef = useRef(null);
   const sentinelRef = useRef(null);
@@ -100,6 +101,13 @@ export default function PlaceReviewsPage() {
   }, [numericPlaceId, isValidId]);
 
   useEffect(() => { loadFirstPage(); }, [loadFirstPage]);
+
+  // 사진 일부 업로드 실패 안내 배너 — 잠시 보여준 뒤 자동으로 닫는다.
+  useEffect(() => {
+    if (!photoWarning) return;
+    const timer = setTimeout(() => setPhotoWarning(false), 5000);
+    return () => clearTimeout(timer);
+  }, [photoWarning]);
 
   // 딥링크로 직접 들어온 경우에만 장소명을 별도로 조회한다 (상세 시트에서 넘어온 경우는 router state로 충분).
   useEffect(() => {
@@ -162,7 +170,7 @@ export default function PlaceReviewsPage() {
     setShowComposer(true);
   }
 
-  function handleSubmitted(review) {
+  function handleSubmitted(review, meta) {
     // 새 작성이든(맨 위에 없던 id) 방금 만든 자기 리뷰로의 수정 대체든, 목록에서
     // 같은 id를 교체하고 없으면 맨 위에 추가한다.
     setReviews((prev) => {
@@ -171,15 +179,17 @@ export default function PlaceReviewsPage() {
     });
     setMyReview(review);
     setShowComposer(false);
+    if (meta?.photosFailed) setPhotoWarning(true);
     // 방금 낸/고친 리뷰까지 반영된 평균/분포를 다시 조회한다.
     fetchPlaceReviewStats(numericPlaceId).then(setStats).catch(() => {});
     fetchPlaceRatingDistribution(numericPlaceId).then(setDistribution).catch(() => {});
   }
 
-  function handleReviewEdited(updated) {
+  function handleReviewEdited(updated, meta) {
     setReviews((prev) => prev.map((r) => (r.id === updated.id ? updated : r)));
     setMyReview(updated);
     setEditingReviewId(null);
+    if (meta?.photosFailed) setPhotoWarning(true);
     fetchPlaceReviewStats(numericPlaceId).then(setStats).catch(() => {});
     fetchPlaceRatingDistribution(numericPlaceId).then(setDistribution).catch(() => {});
   }
@@ -251,6 +261,12 @@ export default function PlaceReviewsPage() {
           <p className="py-16 text-center text-sm text-ink-faint">{t('placeDetail.reviewsLoadError')}</p>
         ) : (
           <>
+            {photoWarning && (
+              <div className="mb-3 rounded-xl bg-red-50 px-3 py-2 text-center text-xs text-red-600">
+                {t('placeDetail.reviewSavedPhotosFailed')}
+              </div>
+            )}
+
             {/* 요약 카드: 평균 별점 + 분포 (0건이면 표시하지 않음) */}
             {reviewCount > 0 && (
               <div className="rounded-3xl bg-white/70 p-5">
@@ -308,6 +324,7 @@ export default function PlaceReviewsPage() {
                         reviewId={review.id}
                         initialRating={review.rating}
                         initialContent={review.content ?? ''}
+                        initialImages={review.images}
                         onSubmitted={handleReviewEdited}
                         onCancel={() => setEditingReviewId(null)}
                       />
