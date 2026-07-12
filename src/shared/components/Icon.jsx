@@ -295,6 +295,16 @@ export function GoogleIcon({ size = 22 }) {
   );
 }
 
+export function MoreIcon(p) {
+  return (
+    <Svg vb="0 0 18 18" {...p}>
+      <circle cx="9" cy="4" r="1.6" fill="currentColor" />
+      <circle cx="9" cy="9" r="1.6" fill="currentColor" />
+      <circle cx="9" cy="14" r="1.6" fill="currentColor" />
+    </Svg>
+  );
+}
+
 export function TrashIcon(p) {
   return (
     <Svg vb="0 0 18 18" {...p}>

@@ -8,11 +8,13 @@ import {
   fetchPlaceReviews,
   fetchPlaceRatingDistribution,
   fetchMyPlaceReview,
+  deletePlaceReview,
 } from '../features/places/services/placeReviewService.js';
 import { usePlaceDetailSections } from '../features/places/hooks/usePlaceDetailSections.js';
 import ReviewCard from '../features/places/components/ReviewCard.jsx';
 import ReviewComposer from '../features/places/components/ReviewComposer.jsx';
 import AuthRequiredModal from '../features/places/components/AuthRequiredModal.jsx';
+import DeleteReviewConfirmModal from '../features/places/components/DeleteReviewConfirmModal.jsx';
 import Button from '../shared/components/Button.jsx';
 import Spinner from '../shared/components/Spinner.jsx';
 import { BackIcon } from '../shared/components/Icon.jsx';
@@ -61,8 +63,13 @@ export default function PlaceReviewsPage() {
   const [hasMore, setHasMore] = useState(true);
 
   const [myReview, setMyReview] = useState(null);
+  const [myReviewLoading, setMyReviewLoading] = useState(true);
   const [showComposer, setShowComposer] = useState(!!routeState?.openWrite);
   const [showAuthModal, setShowAuthModal] = useState(false);
+  const [editingReviewId, setEditingReviewId] = useState(null);
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [deleteBusy, setDeleteBusy] = useState(false);
+  const [deleteFailed, setDeleteFailed] = useState(false);
 
   const cursorRef = useRef(null);
   const sentinelRef = useRef(null);
@@ -104,13 +111,15 @@ export default function PlaceReviewsPage() {
     return () => { cancelled = true; };
   }, [placeName, numericPlaceId, locale, isValidId]);
 
-  // 로그인 사용자가 이미 이 가게에 활성 리뷰를 갖고 있는지 확인 — 작성 폼 대신 안내를 보여줄 때 쓴다.
+  // 로그인 사용자가 이미 이 가게에 활성 리뷰를 갖고 있는지 확인 — 있으면 작성 버튼을
+  // 숨긴다. 조회가 끝나기 전에는(myReviewLoading) 버튼도 작성 폼도 먼저 그리지 않는다.
   useEffect(() => {
-    if (!isValidId || !user) { setMyReview(null); return; }
+    if (!isValidId || !user) { setMyReview(null); setMyReviewLoading(false); return; }
     let cancelled = false;
+    setMyReviewLoading(true);
     fetchMyPlaceReview({ placeId: numericPlaceId, userId: user.id })
-      .then((row) => { if (!cancelled) setMyReview(row); })
-      .catch(() => {});
+      .then((row) => { if (!cancelled) { setMyReview(row); setMyReviewLoading(false); } })
+      .catch(() => { if (!cancelled) setMyReviewLoading(false); });
     return () => { cancelled = true; };
   }, [numericPlaceId, user?.id, isValidId]);
 
@@ -154,12 +163,48 @@ export default function PlaceReviewsPage() {
   }
 
   function handleSubmitted(review) {
-    setReviews((prev) => [review, ...prev]);
+    // 새 작성이든(맨 위에 없던 id) 방금 만든 자기 리뷰로의 수정 대체든, 목록에서
+    // 같은 id를 교체하고 없으면 맨 위에 추가한다.
+    setReviews((prev) => {
+      const exists = prev.some((r) => r.id === review.id);
+      return exists ? prev.map((r) => (r.id === review.id ? review : r)) : [review, ...prev];
+    });
     setMyReview(review);
     setShowComposer(false);
-    // 방금 낸 리뷰까지 반영된 평균/분포를 다시 조회한다.
+    // 방금 낸/고친 리뷰까지 반영된 평균/분포를 다시 조회한다.
     fetchPlaceReviewStats(numericPlaceId).then(setStats).catch(() => {});
     fetchPlaceRatingDistribution(numericPlaceId).then(setDistribution).catch(() => {});
+  }
+
+  function handleReviewEdited(updated) {
+    setReviews((prev) => prev.map((r) => (r.id === updated.id ? updated : r)));
+    setMyReview(updated);
+    setEditingReviewId(null);
+    fetchPlaceReviewStats(numericPlaceId).then(setStats).catch(() => {});
+    fetchPlaceRatingDistribution(numericPlaceId).then(setDistribution).catch(() => {});
+  }
+
+  async function handleConfirmDeleteReview() {
+    if (!deleteTarget) return;
+    setDeleteBusy(true);
+    setDeleteFailed(false);
+    try {
+      await deletePlaceReview(deleteTarget.id);
+      setReviews((prev) => prev.filter((r) => r.id !== deleteTarget.id));
+      if (myReview?.id === deleteTarget.id) setMyReview(null);
+      setDeleteTarget(null);
+      fetchPlaceReviewStats(numericPlaceId).then(setStats).catch(() => {});
+      fetchPlaceRatingDistribution(numericPlaceId).then(setDistribution).catch(() => {});
+    } catch {
+      setDeleteFailed(true); // 모달은 열어둔 채로 두어 사용자가 다시 시도할 수 있게 한다.
+    } finally {
+      setDeleteBusy(false);
+    }
+  }
+
+  function handleCancelDeleteReview() {
+    setDeleteTarget(null);
+    setDeleteFailed(false);
   }
 
   if (!isValidId) {
@@ -224,32 +269,20 @@ export default function PlaceReviewsPage() {
               </div>
             )}
 
-            {/* 리뷰 작성 진입 — 요약(또는 헤더)과 목록 사이에 자연스럽게 배치 */}
+            {/* 리뷰 작성 진입 — 요약(또는 헤더)과 목록 사이에 자연스럽게 배치.
+                본인이 이미 활성 리뷰를 갖고 있으면 별도 "이미 작성했어요" 안내 없이
+                작성 버튼 자체를 숨긴다 — 수정은 아래 목록의 자기 리뷰 카드 점 3개
+                메뉴에서만 한다. myReview가 있으면 showComposer(딥링크 등으로 true여도)
+                로는 어떤 폼도 열지 않는다 — 새 작성 폼도, 자동 수정 폼 전환도 하지 않는다.
+                myReview 조회가 끝나기 전에는 아무것도 그리지 않는다. */}
             <div className="mt-4">
-              {showComposer ? (
-                myReview ? (
-                  <div className="rounded-2xl border border-ink/8 bg-white/70 p-4 text-center">
-                    <p className="text-sm font-semibold text-ink-soft">{t('placeDetail.duplicateReview')}</p>
-                    <button
-                      type="button"
-                      onClick={() => setShowComposer(false)}
-                      className="mt-3 text-sm font-bold text-coral"
-                    >
-                      {t('auth.cancel')}
-                    </button>
-                  </div>
-                ) : (
-                  <ReviewComposer
-                    placeId={numericPlaceId}
-                    onSubmitted={handleSubmitted}
-                    onCancel={() => setShowComposer(false)}
-                  />
-                )
-              ) : myReview ? (
-                <p className="text-center text-sm font-semibold text-ink-faint">
-                  {t('placeDetail.duplicateReview')}
-                </p>
-              ) : (
+              {myReviewLoading ? null : showComposer && !myReview ? (
+                <ReviewComposer
+                  placeId={numericPlaceId}
+                  onSubmitted={handleSubmitted}
+                  onCancel={() => setShowComposer(false)}
+                />
+              ) : myReview ? null : (
                 <div className="flex justify-center">
                   <Button variant="primary" onClick={handleWriteClick} className="px-8">
                     {t('placeDetail.writeReview')}
@@ -267,9 +300,29 @@ export default function PlaceReviewsPage() {
                 </div>
               ) : (
                 <div className="flex flex-col gap-3">
-                  {reviews.map((review) => (
-                    <ReviewCard key={review.id} review={review} locale={locale} t={t} />
-                  ))}
+                  {reviews.map((review) =>
+                    editingReviewId === review.id ? (
+                      <ReviewComposer
+                        key={review.id}
+                        placeId={numericPlaceId}
+                        reviewId={review.id}
+                        initialRating={review.rating}
+                        initialContent={review.content ?? ''}
+                        onSubmitted={handleReviewEdited}
+                        onCancel={() => setEditingReviewId(null)}
+                      />
+                    ) : (
+                      <ReviewCard
+                        key={review.id}
+                        review={review}
+                        locale={locale}
+                        t={t}
+                        isOwn={!!user && review.userId === user.id}
+                        onEdit={(r) => setEditingReviewId(r.id)}
+                        onDelete={(r) => setDeleteTarget(r)}
+                      />
+                    ),
+                  )}
                   {hasMore && <div ref={sentinelRef} className="h-1" />}
                   {loadingMore && (
                     <div className="flex justify-center py-4">
@@ -287,6 +340,14 @@ export default function PlaceReviewsPage() {
         open={showAuthModal}
         onClose={() => setShowAuthModal(false)}
         bodyKey="placeDetail.loginToReview"
+      />
+
+      <DeleteReviewConfirmModal
+        open={deleteTarget != null}
+        onCancel={handleCancelDeleteReview}
+        onConfirm={handleConfirmDeleteReview}
+        busy={deleteBusy}
+        failed={deleteFailed}
       />
     </div>
   );

@@ -2,23 +2,32 @@ import { useState } from 'react';
 import { useLocale } from '../../../shared/i18n/LocaleProvider.jsx';
 import { StarIcon } from '../../../shared/components/Icon.jsx';
 import Button from '../../../shared/components/Button.jsx';
-import { createPlaceReview } from '../services/placeReviewService.js';
+import { createPlaceReview, updatePlaceReview } from '../services/placeReviewService.js';
 
 const MAX_LENGTH = 1000;
 
-/** Minimal 1st-cut review composer: rating (required) + optional content, up to
- *  1000 chars. No edit/delete/photos yet — those are later steps.
+/** Review composer — handles both creating a new review and editing the
+ *  caller's own existing one. Pass `reviewId` (+ `initialRating`/`initialContent`)
+ *  to switch into edit mode; omit it to create.
  *
  *  Layout is split into four clearly separate regions (rating / extra-info slot /
  *  content / actions) so future optional fields — price range, wait time, crowd
  *  level, service notes — can be added as their own block between the rating and
  *  content regions without restructuring this component. */
-export default function ReviewComposer({ placeId, onSubmitted, onCancel }) {
+export default function ReviewComposer({
+  placeId,
+  reviewId = null,
+  initialRating = 0,
+  initialContent = '',
+  onSubmitted,
+  onCancel,
+}) {
   const { locale, t } = useLocale();
-  const [rating, setRating] = useState(0);
-  const [content, setContent] = useState('');
+  const isEdit = reviewId != null;
+  const [rating, setRating] = useState(initialRating);
+  const [content, setContent] = useState(initialContent);
   const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState(null); // 'rating' | 'duplicate' | 'generic' | null
+  const [error, setError] = useState(null); // 'rating' | 'duplicate' | 'updateFailed' | 'generic' | null
 
   async function handleSubmit() {
     if (rating === 0) { setError('rating'); return; }
@@ -26,19 +35,22 @@ export default function ReviewComposer({ placeId, onSubmitted, onCancel }) {
     setSubmitting(true);
     setError(null);
     try {
-      const review = await createPlaceReview({
-        placeId,
-        rating,
-        content: content.trim(),
-        uiLocale: locale,
-      });
+      const review = isEdit
+        ? await updatePlaceReview({ reviewId, rating, content: content.trim() })
+        : await createPlaceReview({ placeId, rating, content: content.trim(), uiLocale: locale });
       onSubmitted(review);
     } catch (err) {
-      setError(err?.code === '23505' ? 'duplicate' : 'generic');
+      if (err?.code === '23505') setError('duplicate');
+      else setError(isEdit ? 'updateFailed' : 'generic');
     } finally {
       setSubmitting(false);
     }
   }
+
+  const errorKey = error === 'rating' ? 'ratingRequired'
+    : error === 'duplicate' ? 'duplicateReview'
+    : error === 'updateFailed' ? 'reviewUpdateFailed'
+    : 'reviewSubmitError';
 
   return (
     <div className="rounded-2xl border border-ink/8 bg-white/70 p-4">
@@ -75,7 +87,7 @@ export default function ReviewComposer({ placeId, onSubmitted, onCancel }) {
 
         {error && (
           <p className="mt-1 rounded-xl bg-red-50 px-3 py-2 text-center text-xs text-red-600">
-            {t(`placeDetail.${error === 'rating' ? 'ratingRequired' : error === 'duplicate' ? 'duplicateReview' : 'reviewSubmitError'}`)}
+            {t(`placeDetail.${errorKey}`)}
           </p>
         )}
       </div>
@@ -90,7 +102,9 @@ export default function ReviewComposer({ placeId, onSubmitted, onCancel }) {
           {t('auth.cancel')}
         </button>
         <Button variant="primary" className="flex-1" onClick={handleSubmit} disabled={submitting}>
-          {submitting ? t('placeDetail.submitting') : t('placeDetail.submitReview')}
+          {submitting
+            ? t('placeDetail.submitting')
+            : t(isEdit ? 'placeDetail.saveChanges' : 'placeDetail.submitReview')}
         </Button>
       </div>
     </div>

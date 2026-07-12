@@ -83,6 +83,29 @@ export async function createPlaceReview({ placeId, rating, content, uiLocale }) 
   return normalizeReview(data);
 }
 
+/** Updates a review. Only rating/content are ever sent — matches the exact column
+ *  grant given to authenticated (place_id/user_id/author_name/created_at/edited_at
+ *  are not updatable this way; author_name stays server-enforced, edited_at is
+ *  recomputed by the mg_place_reviews_before_write trigger only when rating or
+ *  content actually changed). */
+export async function updatePlaceReview({ reviewId, rating, content }) {
+  const { data, error } = await supabase
+    .from('mg_place_reviews')
+    .update({ rating, content: content || null })
+    .eq('id', reviewId)
+    .select('*, mg_place_review_images(storage_path, sort_order)')
+    .single();
+  if (error) throw error;
+  return normalizeReview(data);
+}
+
+/** Soft-deletes the caller's own review via the dedicated RPC — deleted_at/deleted_by
+ *  are not directly updatable by authenticated, this is the only allowed path. */
+export async function deletePlaceReview(reviewId) {
+  const { error } = await supabase.rpc('soft_delete_my_place_review', { p_review_id: reviewId });
+  if (error) throw error;
+}
+
 /** Rating-only fetch across every active review for a place, used to compute the
  *  5→1 star distribution. A single skinny column, not the paginated review list,
  *  so the distribution stays accurate regardless of how many pages are loaded. */

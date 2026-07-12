@@ -49,6 +49,11 @@ export const DICTIONARY = {
       submitting: 'Posting…',
       reviewSubmitError: "Couldn't post your review. Please try again.",
       invalidPlace: "This place couldn't be found.",
+      saveChanges: 'Save changes',
+      deleteReviewTitle: 'Delete this review?',
+      deleteReviewBody: 'This review cannot be restored after deletion.',
+      reviewUpdateFailed: "Couldn't update your review. Please try again.",
+      reviewDeleteFailed: "Couldn't delete your review. Please try again.",
     },
     filter: {
       all: 'All',
@@ -318,6 +323,11 @@ export const DICTIONARY = {
       submitting: '등록 중…',
       reviewSubmitError: '리뷰를 등록하지 못했습니다. 다시 시도해주세요.',
       invalidPlace: '이 가게를 찾을 수 없습니다.',
+      saveChanges: '변경사항 저장',
+      deleteReviewTitle: '리뷰를 삭제할까요?',
+      deleteReviewBody: '삭제한 리뷰는 복구할 수 없어요.',
+      reviewUpdateFailed: '리뷰 수정에 실패했어요. 다시 시도해주세요.',
+      reviewDeleteFailed: '리뷰 삭제에 실패했어요. 다시 시도해주세요.',
     },
     filter: {
       all: '전체',

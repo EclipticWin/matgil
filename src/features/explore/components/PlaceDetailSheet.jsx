@@ -18,15 +18,18 @@ import { ROUTES } from '../../../shared/constants/routes.js';
 import { useFoodCategories } from '../context/FoodCategoryProvider.jsx';
 import { usePlaceDetailSections } from '../../places/hooks/usePlaceDetailSections.js';
 import { isPlaceBookmarked, addPlaceBookmark, removePlaceBookmark } from '../../places/services/placeBookmarkService.js';
-import { fetchPlaceReviewStats, fetchPlaceReviews } from '../../places/services/placeReviewService.js';
+import { fetchPlaceReviewStats, fetchPlaceReviews, fetchMyPlaceReview, deletePlaceReview } from '../../places/services/placeReviewService.js';
 import PlaceLocationMap from '../../places/components/PlaceLocationMap.jsx';
 import ReviewCard from '../../places/components/ReviewCard.jsx';
+import ReviewComposer from '../../places/components/ReviewComposer.jsx';
 import AuthRequiredModal from '../../places/components/AuthRequiredModal.jsx';
+import DeleteReviewConfirmModal from '../../places/components/DeleteReviewConfirmModal.jsx';
 import { setLastPlaceView } from '../data/lastPlaceView.js';
 
-// 탭 클릭으로 시작한 smooth-scroll이 진행되는 동안, 그 사이를 지나가는 다른 섹션이
-// 스크롤 계산으로 activeTab을 되돌리지 못하도록 억제하는 시간(ms).
-const CLICK_SCROLL_SUPPRESS_MS = 500;
+// scrollend를 지원하지 않는 브라우저를 위한 디바운스 백업(ms). 실제 스크롤이
+// 끝난 뒤에도 억제 상태가 영원히 풀리지 않는 경우(예: 이미 목표 위치라 스크롤
+// 이벤트/scrollend가 아예 발생하지 않는 경우)에 대한 안전장치이기도 하다.
+const SCROLL_END_FALLBACK_MS = 150;
 
 // 사용자에게 보이면 안 되는 내부 상태성 태그
 const HIDDEN_TAGS = new Set([
@@ -102,7 +105,13 @@ export default function PlaceDetailSheet({ place, selectedLocation, onBack }) {
   const scrollRef = useRef(null);
   const tabBarRef = useRef(null);
   const sectionRefs = useRef(new Map());
-  const suppressScrollSpyUntilRef = useRef(0);
+  // 탭 클릭으로 시작한 스크롤이 진행되는 동안 true. 이 사이에는 자동 scroll-spy가
+  // activeTab을 절대 건드리지 않는다 — 스크롤이 실제로 끝났다고 판단될 때(scrollend
+  // 또는 디바운스 백업)만 false로 되돌리고, 그 순간에도 activeTab을 다시 계산하지
+  // 않는다(클릭한 탭을 그대로 유지). 이후 사용자가 직접 스크롤을 시작해야만 자동
+  // scroll-spy가 다시 activeTab을 바꾼다.
+  const suppressScrollSpyRef = useRef(false);
+  const scrollEndFallbackTimeoutRef = useRef(null);
   const [activeTab, setActiveTab] = useState(null);
 
   // ── 개별 가게 북마크 ──
@@ -116,12 +125,24 @@ export default function PlaceDetailSheet({ place, selectedLocation, onBack }) {
   const [latestReviews, setLatestReviews] = useState([]);
   const [reviewsLoading, setReviewsLoading] = useState(true);
   const [reviewsError, setReviewsError] = useState(false);
+  const [editingReviewId, setEditingReviewId] = useState(null);
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [deleteBusy, setDeleteBusy] = useState(false);
+  const [deleteFailed, setDeleteFailed] = useState(false);
+
+  // 로그인 사용자가 이 가게에 이미 가진 활성 리뷰. null이 아니면 "Write a review"
+  // 버튼을 숨긴다 — DB가 1인 1활성 리뷰만 허용하므로, 조회가 끝나기 전에는(로딩 중)
+  // 버튼을 먼저 그리지 않는다.
+  const [myReview, setMyReview] = useState(null);
+  const [myReviewLoading, setMyReviewLoading] = useState(true);
 
   // 장소가 바뀌면 스크롤 위치와 활성 탭을 첫 섹션으로 되돌린다. activeSections도
   // 의존성에 포함해, DB 로드가 fallback을 대체하는 시점에도 첫 탭이 올바르게 잡힌다.
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: 0 });
     setActiveTab(activeSections[0]?.key ?? null);
+    suppressScrollSpyRef.current = false;
+    if (scrollEndFallbackTimeoutRef.current) window.clearTimeout(scrollEndFallbackTimeoutRef.current);
   }, [place.id, activeSections]);
 
   useEffect(() => {
@@ -154,32 +175,29 @@ export default function PlaceDetailSheet({ place, selectedLocation, onBack }) {
     return () => { cancelled = true; };
   }, [place.id]);
 
+  useEffect(() => {
+    if (!user) { setMyReview(null); setMyReviewLoading(false); return; }
+    let cancelled = false;
+    setMyReviewLoading(true);
+    fetchMyPlaceReview({ placeId: place.id, userId: user.id })
+      .then((row) => { if (!cancelled) { setMyReview(row); setMyReviewLoading(false); } })
+      .catch(() => { if (!cancelled) setMyReviewLoading(false); });
+    return () => { cancelled = true; };
+  }, [place.id, user?.id]);
+
   function setSectionRef(key, el) {
     if (el) sectionRefs.current.set(key, el);
     else sectionRefs.current.delete(key);
   }
 
-  // 실제 스크롤 컨테이너(scrollRef) 기준으로 활성 섹션을 계산한다.
-  // 1) 스크롤이 끝(scrollHeight)까지 도달했으면 마지막 섹션을 강제로 활성 처리한다 —
-  //    콘텐츠가 짧아 마지막 섹션이 탭 바 기준선까지 올라오지 못해도(내부 스크롤이
-  //    더 이상 움직일 수 없는 상태) 항상 정확히 마지막 섹션으로 판정된다.
-  // 2) 그 외에는 sticky 탭 바 바로 아래 기준선을 최근에 지나온(= 기준선보다 위에
-  //    있으면서 그중 가장 아래쪽) 섹션을 활성으로 삼는다.
-  // getBoundingClientRect 차이로 계산하므로 바텀시트 높이(peek/full)가 얼마든, 어떤
-  // 조상이 positioned든 항상 컨테이너 기준으로 정확하다.
+  // 실제 스크롤 컨테이너(scrollRef) 기준으로 활성 섹션을 계산한다: sticky 탭 바
+  // 바로 아래 기준선을 최근에 지나온(= 기준선보다 위에 있으면서 그중 가장 아래쪽)
+  // 섹션을 활성으로 삼는다. 이 함수는 자동 scroll-spy(자유 스크롤)에서만 호출되고
+  // 클릭 처리 중/직후에는 호출되지 않으므로, 바닥 도달 여부로 마지막 섹션을 강제하는
+  // 별도 보정은 두지 않는다 — 그 보정이 클릭 결과와 계속 충돌해 왔기 때문이다.
   function computeActiveSectionKey() {
     const container = scrollRef.current;
     if (!container || activeSections.length === 0) return null;
-
-    const { scrollTop, scrollHeight, clientHeight } = container;
-    const atBottom = scrollTop + clientHeight >= scrollHeight - 4; // 4px 여유
-
-    if (atBottom) {
-      for (let i = activeSections.length - 1; i >= 0; i--) {
-        const key = activeSections[i].key;
-        if (sectionRefs.current.get(key)) return key;
-      }
-    }
 
     const barH = tabBarRef.current?.offsetHeight ?? 0;
     const threshold = barH + 4;
@@ -195,23 +213,48 @@ export default function PlaceDetailSheet({ place, selectedLocation, onBack }) {
         bestKey = key;
       }
     });
+
     // 아직 첫 섹션에도 도달하지 않은 경우(맨 위로 스크롤) 첫 섹션을 기본값으로 삼는다.
     return bestKey ?? activeSections[0]?.key ?? null;
   }
 
+  function armScrollEndFallback() {
+    if (scrollEndFallbackTimeoutRef.current) window.clearTimeout(scrollEndFallbackTimeoutRef.current);
+    scrollEndFallbackTimeoutRef.current = window.setTimeout(() => {
+      suppressScrollSpyRef.current = false;
+    }, SCROLL_END_FALLBACK_MS);
+  }
+
   // 탭 바만 가로 스크롤되고, 세로 스크롤에 따라 활성 탭이 갱신되도록 스크롤-스파이를 건다.
+  // 클릭으로 시작된 스크롤이 진행되는 동안(suppressScrollSpyRef)에는 activeTab을
+  // 절대 바꾸지 않는다 — scrollend(지원 시) 또는 디바운스 백업으로 억제가 풀리는
+  // 순간에도 재계산하지 않고 클릭한 탭을 그대로 둔다. 이후 사용자가 실제로 스크롤을
+  // 이어가면(= 억제가 이미 풀린 상태에서 들어오는 scroll 이벤트) 그때부터 자동
+  // scroll-spy가 다시 activeTab을 갱신한다.
   useEffect(() => {
     const container = scrollRef.current;
     if (!container || activeSections.length === 0) return;
 
     function handleScroll() {
-      if (Date.now() < suppressScrollSpyUntilRef.current) return;
+      if (suppressScrollSpyRef.current) {
+        armScrollEndFallback(); // 스크롤이 계속되는 한 종료 감지를 뒤로 미룬다
+        return;
+      }
       const key = computeActiveSectionKey();
       if (key) setActiveTab(key);
     }
 
+    function handleScrollEnd() {
+      if (scrollEndFallbackTimeoutRef.current) window.clearTimeout(scrollEndFallbackTimeoutRef.current);
+      suppressScrollSpyRef.current = false;
+    }
+
     container.addEventListener('scroll', handleScroll, { passive: true });
-    return () => container.removeEventListener('scroll', handleScroll);
+    container.addEventListener('scrollend', handleScrollEnd, { passive: true });
+    return () => {
+      container.removeEventListener('scroll', handleScroll);
+      container.removeEventListener('scrollend', handleScrollEnd);
+    };
   }, [activeSections]); // eslint-disable-line react-hooks/exhaustive-deps
 
   function handleTabClick(key) {
@@ -219,7 +262,9 @@ export default function PlaceDetailSheet({ place, selectedLocation, onBack }) {
     const container = scrollRef.current;
     if (!el || !container) return;
 
-    // 클릭 즉시 활성 탭을 바꾼다 — 스크롤/observer 계산을 기다리지 않는다.
+    // 클릭 즉시 활성 탭을 바꾼다 — 스크롤 계산을 기다리지 않고, 스크롤이 끝날 때까지
+    // 자동 scroll-spy를 완전히 억제한다.
+    suppressScrollSpyRef.current = true;
     setActiveTab(key);
 
     const barH = tabBarRef.current?.offsetHeight ?? 0;
@@ -229,16 +274,12 @@ export default function PlaceDetailSheet({ place, selectedLocation, onBack }) {
     const containerTop = container.getBoundingClientRect().top;
     const targetTop = container.scrollTop + (elTop - containerTop) - barH;
 
-    // smooth-scroll 도중 지나가는 다른 섹션이 activeTab을 되돌리지 못하게 억제한다.
-    suppressScrollSpyUntilRef.current = Date.now() + CLICK_SCROLL_SUPPRESS_MS;
     container.scrollTo({ top: Math.max(0, targetTop), behavior: 'smooth' });
 
-    // 마지막 섹션처럼 남은 콘텐츠가 짧아 목표 지점까지 스크롤이 닿지 못하고 clamp되는
-    // 경우를 대비해, 억제가 끝난 뒤 실제 위치 기준으로 한 번 더 보정한다.
-    window.setTimeout(() => {
-      const settledKey = computeActiveSectionKey();
-      if (settledKey) setActiveTab(settledKey);
-    }, CLICK_SCROLL_SUPPRESS_MS + 20);
+    // scrollend가 발생하면 handleScrollEnd가 곧바로 억제를 풀어준다. 이미 목표
+    // 위치라 스크롤(그리고 scrollend)이 아예 발생하지 않는 경우를 위한 백업으로,
+    // 디바운스 타이머도 함께 걸어 둔다.
+    armScrollEndFallback();
   }
 
   async function handleBookmarkClick() {
@@ -273,6 +314,35 @@ export default function PlaceDetailSheet({ place, selectedLocation, onBack }) {
   function handleViewReviewsClick() {
     setLastPlaceView({ placeId: place.id, selectedLocation });
     navigate(ROUTES.placeReviews(place.id), { state: { placeName: place.name } });
+  }
+
+  function handleReviewEdited(updated) {
+    setLatestReviews((prev) => prev.map((r) => (r.id === updated.id ? updated : r)));
+    setMyReview(updated);
+    setEditingReviewId(null);
+    fetchPlaceReviewStats(place.id).then(setReviewStats).catch(() => {});
+  }
+
+  async function handleConfirmDeleteReview() {
+    if (!deleteTarget) return;
+    setDeleteBusy(true);
+    setDeleteFailed(false);
+    try {
+      await deletePlaceReview(deleteTarget.id);
+      setLatestReviews((prev) => prev.filter((r) => r.id !== deleteTarget.id));
+      setMyReview((prev) => (prev?.id === deleteTarget.id ? null : prev));
+      setDeleteTarget(null);
+      fetchPlaceReviewStats(place.id).then(setReviewStats).catch(() => {});
+    } catch {
+      setDeleteFailed(true); // 모달은 열어둔 채로 두어 사용자가 다시 시도할 수 있게 한다.
+    } finally {
+      setDeleteBusy(false);
+    }
+  }
+
+  function handleCancelDeleteReview() {
+    setDeleteTarget(null);
+    setDeleteFailed(false);
   }
 
   const rawCategory = place.matgilCategoryKeys?.[0] ?? null;
@@ -462,13 +532,15 @@ export default function PlaceDetailSheet({ place, selectedLocation, onBack }) {
                   <div>
                     <SectionEmptyState empty={empty} />
                     <div className="mt-2 flex items-center justify-center gap-3">
-                      <button
-                        type="button"
-                        onClick={handleWriteReviewClick}
-                        className="rounded-full bg-coral px-4 py-1.5 text-[0.8rem] font-bold text-white"
-                      >
-                        {t('placeDetail.writeReview')}
-                      </button>
+                      {!myReviewLoading && !myReview && (
+                        <button
+                          type="button"
+                          onClick={handleWriteReviewClick}
+                          className="rounded-full bg-coral px-4 py-1.5 text-[0.8rem] font-bold text-white"
+                        >
+                          {t('placeDetail.writeReview')}
+                        </button>
+                      )}
                       <button type="button" onClick={handleViewReviewsClick} className="text-[0.8rem] font-bold text-coral">
                         {t('placeDetail.viewReviews')}
                       </button>
@@ -476,20 +548,42 @@ export default function PlaceDetailSheet({ place, selectedLocation, onBack }) {
                   </div>
                 ) : (
                   <div className="flex flex-col gap-3">
-                    {latestReviews.map((review) => (
-                      <ReviewCard key={review.id} review={review} locale={locale} t={t} />
-                    ))}
+                    {latestReviews.map((review) =>
+                      editingReviewId === review.id ? (
+                        <ReviewComposer
+                          key={review.id}
+                          placeId={place.id}
+                          reviewId={review.id}
+                          initialRating={review.rating}
+                          initialContent={review.content ?? ''}
+                          onSubmitted={handleReviewEdited}
+                          onCancel={() => setEditingReviewId(null)}
+                        />
+                      ) : (
+                        <ReviewCard
+                          key={review.id}
+                          review={review}
+                          locale={locale}
+                          t={t}
+                          isOwn={!!user && review.userId === user.id}
+                          onEdit={(r) => setEditingReviewId(r.id)}
+                          onDelete={(r) => setDeleteTarget(r)}
+                        />
+                      ),
+                    )}
                     <div className="mt-1 flex items-center justify-between gap-3">
                       <button type="button" onClick={handleViewReviewsClick} className="text-[0.8rem] font-bold text-coral">
                         {t('placeDetail.viewAllReviews', { count: reviewCount })}
                       </button>
-                      <button
-                        type="button"
-                        onClick={handleWriteReviewClick}
-                        className="shrink-0 rounded-full bg-coral px-4 py-1.5 text-[0.8rem] font-bold text-white"
-                      >
-                        {t('placeDetail.writeReview')}
-                      </button>
+                      {!myReviewLoading && !myReview && (
+                        <button
+                          type="button"
+                          onClick={handleWriteReviewClick}
+                          className="shrink-0 rounded-full bg-coral px-4 py-1.5 text-[0.8rem] font-bold text-white"
+                        >
+                          {t('placeDetail.writeReview')}
+                        </button>
+                      )}
                     </div>
                   </div>
                 )}
@@ -559,6 +653,14 @@ export default function PlaceDetailSheet({ place, selectedLocation, onBack }) {
         open={authModal != null}
         onClose={() => setAuthModal(null)}
         bodyKey={authModal === 'review' ? 'placeDetail.loginToReview' : 'placeDetail.loginToSave'}
+      />
+
+      <DeleteReviewConfirmModal
+        open={deleteTarget != null}
+        onCancel={handleCancelDeleteReview}
+        onConfirm={handleConfirmDeleteReview}
+        busy={deleteBusy}
+        failed={deleteFailed}
       />
     </div>
   );
