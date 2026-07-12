@@ -12,6 +12,7 @@ import ResultPage from '../pages/ResultPage.jsx';
 import CoursesPage from '../pages/CoursesPage.jsx';
 import CourseDetailPage from '../pages/CourseDetailPage.jsx';
 import SavedCourseDetailPage from '../pages/SavedCourseDetailPage.jsx';
+import PlaceReviewsPage from '../pages/PlaceReviewsPage.jsx';
 import CommunityPage from '../pages/CommunityPage.jsx';
 import PhrasesPage from '../pages/PhrasesPage.jsx';
 import PopularPage from '../pages/PopularPage.jsx';
@@ -35,6 +36,7 @@ export default function AppRouter() {
       <Route path={ROUTES.result} element={<ResultPage />} />
       <Route path={ROUTES.courseDetail(':id')} element={<CourseDetailPage />} />
       <Route path={ROUTES.savedCourseDetail(':id')} element={<SavedCourseDetailPage />} />
+      <Route path={ROUTES.placeReviews(':placeId')} element={<PlaceReviewsPage />} />
 
       <Route element={<AppLayout />}>
         <Route path={ROUTES.home} element={<HomePage />} />

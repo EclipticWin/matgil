@@ -32,6 +32,7 @@ export default function NearbySheet({
   onGpsClick,
   onGpsStatusChange,
   initialCourse = null,
+  initialPlaceId = null,
 }) {
   const { locale, t } = useLocale();
   const { user } = useAuth();
@@ -54,6 +55,7 @@ export default function NearbySheet({
   const [loadingMore, setLoadingMore] = useState(false);
   const scrollContainerRef = useRef(null);
   const sentinelRef = useRef(null);
+  const initialPlaceConsumedRef = useRef(false);
 
   // 'idle' | 'checking' | 'saving' | 'saved' | 'failed'
   const [saveState, setSaveState] = useState('idle');
@@ -91,6 +93,24 @@ export default function NearbySheet({
     const localized = localizeSnapshotForDisplay(initialCourse, locale) ?? initialCourse;
     openDetail(localized);
   }, [initialCourse]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Re-open a place's detail sheet after returning from /places/:id/reviews (see
+  // lastPlaceView.js). `courses` only has content once places finish loading, so this
+  // waits for that and then fires exactly once (ref guard survives StrictMode's dev
+  // double-effect and prevents re-opening if the user closes the sheet afterwards and
+  // `courses` later recomputes for an unrelated reason, e.g. a filter change).
+  useEffect(() => {
+    if (!initialPlaceId || initialPlaceConsumedRef.current || !courses || courses.length === 0) return;
+    for (const course of courses) {
+      const stop = (course.stops ?? []).find((s) => s.id === initialPlaceId);
+      if (stop) {
+        initialPlaceConsumedRef.current = true;
+        openDetail(course);
+        openPlace(stop);
+        break;
+      }
+    }
+  }, [initialPlaceId, courses]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Close detail when selected location changes (prevents stale course display on hot place switch)
   useEffect(() => {

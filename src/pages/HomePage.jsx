@@ -10,6 +10,7 @@ import {
 import { DEFAULT_LOCATION, sortPlacesByDistance } from '../features/explore/data/locations.js';
 import { buildRecommendedCourses } from '../features/explore/data/courseBuilder.js';
 import { findAnchorPlace } from '../features/explore/services/anchorMatchService.js';
+import { consumeLastPlaceView } from '../features/explore/data/lastPlaceView.js';
 import Modal from '../features/explore/components/Modal.jsx';
 import FilterSheet from '../features/explore/components/FilterSheet.jsx';
 import LanguageModal from '../features/explore/components/LanguageModal.jsx';
@@ -37,10 +38,25 @@ export default function HomePage() {
   const [activeCourseId, setActiveCourseId] = useState(null);
   // Saved course injected via router state from SavedCourseDetailPage
   const [savedCourseForMap, setSavedCourseForMap] = useState(null);
+  // Place to auto-reopen after a round trip to the full reviews page (see lastPlaceView.js)
+  const [initialPlaceId, setInitialPlaceId] = useState(null);
 
   const mapRef = useRef(null);
   const mapApiRef = useRef(null);
   const [vh, setVh] = useState(0);
+  const restoredViewRef = useRef(false);
+
+  // One-shot restoration of the Map view after returning from /places/:id/reviews.
+  // A ref guard (not just the effect's empty deps) protects against StrictMode's
+  // dev-only double-invoke, which would otherwise consume-and-lose the pending value.
+  useEffect(() => {
+    if (restoredViewRef.current) return;
+    restoredViewRef.current = true;
+    const pending = consumeLastPlaceView();
+    if (!pending) return;
+    if (pending.selectedLocation) setSelectedLocation(pending.selectedLocation);
+    if (pending.placeId != null) setInitialPlaceId(pending.placeId);
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -242,6 +258,7 @@ export default function HomePage() {
         onGpsClick={handleGpsClick}
         onGpsStatusChange={setGpsStatus}
         initialCourse={savedCourseForMap}
+        initialPlaceId={initialPlaceId}
       />
 
       {/* full-screen search overlay — rendered before modals so modals stack on top */}

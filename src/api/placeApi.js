@@ -74,3 +74,26 @@ export async function getPlaces(locale = "ko") {
 
   return (data ?? []).map((row) => normalizePlace(row, locale));
 }
+
+/** Single-place lookup (used e.g. as a place-name fallback on a deep-linked reviews page). */
+export async function getPlaceById(id, locale = "ko") {
+  const { data, error } = await supabase
+    .from("mg_places")
+    .select(
+      `
+      id,
+      latitude,
+      longitude,
+      default_image_url,
+      matgil_category_keys,
+      mg_place_texts(locale, name, address, description, first_menu, treat_menu, open_time, rest_date, parking, packing, tags),
+      mg_place_food_details(tel, has_parking, has_packing, has_open_time, has_menu_info, has_image, has_location),
+      mg_place_images(image_url, thumbnail_url, sort_order)
+    `
+    )
+    .eq("id", id)
+    .maybeSingle();
+
+  if (error) throw error;
+  return data ? normalizePlace(data, locale) : null;
+}

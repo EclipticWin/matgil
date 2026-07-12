@@ -10,6 +10,7 @@ export const ROUTES = {
   courses: '/courses',
   courseDetail: (id) => `/courses/${id}`,
   savedCourseDetail: (id) => `/saved-courses/${id}`,
+  placeReviews: (placeId) => `/places/${placeId}/reviews`,
   community: '/community',
   phrases: '/phrases',
   popular: '/popular',
