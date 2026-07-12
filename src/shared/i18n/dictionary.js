@@ -220,6 +220,11 @@ export const DICTIONARY = {
       successMsg: 'Account created! Please check your email to confirm your account.',
       passMismatch: 'Passwords do not match.',
       passShort: 'Password must be at least 6 characters.',
+      displayNameHint: "Leave it blank and we'll create a nickname for you.",
+      nicknameChecking: 'Checking availability…',
+      nicknameTaken: 'This nickname is already in use.',
+      nicknameTakenFallback: "That nickname was just taken, so we created one for you — you can change it anytime in My Page.",
+      continueToApp: 'Continue',
     },
     my: {
       title: 'Your trip',
@@ -514,6 +519,11 @@ export const DICTIONARY = {
       successMsg: '계정이 생성됐습니다! 이메일에서 확인 링크를 클릭해주세요.',
       passMismatch: '비밀번호가 일치하지 않습니다.',
       passShort: '비밀번호는 6자 이상이어야 합니다.',
+      displayNameHint: '비워두면 자동으로 닉네임을 만들어 드려요.',
+      nicknameChecking: '중복 확인 중…',
+      nicknameTaken: '이미 사용 중인 닉네임이에요.',
+      nicknameTakenFallback: '선택하신 닉네임이 방금 사용돼서 대신 닉네임을 만들어 드렸어요. 마이페이지에서 언제든 바꿀 수 있어요.',
+      continueToApp: '계속하기',
     },
     my: {
       title: '내 여행',

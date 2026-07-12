@@ -2,6 +2,7 @@ import { useState } from 'react';
 import Button from '../../../shared/components/Button.jsx';
 import { CloseIcon } from '../../../shared/components/Icon.jsx';
 import { useLocale } from '../../../shared/i18n/LocaleProvider.jsx';
+import { useNicknameAvailability } from '../../auth/hooks/useNicknameAvailability.js';
 
 export default function EditProfileSheet({ currentName, onSave, onClose }) {
   const { t } = useLocale();
@@ -12,12 +13,13 @@ export default function EditProfileSheet({ currentName, onSave, onClose }) {
   const [error, setError] = useState('');
 
   const trimmed = name.trim();
-  const nameValid = trimmed.length >= 2 && trimmed.length <= 30;
+  const nameValid = trimmed.length >= 2 && trimmed.length <= 20;
+  const nicknameStatus = useNicknameAvailability(name, { excludeCurrent: currentName || '' });
   const pwEmpty = newPw === '' && confirmPw === '';
   const pwTooShort = newPw.length > 0 && newPw.length < 6;
   const pwMismatch = confirmPw.length > 0 && newPw !== confirmPw;
   const pwValid = newPw.length >= 6 && newPw === confirmPw;
-  const canSave = nameValid && (pwEmpty || pwValid) && !busy;
+  const canSave = nameValid && nicknameStatus !== 'taken' && (pwEmpty || pwValid) && !busy;
 
   let pwError = '';
   if (pwTooShort) pwError = t('my.passwordTooShort');
@@ -29,8 +31,8 @@ export default function EditProfileSheet({ currentName, onSave, onClose }) {
     setError('');
     try {
       await onSave({ displayName: trimmed, newPassword: pwEmpty ? '' : newPw });
-    } catch {
-      setError(t('my.profileUpdateFailed'));
+    } catch (err) {
+      setError(err?.code === '23505' ? t('signup.nicknameTaken') : t('my.profileUpdateFailed'));
       setBusy(false);
     }
   };
@@ -63,12 +65,21 @@ export default function EditProfileSheet({ currentName, onSave, onClose }) {
           type="text"
           value={name}
           onChange={(e) => setName(e.target.value)}
-          maxLength={30}
+          maxLength={20}
           autoFocus
           className="w-full rounded-2xl border-[1.5px] border-stone-200 bg-white px-4 py-3 text-[0.95rem] text-ink outline-none placeholder:text-ink-faint focus:border-stone-400 focus:ring-1 focus:ring-stone-200"
           placeholder={t('my.displayName')}
         />
-        <p className="mt-1 text-right text-xs text-ink-faint">{trimmed.length}/30</p>
+        <div className="mt-1 flex items-center justify-between px-0.5">
+          <p className="text-xs text-ink-faint">
+            {nicknameStatus === 'taken'
+              ? <span className="text-red-600">{t('signup.nicknameTaken')}</span>
+              : nicknameStatus === 'checking'
+                ? t('signup.nicknameChecking')
+                : ''}
+          </p>
+          <p className="text-xs text-ink-faint">{trimmed.length}/20</p>
+        </div>
 
         {/* Divider */}
         <div className="my-4 border-t border-stone-100" />

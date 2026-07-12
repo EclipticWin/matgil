@@ -38,15 +38,12 @@ export default function CommunityPage() {
 
   const loadPosts = useCallback(async () => {
     try {
-      let rows = await fetchPosts({ locale, popular: isPopular });
-      if (rows.length === 0) {
-        rows = await fetchPosts({ popular: isPopular });
-      }
+      const rows = await fetchPosts({ popular: isPopular });
       setDbPosts(rows);
     } catch {
       setDbPosts([]);
     }
-  }, [locale, isPopular]);
+  }, [isPopular]);
 
   const loadLikedIds = useCallback(async () => {
     if (!user) { setLikedPostIds(new Set()); return; }

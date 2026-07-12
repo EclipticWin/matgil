@@ -2,13 +2,11 @@ import { supabase } from '../../../lib/supabase.js';
 import { formatRelativeOrAbsolute } from '../../../shared/utils/formatTime.js';
 import { POST_TINTS } from '../data/communityConstants.js';
 
-export async function fetchPosts({ locale, popular = false } = {}) {
+export async function fetchPosts({ popular = false } = {}) {
   let query = supabase
     .from('mg_community_posts')
     .select('*')
     .eq('is_published', true);
-
-  if (locale) query = query.eq('locale', locale);
 
   if (popular) {
     query = query

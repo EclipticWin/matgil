@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../features/auth/hooks/useAuth.jsx';
+import { useNicknameAvailability } from '../features/auth/hooks/useNicknameAvailability.js';
 import { ROUTES } from '../shared/constants/routes.js';
 import Button from '../shared/components/Button.jsx';
 import TopBar from '../shared/components/TopBar.jsx';
@@ -9,6 +10,11 @@ import { useLocale } from '../shared/i18n/LocaleProvider.jsx';
 
 const inputClass =
   'h-[3.25rem] w-full rounded-2xl border-[1.5px] border-ink/10 bg-white px-4 text-[0.95rem] text-ink outline-none transition-colors placeholder:text-ink-faint focus:border-coral';
+
+// Nickname is the one field here with live availability feedback, so it gets its own
+// focus color — a weak stone ring instead of the shared coral used by the other fields.
+const nicknameInputClass =
+  'h-[3.25rem] w-full rounded-2xl border-[1.5px] border-ink/10 bg-white px-4 text-[0.95rem] text-ink outline-none transition-colors placeholder:text-ink-faint focus:border-stone-400';
 
 const AUTH_ERROR_KO = {
   'User already registered': '이미 가입된 이메일입니다.',
@@ -35,8 +41,11 @@ export default function SignUpPage() {
   const [confirm, setConfirm] = useState('');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [nicknameFallback, setNicknameFallback] = useState(false);
   const [busy, setBusy] = useState(false);
-  const canSubmit = email.trim() && password.trim() && confirm.trim() && !busy;
+
+  const nicknameStatus = useNicknameAvailability(displayName);
+  const canSubmit = email.trim() && password.trim() && confirm.trim() && !busy && nicknameStatus !== 'taken';
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -52,13 +61,16 @@ export default function SignUpPage() {
     setError('');
     setBusy(true);
     try {
-      const { needsConfirmation } = await signUp({
+      const { needsConfirmation, nicknameFallback: fellBack } = await signUp({
         email,
         password,
         displayName: displayName.trim() || undefined,
       });
       if (needsConfirmation) {
         setSuccess('Account created! Please check your email to confirm your account.');
+      } else if (fellBack) {
+        setNicknameFallback(true);
+        setSuccess(t('signup.nicknameTakenFallback'));
       } else {
         navigate(ROUTES.community, { replace: true });
       }
@@ -84,21 +96,31 @@ export default function SignUpPage() {
               <p className="text-sm font-semibold text-green">{success}</p>
               <button
                 className="mt-4 text-sm font-bold text-coral underline"
-                onClick={() => navigate(ROUTES.login)}
+                onClick={() => (nicknameFallback ? navigate(ROUTES.community, { replace: true }) : navigate(ROUTES.login))}
               >
-                Back to Login
+                {nicknameFallback ? t('signup.continueToApp') : 'Back to Login'}
               </button>
             </div>
           ) : (
             <form className="flex flex-col gap-2.5" onSubmit={handleSubmit}>
-              <input
-                type="text"
-                autoComplete="nickname"
-                placeholder={t('signup.displayName')}
-                value={displayName}
-                onChange={(e) => setDisplayName(e.target.value)}
-                className={inputClass}
-              />
+              <div>
+                <input
+                  type="text"
+                  autoComplete="nickname"
+                  maxLength={20}
+                  placeholder={t('signup.displayName')}
+                  value={displayName}
+                  onChange={(e) => setDisplayName(e.target.value)}
+                  className={nicknameInputClass}
+                />
+                {nicknameStatus === 'taken' ? (
+                  <p className="mt-1 px-1 text-xs text-red-600">{t('signup.nicknameTaken')}</p>
+                ) : nicknameStatus === 'checking' ? (
+                  <p className="mt-1 px-1 text-xs text-ink-faint">{t('signup.nicknameChecking')}</p>
+                ) : (
+                  <p className="mt-1 px-1 text-xs text-ink-faint">{t('signup.displayNameHint')}</p>
+                )}
+              </div>
               <input
                 type="email"
                 autoComplete="email"

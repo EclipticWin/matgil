@@ -73,7 +73,7 @@ export default function MyPage() {
         <div
           className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-gradient-to-br ${avatarGradient(user.id)} font-display text-2xl font-bold text-white`}
         >
-          {user.name.charAt(0).toUpperCase()}
+          {(user.name || '?').charAt(0).toUpperCase()}
         </div>
         <div className="min-w-0 flex-1">
           <p className="truncate text-[1.05rem] font-bold text-ink">{user.name}</p>
