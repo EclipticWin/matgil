@@ -3,9 +3,12 @@ import Button from '../../../shared/components/Button.jsx';
 import { CloseIcon } from '../../../shared/components/Icon.jsx';
 import { useLocale } from '../../../shared/i18n/LocaleProvider.jsx';
 import { useNicknameAvailability } from '../../auth/hooks/useNicknameAvailability.js';
+import DeleteAccountView from './DeleteAccountView.jsx';
 
 export default function EditProfileSheet({ currentName, onSave, onClose }) {
   const { t } = useLocale();
+  const [view, setView] = useState('edit'); // 'edit' | 'delete'
+  const [deleteBusy, setDeleteBusy] = useState(false);
   const [name, setName] = useState(currentName || '');
   const [newPw, setNewPw] = useState('');
   const [confirmPw, setConfirmPw] = useState('');
@@ -40,12 +43,16 @@ export default function EditProfileSheet({ currentName, onSave, onClose }) {
   return (
     <div
       className="absolute inset-0 z-50 flex flex-col justify-end bg-black/30"
-      onClick={onClose}
+      onClick={() => { if (!deleteBusy) onClose(); }}
     >
       <div
         className="animate-rise rounded-t-3xl bg-paper px-5 pb-8 pt-5"
         onClick={(e) => e.stopPropagation()}
       >
+        {view === 'delete' ? (
+          <DeleteAccountView onBack={() => setView('edit')} onBusyChange={setDeleteBusy} />
+        ) : (
+        <>
         <div className="mb-4 flex items-center justify-between">
           <h2 className="font-display text-xl font-bold text-ink">{t('my.editProfile')}</h2>
           <button
@@ -107,6 +114,16 @@ export default function EditProfileSheet({ currentName, onSave, onClose }) {
           placeholder={t('my.confirmPassword')}
         />
 
+        <div className="mt-2 text-right">
+          <button
+            type="button"
+            onClick={() => setView('delete')}
+            className="text-xs font-semibold text-ink-faint"
+          >
+            {t('my.deleteLearnMore')}
+          </button>
+        </div>
+
         {pwError && (
           <p className="mt-2 rounded-xl bg-red-50 px-3 py-2 text-center text-xs text-red-600">
             {pwError}
@@ -127,6 +144,8 @@ export default function EditProfileSheet({ currentName, onSave, onClose }) {
             {busy ? t('my.saving') : t('my.save')}
           </Button>
         </div>
+        </>
+        )}
       </div>
     </div>
   );

@@ -196,9 +196,35 @@ export function AuthProvider({ children }) {
     supabase.auth.refreshSession().catch(() => {});
   }, [applyUser]);
 
+  /** Permanently deletes the caller's own account via the delete-my-account Edge
+   *  Function (which runs with the service role key server-side — never in the
+   *  browser). The function derives the user id from the caller's own JWT, so this
+   *  can never delete a different account. Deliberately does NOT touch local
+   *  session/user state itself — see clearLocalSession below and why the caller
+   *  must navigate away before calling it. Throws the raw invoke error on failure
+   *  so the caller can distinguish a 401 (session expired) from other failures. */
+  const deleteAccount = useCallback(async () => {
+    const { error } = await supabase.functions.invoke('delete-my-account');
+    if (error) throw error;
+  }, []);
+
+  /** Clears local session/user state after a successful deleteAccount() call.
+   *  Callers (e.g. the delete-account confirmation view) must navigate away from
+   *  any page that unmounts/redirects on `user` becoming null (MyPage does exactly
+   *  this) BEFORE calling this — otherwise that page's own "no user -> redirect to
+   *  /login" guard fires first and flashes the login screen instead of landing on
+   *  the app's home screen as intended. Tolerates signOut() failing, since the
+   *  account is already gone server-side by this point. */
+  const clearLocalSession = useCallback(async () => {
+    try {
+      await supabase.auth.signOut();
+    } catch { /* best-effort — the account is already gone server-side */ }
+    applyUser(null);
+  }, [applyUser]);
+
   const value = useMemo(
-    () => ({ user, loading, login, signUp, logout, updateDisplayName, updatePassword }),
-    [user, loading, login, signUp, logout, updateDisplayName, updatePassword],
+    () => ({ user, loading, login, signUp, logout, updateDisplayName, updatePassword, deleteAccount, clearLocalSession }),
+    [user, loading, login, signUp, logout, updateDisplayName, updatePassword, deleteAccount, clearLocalSession],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

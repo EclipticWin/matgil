@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { supabase } from '../../../lib/supabase.js';
 import Button from '../../../shared/components/Button.jsx';
 import { FacebookIcon, GoogleIcon, PinIcon } from '../../../shared/components/Icon.jsx';
 import { ROUTES } from '../../../shared/constants/routes.js';
@@ -53,8 +54,50 @@ export default function LoginForm({ onDone }) {
     }
   };
 
-  const handleSocial = () => {
-    alert(t('login.socialComingSoon'));
+  const handleSocialLogin = async (provider) => {
+    if (busy) return;
+
+    setError('');
+    setBusy(true);
+
+    try {
+      const redirectTo =
+        `${window.location.origin}${import.meta.env.BASE_URL}`;
+
+      const { error: oauthError } = await supabase.auth.signInWithOAuth({
+        provider,
+        options: {
+          redirectTo,
+        },
+      });
+
+      if (oauthError) {
+        throw oauthError;
+      }
+    } catch (err) {
+      console.error(`${provider} OAuth failed:`, err);
+
+      const message = err?.message?.toLowerCase() ?? '';
+
+      if (
+        message.includes('cancel') ||
+        message.includes('access_denied')
+      ) {
+        setError(t('login.socialLoginCancelled'));
+      } else if (
+        message.includes('provider') ||
+        message.includes('client') ||
+        message.includes('configuration')
+      ) {
+        setError(t('login.oauthConfigurationError'));
+      } else if (provider === 'facebook') {
+        setError(t('login.facebookLoginFailed'));
+      } else {
+        setError(t('login.googleLoginFailed'));
+      }
+
+      setBusy(false);
+    }
   };
 
   return (
@@ -118,15 +161,18 @@ export default function LoginForm({ onDone }) {
           type="button"
           aria-label="Continue with Google"
           className={socialClass}
-          onClick={handleSocial}
+          onClick={() => handleSocialLogin('google')}
+          disabled={busy}
         >
           <GoogleIcon />
         </button>
+
         <button
           type="button"
           aria-label="Continue with Facebook"
           className={socialClass}
-          onClick={handleSocial}
+          onClick={() => handleSocialLogin('facebook')}
+          disabled={busy}
         >
           <FacebookIcon />
         </button>

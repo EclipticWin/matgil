@@ -120,7 +120,12 @@ export default function ReviewCard({ review, locale, t, isOwn = false, onEdit, o
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex items-center justify-between gap-2">
-            <span className="min-w-0 truncate text-sm font-bold text-ink">{review.authorName}</span>
+            <span className="min-w-0 truncate text-sm font-bold text-ink">
+              {/* Server always stores the literal, locale-neutral "Deleted user" sentinel
+                  for an anonymized review (see delete-my-account Edge Function) — display
+                  the localized label instead of the raw sentinel string. */}
+              {review.authorName === 'Deleted user' ? t('placeDetail.deletedUserAuthor') : review.authorName}
+            </span>
             <div className="flex shrink-0 items-center gap-1.5">
               <RatingBadge rating={review.rating} />
               {isOwn && (
