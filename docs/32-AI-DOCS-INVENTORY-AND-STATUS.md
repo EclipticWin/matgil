@@ -33,7 +33,7 @@
 | 08 | kakao-map-course-visualization-plan | B | A | 아카이브 (키 관리 절만 이관) |
 | 09 | phrases-tts-plan | B | **E 위험** | 아카이브 (파일명-산출물 불일치) |
 | 10 | github-pages-deploy | **A** | — | 보존 (404 한계·키 노출 주석 소폭 갱신) |
-| 11 | voice-help-llm-plan | B | F | 보존 (Solar 전환 전까지) |
+| 11 | voice-help-llm-plan | B | F | 아카이브 (Solar 전환 완료 2026-07-17 — 실사용 규격은 docs/40 참조) |
 | 12 | map-location-search-plan | B | — | 아카이브 |
 | 13 | tourapi-en-enrich-plan | B | **E(150m 규칙)** | 아카이브 (19번 포인터 필수) |
 | 14 | current-location-recommendation-plan | B | — | 아카이브 |

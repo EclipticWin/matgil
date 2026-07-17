@@ -4,6 +4,8 @@
 
 2026-06-18
 
+> **현재 상태 갱신 (2026-07-17)**: 이 문서 작성 시점에는 "아직 하지 않은 것"으로 기재된 **Solar LLM provider 전환이 완료**되었다(`analyzeVoiceHelp()`가 Solar 1차 → OpenAI fallback 구조로 변경). 아래 본문(§1 흐름도, §2 "Solar 전환 대비 구조 분리")은 **작성 시점(OpenAI 단독 호출) 기록으로만** 참고하고, 현재 실제 호출 구조는 `docs/40-voice-help-solar-primary-openai-fallback-implementation-log.md`를 확인한다.
+
 ---
 
 ## 이전 작업 기준

@@ -6,6 +6,9 @@ const CORS = {
     "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
+const MAX_TRANSCRIPT_LENGTH = 500;
+const PROVIDER_TIMEOUT_MS = 10000;
+
 function jsonResponse(body: unknown, status = 200) {
     return new Response(JSON.stringify(body), {
         status,
@@ -31,6 +34,45 @@ interface AnalyzeResult {
     suggestedReplyKo: string;
     suggestedReplyRomanization: string;
     note: string;
+}
+
+type Provider = "solar" | "openai";
+
+// Failure kinds that are eligible for Solar → OpenAI fallback (see analyzeVoiceHelp).
+type ProviderFailureKind =
+    | "config"
+    | "network"
+    | "timeout"
+    | "auth"
+    | "rate_limit"
+    | "server"
+    | "http_error"
+    | "empty_response"
+    | "parse_error"
+    | "invalid_shape";
+
+class ProviderError extends Error {
+    provider: Provider;
+    kind: ProviderFailureKind;
+    status?: number;
+
+    constructor(provider: Provider, kind: ProviderFailureKind, message: string, status?: number) {
+        super(message);
+        this.provider = provider;
+        this.kind = kind;
+        this.status = status;
+    }
+}
+
+function logProviderOutcome(
+    provider: Provider,
+    outcome: "success" | "failure",
+    detail?: { kind?: string; status?: number },
+) {
+    const parts = [`provider=${provider}`, `outcome=${outcome}`];
+    if (detail?.kind) parts.push(`kind=${detail.kind}`);
+    if (detail?.status) parts.push(`status=${detail.status}`);
+    console.log(`[mg-voice-help] ${parts.join(" ")}`);
 }
 
 function buildPrompt(input: AnalyzeInput): string {
@@ -64,47 +106,182 @@ Return this exact JSON structure:
 }`;
 }
 
-async function analyzeWithOpenAI(input: AnalyzeInput): Promise<AnalyzeResult> {
-    const apiKey = Deno.env.get("OPENAI_API_KEY");
-    if (!apiKey) throw new Error("OPENAI_API_KEY is not configured.");
+function classifyHttpStatus(status: number): ProviderFailureKind {
+    if (status === 401 || status === 403) return "auth";
+    if (status === 429) return "rate_limit";
+    if (status >= 500) return "server";
+    return "http_error";
+}
 
-    const res = await fetch("https://api.openai.com/v1/chat/completions", {
-        method: "POST",
-        headers: {
-            "Authorization": `Bearer ${apiKey}`,
-            "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-            model: "gpt-4o-mini",
-            messages: [{ role: "user", content: buildPrompt(input) }],
-            temperature: 0.3,
-            response_format: { type: "json_object" },
-        }),
-    });
+/** Shared OpenAI-compatible chat completions caller (used for both Solar and OpenAI). */
+async function callChatCompletions(
+    provider: Provider,
+    url: string,
+    apiKey: string,
+    model: string,
+    prompt: string,
+): Promise<string> {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), PROVIDER_TIMEOUT_MS);
 
-    if (!res.ok) {
-        const text = await res.text();
-        throw new Error(`OpenAI error: ${res.status} ${text}`);
+    let res: Response;
+    try {
+        res = await fetch(url, {
+            method: "POST",
+            headers: {
+                "Authorization": `Bearer ${apiKey}`,
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+                model,
+                messages: [{ role: "user", content: prompt }],
+                temperature: 0.3,
+                response_format: { type: "json_object" },
+            }),
+            signal: controller.signal,
+        });
+    } catch (error) {
+        if ((error as { name?: string })?.name === "AbortError") {
+            throw new ProviderError(provider, "timeout", `${provider} request timed out.`);
+        }
+        throw new ProviderError(provider, "network", `${provider} network error.`);
+    } finally {
+        clearTimeout(timer);
     }
 
-    const data = await res.json();
-    const content = data.choices?.[0]?.message?.content;
-    if (!content) throw new Error("Empty response from OpenAI.");
+    if (!res.ok) {
+        // Response body is not logged/forwarded — it may contain provider-internal detail.
+        throw new ProviderError(provider, classifyHttpStatus(res.status), `${provider} HTTP ${res.status}`, res.status);
+    }
 
-    return JSON.parse(content) as AnalyzeResult;
+    const data = await res.json().catch(() => null);
+    const content = data?.choices?.[0]?.message?.content;
+    if (typeof content !== "string" || !content.trim()) {
+        throw new ProviderError(provider, "empty_response", `${provider} returned an empty response.`);
+    }
+
+    return content;
 }
 
-// Solar provider stub — reserved for future migration
-// To switch: replace analyzeWithOpenAI(input) in analyzeVoiceHelp with analyzeWithSolar(input)
-async function analyzeWithSolar(_input: AnalyzeInput): Promise<AnalyzeResult> {
-    // TODO: implement when switching to Solar LLM
-    // const apiKey = Deno.env.get("SOLAR_API_KEY");
-    throw new Error("Solar provider is not yet implemented.");
+/** Strip markdown code fences / surrounding prose and return the JSON substring. */
+function extractJsonText(raw: string): string {
+    let text = raw.trim();
+
+    const fenceMatch = text.match(/```(?:json)?\s*([\s\S]*?)\s*```/i);
+    if (fenceMatch) {
+        text = fenceMatch[1].trim();
+    }
+
+    if (!text.startsWith("{")) {
+        const start = text.indexOf("{");
+        const end = text.lastIndexOf("}");
+        if (start !== -1 && end !== -1 && end > start) {
+            text = text.slice(start, end + 1);
+        }
+    }
+
+    return text;
 }
 
+const REQUIRED_STRING_FIELDS = [
+    "originalPhrase",
+    "detectedLanguage",
+    "meaning",
+    "suggestedReplyKo",
+    "suggestedReplyRomanization",
+] as const;
+
+/** Shared normalizer: parses + validates a provider's raw text into the existing response contract. */
+function normalizeAnalyzeResult(provider: Provider, raw: string): AnalyzeResult {
+    const jsonText = extractJsonText(raw);
+
+    let parsed: unknown;
+    try {
+        parsed = JSON.parse(jsonText);
+    } catch {
+        throw new ProviderError(provider, "parse_error", `${provider} response was not valid JSON.`);
+    }
+
+    if (!parsed || typeof parsed !== "object") {
+        throw new ProviderError(provider, "invalid_shape", `${provider} response was not a JSON object.`);
+    }
+
+    const record = parsed as Record<string, unknown>;
+
+    for (const field of REQUIRED_STRING_FIELDS) {
+        if (typeof record[field] !== "string") {
+            throw new ProviderError(provider, "invalid_shape", `${provider} response missing field: ${field}`);
+        }
+    }
+
+    return {
+        originalPhrase: record.originalPhrase as string,
+        detectedLanguage: record.detectedLanguage as string,
+        meaning: record.meaning as string,
+        suggestedReplyKo: record.suggestedReplyKo as string,
+        suggestedReplyRomanization: record.suggestedReplyRomanization as string,
+        note: typeof record.note === "string" ? record.note : "",
+    };
+}
+
+async function analyzeWithSolar(input: AnalyzeInput): Promise<AnalyzeResult> {
+    const apiKey = Deno.env.get("SOLAR_API_KEY");
+    if (!apiKey) {
+        throw new ProviderError("solar", "config", "SOLAR_API_KEY is not configured.");
+    }
+
+    const content = await callChatCompletions(
+        "solar",
+        "https://api.upstage.ai/v1/chat/completions",
+        apiKey,
+        "solar-pro",
+        buildPrompt(input),
+    );
+
+    return normalizeAnalyzeResult("solar", content);
+}
+
+async function analyzeWithOpenAI(input: AnalyzeInput): Promise<AnalyzeResult> {
+    const apiKey = Deno.env.get("OPENAI_API_KEY");
+    if (!apiKey) {
+        throw new ProviderError("openai", "config", "OPENAI_API_KEY is not configured.");
+    }
+
+    const content = await callChatCompletions(
+        "openai",
+        "https://api.openai.com/v1/chat/completions",
+        apiKey,
+        "gpt-4o-mini",
+        buildPrompt(input),
+    );
+
+    return normalizeAnalyzeResult("openai", content);
+}
+
+// Solar 1st (max 1 call) → OpenAI fallback only on Solar failure (max 1 call). Total ≤ 2 LLM calls.
+// Solar success (parsed + validated) short-circuits — OpenAI is never called in that case.
 async function analyzeVoiceHelp(input: AnalyzeInput): Promise<AnalyzeResult> {
-    return analyzeWithOpenAI(input);
-    // To switch provider: return analyzeWithSolar(input);
+    try {
+        const result = await analyzeWithSolar(input);
+        logProviderOutcome("solar", "success");
+        return result;
+    } catch (solarError) {
+        const kind = solarError instanceof ProviderError ? solarError.kind : "unknown";
+        const status = solarError instanceof ProviderError ? solarError.status : undefined;
+        logProviderOutcome("solar", "failure", { kind, status });
+
+        try {
+            const result = await analyzeWithOpenAI(input);
+            logProviderOutcome("openai", "success");
+            return result;
+        } catch (openaiError) {
+            const openaiKind = openaiError instanceof ProviderError ? openaiError.kind : "unknown";
+            const openaiStatus = openaiError instanceof ProviderError ? openaiError.status : undefined;
+            logProviderOutcome("openai", "failure", { kind: openaiKind, status: openaiStatus });
+
+            throw new Error("Voice help analysis is temporarily unavailable. Please try again.");
+        }
+    }
 }
 
 serve(async (req: Request) => {
@@ -123,8 +300,13 @@ serve(async (req: Request) => {
             return jsonResponse({ error: "'transcript' is required." }, 400);
         }
 
+        const transcript = body.transcript.trim();
+        if (transcript.length > MAX_TRANSCRIPT_LENGTH) {
+            return jsonResponse({ error: `'transcript' must be ${MAX_TRANSCRIPT_LENGTH} characters or fewer.` }, 400);
+        }
+
         const input: AnalyzeInput = {
-            transcript: body.transcript.trim(),
+            transcript,
             userLanguage: typeof body.userLanguage === "string" ? body.userLanguage : "en",
             context: typeof body.context === "string" ? body.context : "Korean restaurant",
         };
