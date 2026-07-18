@@ -10,6 +10,7 @@ import {
 import { DEFAULT_LOCATION, sortPlacesByDistance } from '../features/explore/data/locations.js';
 import { buildRecommendedCourses } from '../features/explore/data/courseBuilder.js';
 import { findAnchorPlace } from '../features/explore/services/anchorMatchService.js';
+import { reverseGeocodeCoords } from '../features/explore/services/reverseGeocodeService.js';
 import { consumeLastPlaceView } from '../features/explore/data/lastPlaceView.js';
 import Modal from '../features/explore/components/Modal.jsx';
 import FilterSheet from '../features/explore/components/FilterSheet.jsx';
@@ -120,13 +121,30 @@ export default function HomePage() {
     setGpsStatus('idle');
   }
 
+  // Best-effort reverse geocode: augments the already-set selectedLocation with
+  // address/area once Kakao resolves it, guarded so a stale response from a since-
+  // replaced location (user moved the map/GPS again before this resolved) is dropped
+  // instead of clobbering the newer selection. Never blocks or fails the selection
+  // itself — anchor_address_original/anchor_area_original just stay null on failure.
+  function augmentWithReverseGeocode(source, lat, lng) {
+    reverseGeocodeCoords(lat, lng).then((geo) => {
+      if (!geo) return;
+      setSelectedLocation((prev) => (
+        prev?.source === source && prev.lat === lat && prev.lng === lng
+          ? { ...prev, address: geo.address ?? prev.address, area: geo.area ?? prev.area, placeName: geo.placeName ?? prev.placeName }
+          : prev
+      ));
+    });
+  }
+
   function handleFindHere() {
     const center = mapApiRef.current?.getCenter();
     if (!center) return;
-    setSelectedLocation({ key: 'map_center', label: t('nearby.selectedArea'), labelKo: '선택한 지역', lat: center.lat, lng: center.lng, source: 'map', address: null });
+    setSelectedLocation({ key: 'map_center', label: t('nearby.selectedArea'), labelKo: '선택한 지역', lat: center.lat, lng: center.lng, source: 'map', address: null, area: null, placeName: null });
     setAnchorPlace(null);
     setGpsStatus('idle');
     setShowFindHere(false);
+    augmentWithReverseGeocode('map', center.lat, center.lng);
   }
 
   function handleGpsClick() {
@@ -138,10 +156,11 @@ export default function HomePage() {
     navigator.geolocation.getCurrentPosition(
       (pos) => {
         const { latitude: lat, longitude: lng } = pos.coords;
-        setSelectedLocation({ key: 'current_location', label: t('nearby.currentLocation'), labelKo: '현재 위치', lat, lng, source: 'gps', address: null });
+        setSelectedLocation({ key: 'current_location', label: t('nearby.currentLocation'), labelKo: '현재 위치', lat, lng, source: 'gps', address: null, area: null, placeName: null });
         setAnchorPlace(null);
         setGpsStatus('active');
         setShowFindHere(false);
+        augmentWithReverseGeocode('gps', lat, lng);
       },
       (err) => {
         setGpsStatus(err.code === err.PERMISSION_DENIED ? 'denied' : 'error');
@@ -253,6 +272,7 @@ export default function HomePage() {
           setSavedCourseForMap(null);
         }}
         selectedLocation={selectedLocation}
+        selectedFoodTypes={filters.cat}
         isLoading={placesLoading}
         gpsStatus={gpsStatus}
         onGpsClick={handleGpsClick}

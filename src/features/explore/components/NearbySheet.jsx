@@ -7,7 +7,7 @@ import { CheckIcon, ChevronRightIcon, CloseIcon, LocateIcon } from '../../../sha
 import { cn } from '../../../shared/utils/classNames.js';
 import { useLocale } from '../../../shared/i18n/LocaleProvider.jsx';
 import { useAuth } from '../../auth/hooks/useAuth.jsx';
-import { saveCourse, checkCourseAlreadySaved, fetchSavedCourses, isSameCourse } from '../../courses/services/savedCourseService.js';
+import { saveCourse, checkCourseAlreadySaved, fetchSavedCourses, isSameCourse, DuplicateCourseError } from '../../courses/services/savedCourseService.js';
 import { localizeSnapshotForDisplay } from '../../courses/utils/courseDisplay.js';
 import { normalizeCourseMetrics } from '../../courses/utils/courseMetrics.js';
 import { ROUTES } from '../../../shared/constants/routes.js';
@@ -27,6 +27,7 @@ export default function NearbySheet({
   activeCourse,
   onSelectCourse,
   selectedLocation,
+  selectedFoodTypes = [],
   isLoading = false,
   gpsStatus = 'idle',
   onGpsClick,
@@ -57,7 +58,7 @@ export default function NearbySheet({
   const sentinelRef = useRef(null);
   const initialPlaceConsumedRef = useRef(false);
 
-  // 'idle' | 'checking' | 'saving' | 'saved' | 'failed'
+  // 'idle' | 'checking' | 'saving' | 'saved' | 'failed' | 'duplicate'
   const [saveState, setSaveState] = useState('idle');
   const [savedRows, setSavedRows] = useState([]);
 
@@ -257,11 +258,15 @@ export default function NearbySheet({
         course: selectedCourse,
         selectedLocation,
         metrics,
+        preferenceKeys: selectedFoodTypes,
       });
       setSaveState('saved');
       setSavedRows((prev) => [savedRow, ...prev]);
-    } catch {
-      setSaveState('failed');
+    } catch (err) {
+      // DB's active-route UNIQUE index (user_id, route_signature) rejected this as
+      // an already-saved route (docs/42) — distinct, friendlier message than a
+      // generic save failure.
+      setSaveState(err instanceof DuplicateCourseError ? 'duplicate' : 'failed');
       setTimeout(() => setSaveState('idle'), 3000);
     }
   }

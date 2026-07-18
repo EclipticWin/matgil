@@ -8,13 +8,15 @@ import { RouteIcon, TrashIcon } from '../../../shared/components/Icon.jsx';
 import { useLocale } from '../../../shared/i18n/LocaleProvider.jsx';
 import { ROUTES } from '../../../shared/constants/routes.js';
 import { formatCourseDistance, formatCourseDuration } from '../utils/courseMetrics.js';
-import { getLocalizedCourseTitle } from '../utils/courseDisplay.js';
+import { getSavedCourseDisplayTitle } from '../utils/courseDisplay.js';
+import { useFoodCategories } from '../../explore/context/FoodCategoryProvider.jsx';
 import { formatSavedDate } from '../../../shared/utils/formatDate.js';
 
 /** Courses page's "Saved Routes" tab — the pre-existing saved-course list, unchanged
  *  in behavior, just extracted from CoursesPage so it can sit alongside Saved Places. */
 export default function SavedRoutesTab() {
   const { t, locale } = useLocale();
+  const { getCategoryLabel } = useFoodCategories();
   const { courses, loading, remove } = useSavedCourses();
   const navigate = useNavigate();
   const [pendingDeleteId, setPendingDeleteId] = useState(null);
@@ -51,10 +53,9 @@ export default function SavedRoutesTab() {
       {courses.map((saved) => {
         const snapshot = saved.course_snapshot ?? {};
         const rawStops = saved.stops ?? snapshot.stops ?? [];
-        const anchorLabel = saved.anchor_label ?? snapshot.anchor_label ?? '';
         const adaptedCourse = {
           id: saved.id,
-          title: getLocalizedCourseTitle(rawStops, anchorLabel, locale),
+          title: getSavedCourseDisplayTitle(saved, locale, { getCategoryLabel, t }),
           stops: rawStops,
           totalDistanceM: saved.total_distance_m,
           totalDurationMin: saved.total_duration_min,

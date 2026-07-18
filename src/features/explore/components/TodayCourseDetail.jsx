@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import Thumbnail from '../../../shared/components/Thumbnail.jsx';
 import {
   BackIcon,
@@ -10,12 +11,14 @@ import {
 } from '../../../shared/components/Icon.jsx';
 import { useLocale } from '../../../shared/i18n/LocaleProvider.jsx';
 import { getDisplayMetrics } from '../../courses/utils/courseMetrics.js';
-import { formatStopDistance } from '../../courses/utils/courseDisplay.js';
+import { formatStopStatsParts } from '../../courses/utils/courseDisplay.js';
+import { fetchPlaceReviewStatsBatch } from '../../places/services/placeReviewService.js';
+import { fetchPlaceBookmarkStatsBatch } from '../../places/services/placeBookmarkService.js';
 import Spinner from '../../../shared/components/Spinner.jsx';
 
 /** Map Bottom Sheet 내부 코스 상세 콘텐츠.
  *  onSave: () => void — save button callback (omit to hide button)
- *  saveState: 'idle' | 'checking' | 'saving' | 'saved' | 'failed' */
+ *  saveState: 'idle' | 'checking' | 'saving' | 'saved' | 'failed' | 'duplicate' */
 export default function TodayCourseDetail({ course, selectedLocation, onBack, onSelectPlace, onSave, saveState = 'idle' }) {
   const { locale, t } = useLocale();
   const stopCount = course.stopCount ?? course.stops.length;
@@ -23,6 +26,41 @@ export default function TodayCourseDetail({ course, selectedLocation, onBack, on
   const blurb = t('courseDetail.blurb', { location: locationLabel });
 
   const { displayDistance, displayDuration } = getDisplayMetrics(course, locale);
+
+  // Review stats for every stop, fetched in one batched request (no per-stop N+1).
+  // Depends on the stop id set, not the stops array reference, so re-fetching only
+  // happens when the actual set of places changes.
+  const stopIdsKey = [...new Set((course.stops ?? []).map((s) => s.id).filter((id) => id != null))].join(',');
+  const [reviewStatsById, setReviewStatsById] = useState(new Map());
+
+  useEffect(() => {
+    if (!stopIdsKey) {
+      setReviewStatsById(new Map());
+      return;
+    }
+    let cancelled = false;
+    fetchPlaceReviewStatsBatch(stopIdsKey.split(',').map(Number))
+      .then((statsMap) => { if (!cancelled) setReviewStatsById(statsMap); })
+      .catch(() => { if (!cancelled) setReviewStatsById(new Map()); });
+    return () => { cancelled = true; };
+  }, [stopIdsKey]);
+
+  // Save counts (mg_place_bookmark_stats), same batching discipline as review stats
+  // above — one request for the whole course, independent of the review-stats query
+  // since they're two separate views (docs/42 §6).
+  const [saveCountById, setSaveCountById] = useState(new Map());
+
+  useEffect(() => {
+    if (!stopIdsKey) {
+      setSaveCountById(new Map());
+      return;
+    }
+    let cancelled = false;
+    fetchPlaceBookmarkStatsBatch(stopIdsKey.split(',').map(Number))
+      .then((countMap) => { if (!cancelled) setSaveCountById(countMap); })
+      .catch(() => { if (!cancelled) setSaveCountById(new Map()); });
+    return () => { cancelled = true; };
+  }, [stopIdsKey]);
 
   const isBusy = saveState === 'checking' || saveState === 'saving';
   const isSaved = saveState === 'saved';
@@ -78,7 +116,12 @@ export default function TodayCourseDetail({ course, selectedLocation, onBack, on
 
           {course.stops.map((stop, i) => {
             const subtitle = stop.firstMenu || t('courseDetail.restaurantFallback');
-            const dist = formatStopDistance(stop);
+            const { head: statsHead, distance } = formatStopStatsParts(
+              stop,
+              reviewStatsById.get(stop.id),
+              saveCountById.get(stop.id),
+              t('courseDetail.noRatings'),
+            );
 
             return (
               <button
@@ -101,9 +144,13 @@ export default function TodayCourseDetail({ course, selectedLocation, onBack, on
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-[0.95rem] font-bold text-ink">{stop.name}</p>
                     <p className="mt-0.5 truncate text-xs text-ink-soft">{subtitle}</p>
-                    {dist && (
-                      <p className="mt-0.5 truncate text-xs text-ink-faint">{dist}</p>
-                    )}
+                    {/* flex-wrap (not truncate) — distance only drops to its own line
+                        when the row is too narrow to fit alongside the rating/save
+                        count, so no part of the stats is ever cut off (docs/42 §4). */}
+                    <div className="mt-0.5 flex flex-wrap items-baseline gap-x-1.5 text-xs text-ink-faint">
+                      <span className="whitespace-nowrap">{statsHead}</span>
+                      {distance && <span className="whitespace-nowrap">{distance}</span>}
+                    </div>
                   </div>
 
                   <ChevronRightIcon size={14} className="shrink-0 text-ink-faint" />
@@ -125,7 +172,7 @@ export default function TodayCourseDetail({ course, selectedLocation, onBack, on
               'inline-flex h-[3.25rem] w-full items-center justify-center gap-2 rounded-2xl px-5 text-base font-bold transition-colors disabled:cursor-default',
               isSaved
                 ? 'bg-stone-100 text-stone-500'
-                : saveState === 'failed'
+                : saveState === 'failed' || saveState === 'duplicate'
                 ? 'bg-stone-100 text-stone-400'
                 : 'bg-coral text-white shadow-[0_2px_6px_rgba(248,72,31,0.16)] active:bg-coral-deep disabled:bg-coral/40 disabled:shadow-none',
             ].join(' ')}
@@ -141,6 +188,8 @@ export default function TodayCourseDetail({ course, selectedLocation, onBack, on
               ? t('savedCourses.saving')
               : isSaved
               ? t('savedCourses.saved')
+              : saveState === 'duplicate'
+              ? t('savedCourses.duplicateError')
               : saveState === 'failed'
               ? t('savedCourses.saveFailed')
               : t('savedCourses.save')}

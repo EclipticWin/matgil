@@ -1,5 +1,5 @@
 import { calcDistanceKm } from './locations.js';
-import { getLocalizedCourseTitle } from '../../courses/utils/courseDisplay.js';
+import { getLocalizedCourseTitle, appendCourseSequenceNumber } from '../../courses/utils/courseDisplay.js';
 
 const DEFAULT_STOP_COUNT = 3;
 const COURSE_CANDIDATE_LIMIT = 20;
@@ -283,6 +283,19 @@ export function buildRecommendedCourses({
 
     course.stops.forEach((s) => usedIds.add(s.id));
     courses.push(course);
+  }
+
+  // Multiple courses for the same anchor can end up with the exact same title
+  // (detectTitleType() inside getLocalizedCourseTitle buckets by stops' categories,
+  // and several courses easily land in the same bucket — e.g. three "Itaewon Food
+  // Walk" cards with no way to tell them apart). Number every card once there's
+  // more than one, using each course's own stable `id` (`recommended-N`) as the
+  // sequence source rather than trusting array position to stay in sync.
+  if (courses.length > 1) {
+    for (const course of courses) {
+      const sequenceNumber = Number(course.id.split('-').pop());
+      course.title = appendCourseSequenceNumber(course.title, sequenceNumber);
+    }
   }
 
   return courses;

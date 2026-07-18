@@ -17,7 +17,7 @@ import { useAuth } from '../../auth/hooks/useAuth.jsx';
 import { ROUTES } from '../../../shared/constants/routes.js';
 import { useFoodCategories } from '../context/FoodCategoryProvider.jsx';
 import { usePlaceDetailSections } from '../../places/hooks/usePlaceDetailSections.js';
-import { isPlaceBookmarked, addPlaceBookmark, removePlaceBookmark } from '../../places/services/placeBookmarkService.js';
+import { isPlaceBookmarked, addPlaceBookmark, removePlaceBookmark, fetchPlaceBookmarkStatsBatch } from '../../places/services/placeBookmarkService.js';
 import { fetchPlaceReviewStats, fetchPlaceReviews, fetchMyPlaceReview, deletePlaceReview } from '../../places/services/placeReviewService.js';
 import PlaceLocationMap from '../../places/components/PlaceLocationMap.jsx';
 import ReviewCard from '../../places/components/ReviewCard.jsx';
@@ -119,6 +119,10 @@ export default function PlaceDetailSheet({ place, selectedLocation, onBack }) {
   const [bookmarkBusy, setBookmarkBusy] = useState(false);
   const [authModal, setAuthModal] = useState(null); // null | 'bookmark' | 'review'
 
+  // ── 가게 저장 수 (mg_place_bookmark_stats — 저장한 사용자 수만, 목록/ID는 노출하지 않음) ──
+  const [saveCount, setSaveCount] = useState(0);
+  const [saveCountLoading, setSaveCountLoading] = useState(true);
+
   // ── Reviews 미리보기 (통계 + 최신 2개) ──
   const [reviewStats, setReviewStats] = useState(null);
   const [reviewStatsLoading, setReviewStatsLoading] = useState(true);
@@ -161,6 +165,15 @@ export default function PlaceDetailSheet({ place, selectedLocation, onBack }) {
       .catch(() => {});
     return () => { cancelled = true; };
   }, [place.id, user?.id]);
+
+  useEffect(() => {
+    let cancelled = false;
+    setSaveCountLoading(true);
+    fetchPlaceBookmarkStatsBatch([place.id])
+      .then((countMap) => { if (!cancelled) { setSaveCount(countMap.get(place.id) ?? 0); setSaveCountLoading(false); } })
+      .catch(() => { if (!cancelled) { setSaveCount(0); setSaveCountLoading(false); } });
+    return () => { cancelled = true; };
+  }, [place.id]);
 
   useEffect(() => {
     let cancelled = false;
@@ -299,12 +312,14 @@ export default function PlaceDetailSheet({ place, selectedLocation, onBack }) {
 
     const next = !isBookmarked;
     setIsBookmarked(next); // 낙관적 업데이트
+    setSaveCount((prev) => Math.max(0, prev + (next ? 1 : -1))); // 저장 수도 함께 낙관적 반영
     setBookmarkBusy(true);
     try {
       if (next) await addPlaceBookmark({ placeId: place.id, userId: user.id });
       else await removePlaceBookmark({ placeId: place.id, userId: user.id });
     } catch {
       setIsBookmarked(!next); // 실패 시 원복
+      setSaveCount((prev) => Math.max(0, prev + (next ? -1 : 1)));
     } finally {
       setBookmarkBusy(false);
     }
@@ -421,24 +436,34 @@ export default function PlaceDetailSheet({ place, selectedLocation, onBack }) {
             </button>
           </div>
 
-          {/* 평균 별점 + 리뷰 수 */}
-          {!reviewStatsLoading && (
-            <button
-              type="button"
-              onClick={() => handleTabClick('reviews')}
-              className="mt-0.5 inline-flex items-center gap-1.5 text-[0.82rem] font-semibold text-ink-soft"
-            >
-              {reviewCount > 0 ? (
-                <>
-                  <StarIcon size={11} className="text-coral" />
-                  {Number(reviewStats.rating_avg).toFixed(1)} ·{' '}
-                  {t(reviewCount === 1 ? 'placeDetail.reviewCountOne' : 'placeDetail.reviewCountOther', { count: reviewCount })}
-                </>
-              ) : (
-                getEmpty('reviews', locale).title
-              )}
-            </button>
-          )}
+          {/* 평균 별점 + 리뷰 수 + 저장 수 */}
+          <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[0.82rem] font-semibold text-ink-soft">
+            {!reviewStatsLoading && (
+              <button
+                type="button"
+                onClick={() => handleTabClick('reviews')}
+                className="inline-flex items-center gap-1.5"
+              >
+                {reviewCount > 0 ? (
+                  <>
+                    <StarIcon size={11} className="text-coral" />
+                    {Number(reviewStats.rating_avg).toFixed(1)} ·{' '}
+                    {t(reviewCount === 1 ? 'placeDetail.reviewCountOne' : 'placeDetail.reviewCountOther', { count: reviewCount })}
+                  </>
+                ) : (
+                  getEmpty('reviews', locale).title
+                )}
+              </button>
+            )}
+            {/* 저장 수 — 저장한 사용자 수만(개인정보 비노출), 0도 표시.
+                "· " 접두사는 리뷰 부분이 실제로 렌더된 경우에만 붙인다(docs/44 —
+                이전에는 flex gap만 있고 가운데점 문자 자체가 없었다). */}
+            {!saveCountLoading && (
+              <span className="inline-flex items-center gap-1">
+                {!reviewStatsLoading && '· '}♥ {saveCount}
+              </span>
+            )}
+          </div>
         </div>
 
         {/* 히어로 이미지 */}

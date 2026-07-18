@@ -3,18 +3,7 @@ import { CloseIcon, FunnelIcon, PinIcon } from '../../../shared/components/Icon.
 import { searchPlacesByKeyword } from '../services/kakaoPlaceSearchService.js';
 import { findAnchorPlace } from '../services/anchorMatchService.js';
 import { useLocale } from '../../../shared/i18n/LocaleProvider.jsx';
-
-const SEOUL_DISTRICT_EN = {
-  강남구: 'Gangnam-gu',   강동구: 'Gangdong-gu',  강북구: 'Gangbuk-gu',
-  강서구: 'Gangseo-gu',   관악구: 'Gwanak-gu',    광진구: 'Gwangjin-gu',
-  구로구: 'Guro-gu',      금천구: 'Geumcheon-gu', 노원구: 'Nowon-gu',
-  도봉구: 'Dobong-gu',    동대문구: 'Dongdaemun-gu', 동작구: 'Dongjak-gu',
-  마포구: 'Mapo-gu',      서대문구: 'Seodaemun-gu', 서초구: 'Seocho-gu',
-  성동구: 'Seongdong-gu', 성북구: 'Seongbuk-gu',  송파구: 'Songpa-gu',
-  양천구: 'Yangcheon-gu', 영등포구: 'Yeongdeungpo-gu', 용산구: 'Yongsan-gu',
-  은평구: 'Eunpyeong-gu', 종로구: 'Jongno-gu',   중구: 'Jung-gu',
-  중랑구: 'Jungnang-gu',
-};
+import { SEOUL_DISTRICT_EN } from '../data/seoulDistricts.js';
 
 function formatSeoulDistrictAddress(addressStr) {
   if (!addressStr) return null;
@@ -163,7 +152,9 @@ export default function SearchOverlay({ open, onSelect, onClose, filterCount = 0
                     lat: Number(r.y),
                     lng: Number(r.x),
                     source: 'search',
-                    address: r.address_name,
+                    // Road-name address preferred, falling back to the jibun address
+                    // (mg_saved_courses.anchor_address_original convention — see docs/42).
+                    address: r.road_address_name || r.address_name,
                     categoryGroupCode: r.category_group_code,
                   });
                 }}

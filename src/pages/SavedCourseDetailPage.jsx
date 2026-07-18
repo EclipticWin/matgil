@@ -1,9 +1,19 @@
 import { useEffect, useState } from 'react';
-import { useNavigate, useParams, Navigate } from 'react-router-dom';
+import { useNavigate, useParams, Navigate, Link } from 'react-router-dom';
 import { useAuth } from '../features/auth/hooks/useAuth.jsx';
 import { fetchSavedCourseById } from '../features/courses/services/savedCourseService.js';
+import { fetchPlaceReviewStatsBatch } from '../features/places/services/placeReviewService.js';
+import { fetchPlaceBookmarkStatsBatch } from '../features/places/services/placeBookmarkService.js';
+import { getPlacesByIds } from '../api/placeApi.js';
 import { formatCourseDistance, formatCourseDuration } from '../features/courses/utils/courseMetrics.js';
-import { normalizeSavedCourseForDisplay, formatStopDistance } from '../features/courses/utils/courseDisplay.js';
+import {
+  normalizeSavedCourseForDisplay,
+  formatStopStatsParts,
+  getSavedCourseAnchorLine,
+  getSavedCoursePreferenceLine,
+  mergeSavedStopWithLocalizedPlace,
+} from '../features/courses/utils/courseDisplay.js';
+import { useFoodCategories } from '../features/explore/context/FoodCategoryProvider.jsx';
 import { ROUTES } from '../shared/constants/routes.js';
 import Thumbnail from '../shared/components/Thumbnail.jsx';
 import Button from '../shared/components/Button.jsx';
@@ -22,10 +32,14 @@ export default function SavedCourseDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { locale, t } = useLocale();
+  const { getCategoryLabel } = useFoodCategories();
   const { user, loading: authLoading } = useAuth();
   const [savedCourse, setSavedCourse] = useState(null);
   const [fetchLoading, setFetchLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
+  const [reviewStatsById, setReviewStatsById] = useState(new Map());
+  const [saveCountById, setSaveCountById] = useState(new Map());
+  const [localizedPlacesById, setLocalizedPlacesById] = useState(new Map());
 
   useEffect(() => {
     if (authLoading) return;
@@ -43,6 +57,57 @@ export default function SavedCourseDetailPage() {
       });
   }, [id, user?.id, authLoading]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Review stats for every stop, fetched in one batched request (no per-stop N+1).
+  // Depends on the stop id set (not savedCourse's object identity), so it only
+  // re-fetches when the actual set of places changes. Kept above the early
+  // returns below so the hook always runs (rules of hooks).
+  const rawStops = savedCourse?.stops ?? savedCourse?.course_snapshot?.stops ?? [];
+  const stopIdsKey = [...new Set(rawStops.map((s) => s.id).filter((sid) => sid != null))].join(',');
+
+  useEffect(() => {
+    if (!stopIdsKey) {
+      setReviewStatsById(new Map());
+      return;
+    }
+    let cancelled = false;
+    fetchPlaceReviewStatsBatch(stopIdsKey.split(',').map(Number))
+      .then((statsMap) => { if (!cancelled) setReviewStatsById(statsMap); })
+      .catch(() => { if (!cancelled) setReviewStatsById(new Map()); });
+    return () => { cancelled = true; };
+  }, [stopIdsKey]);
+
+  // Save counts (mg_place_bookmark_stats) — same one-request-per-course discipline,
+  // a separate batch since it's a separate view from review stats (docs/42 §6).
+  useEffect(() => {
+    if (!stopIdsKey) {
+      setSaveCountById(new Map());
+      return;
+    }
+    let cancelled = false;
+    fetchPlaceBookmarkStatsBatch(stopIdsKey.split(',').map(Number))
+      .then((countMap) => { if (!cancelled) setSaveCountById(countMap); })
+      .catch(() => { if (!cancelled) setSaveCountById(new Map()); });
+    return () => { cancelled = true; };
+  }, [stopIdsKey]);
+
+  // Current-locale place data for every stop, one batched query (existing
+  // getPlacesByIds() — same function Explore/Map use to build the current-locale
+  // place list, and Saved Places already reuses for its own batch lookup). Depends
+  // on `locale` too so switching languages re-fetches and re-merges instead of
+  // leaving the saved-locale snapshot text on screen (docs/44 — this is the fix for
+  // the saved-course/place-detail language-mixing bug).
+  useEffect(() => {
+    if (!stopIdsKey) {
+      setLocalizedPlacesById(new Map());
+      return;
+    }
+    let cancelled = false;
+    getPlacesByIds(stopIdsKey.split(',').map(Number), locale)
+      .then((places) => { if (!cancelled) setLocalizedPlacesById(new Map(places.map((p) => [p.id, p]))); })
+      .catch(() => { if (!cancelled) setLocalizedPlacesById(new Map()); });
+    return () => { cancelled = true; };
+  }, [stopIdsKey, locale]);
+
   if (!authLoading && !user) return <Navigate to={ROUTES.courses} replace />;
   if (!fetchLoading && notFound) return <Navigate to={ROUTES.courses} replace />;
 
@@ -54,10 +119,17 @@ export default function SavedCourseDetailPage() {
     );
   }
 
-  const display = normalizeSavedCourseForDisplay(savedCourse, locale);
+  const displayHelpers = { getCategoryLabel, t };
+  const display = normalizeSavedCourseForDisplay(savedCourse, locale, displayHelpers);
   const snapshot = display.course_snapshot ?? {};
-  const stops = display.stops ?? [];
+  // Current-locale place text merged over the saved snapshot (docs/44) — NOT
+  // display.stops, which only ever re-localizes `name` (via getLocalizedStopName)
+  // and leaves every other text field (menu, address, description, ...) frozen at
+  // whatever locale the course was saved in.
+  const stops = rawStops.map((stop) => mergeSavedStopWithLocalizedPlace(stop, localizedPlacesById.get(stop.id)));
   const stopCount = display.stop_count ?? stops.length;
+  const anchorLine = getSavedCourseAnchorLine(savedCourse, locale, displayHelpers);
+  const preferenceLine = getSavedCoursePreferenceLine(savedCourse, locale, displayHelpers);
 
   const distM = display.total_distance_m ?? snapshot.normalizedMetrics?.totalDistanceM ?? null;
   const durMin = display.total_duration_min ?? snapshot.normalizedMetrics?.totalDurationMin ?? null;
@@ -91,6 +163,16 @@ export default function SavedCourseDetailPage() {
           <h1 className="mt-[0.4375rem] font-display text-[1.75rem] font-bold leading-[1.05] tracking-tight">
             {display.title}
           </h1>
+          {anchorLine && (
+            <p className="mt-1 truncate text-[0.8125rem] font-medium text-white/75">
+              {t('courseDetail.startingPointLine', { value: anchorLine })}
+            </p>
+          )}
+          {preferenceLine && (
+            <p className="mt-0.5 truncate text-[0.75rem] font-medium text-white/70">
+              {t('courseDetail.preferencesLine', { value: preferenceLine })}
+            </p>
+          )}
           <div className="mt-3 flex items-center gap-4 text-[0.8125rem] font-semibold">
             <span className="inline-flex items-center gap-1.5">
               <PinIcon size={14} /> {t('courseDetail.stops', { n: stopCount })}
@@ -121,28 +203,46 @@ export default function SavedCourseDetailPage() {
 
             {stops.map((stop, i) => {
               const subtitle = stop.firstMenu || t('courseDetail.restaurantFallback');
-              const dist = formatStopDistance(stop);
+              const { head: statsHead, distance } = formatStopStatsParts(
+                stop,
+                reviewStatsById.get(stop.id),
+                saveCountById.get(stop.id),
+                t('courseDetail.noRatings'),
+              );
+              const canOpenDetail = Number.isFinite(stop.id) && stop.id > 0;
+
+              const cardBody = (
+                <div className="flex min-w-0 flex-1 items-center gap-3 rounded-2xl border border-ink/5 bg-white/45 px-3 py-3 shadow-[0_0.25rem_1rem_rgba(34,24,20,0.04)]">
+                  <Thumbnail
+                    src={stop.imageUrl}
+                    tint={stop.tint}
+                    className="h-14 w-14 shrink-0"
+                  />
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-[0.95rem] font-bold text-ink">{stop.name}</p>
+                    <p className="mt-0.5 truncate text-xs text-ink-soft">{subtitle}</p>
+                    {/* flex-wrap (not truncate) — distance only drops to its own line
+                        when the row is too narrow to fit alongside the rating/save
+                        count, so no part of the stats is ever cut off (docs/42 §4). */}
+                    <div className="mt-0.5 flex flex-wrap items-baseline gap-x-1.5 text-xs text-ink-faint">
+                      <span className="whitespace-nowrap">{statsHead}</span>
+                      {distance && <span className="whitespace-nowrap">{distance}</span>}
+                    </div>
+                  </div>
+                  <ChevronRightIcon size={14} className="shrink-0 text-ink-faint" />
+                </div>
+              );
 
               return (
                 <div key={stop.id ?? i} className="relative flex items-center gap-5">
                   <div className="z-[1] flex h-[2.125rem] w-[2.125rem] shrink-0 items-center justify-center rounded-full bg-coral font-display text-[0.9375rem] font-bold text-white shadow-[0_2px_6px_rgba(248,72,31,0.18)]">
                     {i + 1}
                   </div>
-                  <div className="flex min-w-0 flex-1 items-center gap-3 rounded-2xl border border-ink/5 bg-white/45 px-3 py-3 shadow-[0_0.25rem_1rem_rgba(34,24,20,0.04)]">
-                    <Thumbnail
-                      src={stop.imageUrl}
-                      tint={stop.tint}
-                      className="h-14 w-14 shrink-0"
-                    />
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-[0.95rem] font-bold text-ink">{stop.name}</p>
-                      <p className="mt-0.5 truncate text-xs text-ink-soft">{subtitle}</p>
-                      {dist && (
-                        <p className="mt-0.5 truncate text-xs text-ink-faint">{dist}</p>
-                      )}
-                    </div>
-                    <ChevronRightIcon size={14} className="shrink-0 text-ink-faint" />
-                  </div>
+                  {canOpenDetail ? (
+                    <Link to={ROUTES.placeDetail(stop.id)} state={{ place: stop }} className="min-w-0 flex-1">
+                      {cardBody}
+                    </Link>
+                  ) : cardBody}
                 </div>
               );
             })}
