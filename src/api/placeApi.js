@@ -1,13 +1,21 @@
 import { supabase } from "../lib/supabase.js";
 
+// Fallback order per requested locale: en falls back to ko, ko falls back to
+// en (unchanged 2-locale behavior), zh-CN falls back to en then ko (its own
+// data first, then the other translated locale, then the original Korean).
+const LOCALE_FALLBACK_CHAIN = {
+  en: ["en", "ko"],
+  ko: ["ko", "en"],
+  "zh-CN": ["zh-CN", "en", "ko"],
+};
+
 export function normalizePlace(row, locale = "ko") {
   const texts = row.mg_place_texts ?? [];
 
-  // Primary text for the requested locale; fallback to the other locale.
-  const fallbackLocale = locale === "en" ? "ko" : "en";
+  // Primary text for the requested locale; fallback down its locale chain.
+  const localeChain = LOCALE_FALLBACK_CHAIN[locale] ?? [locale, "en", "ko"];
   const text =
-    texts.find((t) => t.locale === locale) ||
-    texts.find((t) => t.locale === fallbackLocale) ||
+    localeChain.reduce((found, loc) => found || texts.find((t) => t.locale === loc), null) ||
     {};
 
   // Always store the Korean name regardless of locale — used by

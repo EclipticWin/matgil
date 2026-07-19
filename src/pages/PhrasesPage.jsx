@@ -241,7 +241,7 @@ export default function PhrasesPage() {
               <div className="mt-4 min-w-0 max-w-full overflow-hidden">
                 <PhraseCategoryTabs
                   categories={[
-                    { id: 'all', label: 'All', labelKo: '전체' },
+                    { id: 'all', label: 'All', labelKo: '전체', labelZh: '全部' },
                     ...categories,
                   ]}
                   value={popularCategory}

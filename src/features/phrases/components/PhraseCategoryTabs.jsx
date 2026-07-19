@@ -9,7 +9,11 @@ export default function PhraseCategoryTabs({ categories, value, onChange }) {
       <div className="flex min-w-max gap-2">
         {categories.map((cat) => {
           const active = value === cat.id;
-          const label = locale === 'ko' ? (cat.labelKo ?? cat.label) : cat.label;
+          const label = locale === 'ko'
+            ? (cat.labelKo ?? cat.label)
+            : locale === 'zh-CN'
+              ? (cat.labelZh ?? cat.label)
+              : cat.label;
           return (
             <button
               key={cat.id}

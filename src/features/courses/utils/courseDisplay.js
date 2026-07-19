@@ -1,5 +1,5 @@
 import { PRESET_LOCATIONS } from '../../explore/data/locations.js';
-import { translateSeoulDistrict, extractDistrictKo, formatKoreanAddressToEnglish } from '../../explore/data/seoulDistricts.js';
+import { translateSeoulDistrict, translateSeoulDistrictZh, extractDistrictKo, formatKoreanAddressToEnglish } from '../../explore/data/seoulDistricts.js';
 
 /**
  * Returns a short distance string for a course stop.
@@ -56,6 +56,11 @@ const ANCHOR_LABEL_KO = {
   'Current location': '현재 위치',
 };
 
+const ANCHOR_LABEL_ZH = {
+  'Selected area': '已选地区',
+  'Current location': '当前位置',
+};
+
 const KO_TITLE_TEMPLATES = {
   cafeAndBites: (loc) => `${loc} 카페 & 맛집`,
   streetFood:   (loc) => `${loc} 길거리 음식 탐방`,
@@ -70,6 +75,14 @@ const EN_TITLE_TEMPLATES = {
   bbq:          (loc) => `${loc} Korean BBQ Route`,
   noodle:       (loc) => `${loc} Noodle Walk`,
   default:      (loc) => `${loc} Food Walk`,
+};
+
+const ZH_TITLE_TEMPLATES = {
+  cafeAndBites: (loc) => `${loc}咖啡·美食路线`,
+  streetFood:   (loc) => `${loc}街头小吃之旅`,
+  bbq:          (loc) => `${loc}烤肉路线`,
+  noodle:       (loc) => `${loc}面食路线`,
+  default:      (loc) => `${loc}美食路线`,
 };
 
 function detectTitleType(stops) {
@@ -90,18 +103,30 @@ function detectTitleType(stops) {
 }
 
 export function getLocalizedLocationLabel(anchorLabel, locale) {
-  if (!anchorLabel) return locale === 'ko' ? '선택한 지역' : 'Selected area';
-  if (locale !== 'ko') return anchorLabel;
-  const preset = PRESET_LOCATIONS.find((p) => p.label === anchorLabel);
-  if (preset) return preset.labelKo;
-  return ANCHOR_LABEL_KO[anchorLabel] ?? anchorLabel;
+  if (!anchorLabel) {
+    if (locale === 'ko') return '선택한 지역';
+    if (locale === 'zh-CN') return '已选地区';
+    return 'Selected area';
+  }
+  if (locale === 'ko') {
+    const preset = PRESET_LOCATIONS.find((p) => p.label === anchorLabel);
+    if (preset) return preset.labelKo;
+    return ANCHOR_LABEL_KO[anchorLabel] ?? anchorLabel;
+  }
+  if (locale === 'zh-CN') {
+    const preset = PRESET_LOCATIONS.find((p) => p.label === anchorLabel);
+    if (preset) return preset.labelZh ?? preset.label;
+    return ANCHOR_LABEL_ZH[anchorLabel] ?? anchorLabel;
+  }
+  return anchorLabel;
 }
 
 export function getLocalizedCourseTitle(stops, anchorLabel, locale) {
   const type = detectTitleType(stops);
   const loc = getLocalizedLocationLabel(anchorLabel, locale);
-  const templates = locale === 'ko' ? KO_TITLE_TEMPLATES : EN_TITLE_TEMPLATES;
-  return templates[type]?.(loc) ?? `${loc} Food Walk`;
+  const templates = locale === 'ko' ? KO_TITLE_TEMPLATES : locale === 'zh-CN' ? ZH_TITLE_TEMPLATES : EN_TITLE_TEMPLATES;
+  const fallback = locale === 'ko' ? `${loc} 맛집 동선` : locale === 'zh-CN' ? `${loc}美食路线` : `${loc} Food Walk`;
+  return templates[type]?.(loc) ?? fallback;
 }
 
 /** Distinguishes multiple recommended-course cards that would otherwise share the
@@ -147,7 +172,9 @@ export function computeCourseThemeKey(stops, preferenceKeys) {
  *  already relies on, so results stay consistent across the two features. */
 function getLocalizedDistrict(districtKo, locale) {
   if (!districtKo) return null;
-  return locale === 'ko' ? districtKo : translateSeoulDistrict(districtKo);
+  if (locale === 'ko') return districtKo;
+  if (locale === 'zh-CN') return translateSeoulDistrictZh(districtKo);
+  return translateSeoulDistrict(districtKo);
 }
 
 /** Best-effort "is this raw Korean text?" check. Kakao search results and
@@ -190,7 +217,11 @@ export function getAnchorAreaPart(savedRow, locale, { t } = {}) {
 
   if (anchorType === 'preset' && savedRow.anchor_key) {
     const preset = PRESET_LOCATIONS.find((p) => p.key === savedRow.anchor_key);
-    if (preset) return locale === 'ko' ? (preset.labelKo ?? preset.label) : preset.label;
+    if (preset) {
+      if (locale === 'ko') return preset.labelKo ?? preset.label;
+      if (locale === 'zh-CN') return preset.labelZh ?? preset.label;
+      return preset.label;
+    }
   }
 
   if (anchorType === 'search' || anchorType === 'map' || anchorType === 'gps') {
@@ -226,7 +257,11 @@ export function getAnchorDisplayLocation(savedRow, locale, { t } = {}) {
 
   if (anchorType === 'preset' && savedRow.anchor_key) {
     const preset = PRESET_LOCATIONS.find((p) => p.key === savedRow.anchor_key);
-    if (preset) return locale === 'ko' ? (preset.labelKo ?? preset.label) : preset.label;
+    if (preset) {
+      if (locale === 'ko') return preset.labelKo ?? preset.label;
+      if (locale === 'zh-CN') return preset.labelZh ?? preset.label;
+      return preset.label;
+    }
   }
 
   // In Korean, raw Kakao text is always safe to show as stored. In English, only
@@ -238,11 +273,15 @@ export function getAnchorDisplayLocation(savedRow, locale, { t } = {}) {
 
   const address = savedRow.anchor_address_original;
   if (isDisplayable(address)) return address;
-  if (address && locale !== 'ko') {
+  if (address && locale === 'en') {
     // The address is Korean — try a structural Korean→English conversion
     // (romanization, not translation, and never a guess: see
     // formatKoreanAddressToEnglish()'s own null-on-uncertainty contract) before
-    // dropping all the way down to the district-level fallback below.
+    // dropping all the way down to the district-level fallback below. There is
+    // no equivalent structural Korean→Chinese conversion (Chinese doesn't
+    // romanize street names the way Revised Romanization does), so zh-CN skips
+    // straight to the district-level fallback below, which IS fully
+    // translated (see getLocalizedDistrict()/SEOUL_DISTRICT_ZH).
     const englishAddress = formatKoreanAddressToEnglish(address);
     if (englishAddress) return englishAddress;
   }
@@ -263,7 +302,10 @@ export function getCourseThemeLabel(themeKey, locale, { getCategoryLabel, t } = 
     const label = getCategoryLabel(themeKey, locale);
     if (label && label !== themeKey) return label;
   }
-  return t ? t('courseTitle.defaultTheme') : (locale === 'ko' ? '맛집' : 'Food');
+  if (t) return t('courseTitle.defaultTheme');
+  if (locale === 'ko') return '맛집';
+  if (locale === 'zh-CN') return '美食';
+  return 'Food';
 }
 
 /** Full v2 title: "{location} {theme} Walk/동선" when a location part is available,
@@ -315,7 +357,12 @@ export function getSavedCourseAnchorLine(savedRow, locale, helpers = {}) {
  *  than a guessed theme). */
 export function getSavedCoursePreferenceLine(savedRow, locale, { getCategoryLabel, t } = {}) {
   const keys = Array.isArray(savedRow?.preference_keys) ? savedRow.preference_keys.filter(Boolean) : [];
-  if (keys.length === 0) return t ? t('courseDetail.preferencesNone') : (locale === 'ko' ? '선택 안 함' : 'None selected');
+  if (keys.length === 0) {
+    if (t) return t('courseDetail.preferencesNone');
+    if (locale === 'ko') return '선택 안 함';
+    if (locale === 'zh-CN') return '未选择';
+    return 'None selected';
+  }
   if (!getCategoryLabel) return keys.join(' · ');
   return keys.map((key) => getCategoryLabel(key, locale)).join(' · ');
 }
@@ -386,11 +433,12 @@ export function normalizeSavedCourseForDisplay(savedRow, locale, helpers = {}) {
   };
 }
 
-// Generic placeholder labels (nearby.selectedArea / nearby.currentLocation, both
+// Generic placeholder labels (nearby.selectedArea / nearby.currentLocation, all
 // locales) carry no real location information, so they are hidden rather than shown.
 const MEANINGLESS_ANCHOR_LABELS = new Set([
   ...Object.keys(ANCHOR_LABEL_KO),
   ...Object.values(ANCHOR_LABEL_KO),
+  ...Object.values(ANCHOR_LABEL_ZH),
 ]);
 
 function isMeaningfulAnchorLabel(label) {

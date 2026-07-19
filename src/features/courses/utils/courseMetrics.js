@@ -95,13 +95,18 @@ export function formatCourseDistance(totalDistanceM) {
 
 export function formatCourseDuration(totalDurationMin, locale) {
   if (totalDurationMin == null) return null;
-  const isKo = locale === 'ko';
-  if (totalDurationMin < 60) {
-    return isKo ? `~${totalDurationMin}분` : `~${totalDurationMin} min`;
-  }
   const hours = Math.floor(totalDurationMin / 60);
   const mins = totalDurationMin % 60;
-  if (isKo) return mins === 0 ? `~${hours}시간` : `~${hours}시간 ${mins}분`;
+
+  if (locale === 'ko') {
+    if (totalDurationMin < 60) return `~${totalDurationMin}분`;
+    return mins === 0 ? `~${hours}시간` : `~${hours}시간 ${mins}분`;
+  }
+  if (locale === 'zh-CN') {
+    if (totalDurationMin < 60) return `~${totalDurationMin}分钟`;
+    return mins === 0 ? `~${hours}小时` : `~${hours}小时${mins}分钟`;
+  }
+  if (totalDurationMin < 60) return `~${totalDurationMin} min`;
   return mins === 0 ? `~${hours} hr` : `~${hours} hr ${mins} min`;
 }
 

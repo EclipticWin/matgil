@@ -11,7 +11,11 @@ export default function CommunityTabs({ value, onChange }) {
         <div className="flex min-w-max gap-2">
           {COMMUNITY_FILTERS.map((f) => {
             const active = value === f.key;
-            const label = locale === 'ko' ? (f.labelKo ?? f.label) : f.label;
+            const label = locale === 'ko'
+              ? (f.labelKo ?? f.label)
+              : locale === 'zh-CN'
+                ? (f.labelZh ?? f.label)
+                : f.label;
             return (
               <button
                 key={f.key}

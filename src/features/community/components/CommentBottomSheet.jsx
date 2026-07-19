@@ -13,7 +13,7 @@ import {
 } from '../services/communityService.js';
 
 export default function CommentBottomSheet({ post, user, onClose, onCommentAdded, onLoginClick }) {
-  const { locale, t } = useLocale();
+  const { t } = useLocale();
   const [comments, setComments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [newText, setNewText] = useState('');
@@ -117,9 +117,7 @@ export default function CommentBottomSheet({ post, user, onClose, onCommentAdded
   const hasAnyComments = visibleRoots.length > 0;
 
   const replyPlaceholder = replyTo
-    ? locale === 'ko'
-      ? `${replyTo.authorName}님에게 답글 쓰기…`
-      : `Reply to ${replyTo.authorName}…`
+    ? t('community.replyToPlaceholder', { name: replyTo.authorName })
     : t('community.commentPlaceholder');
 
   const renderComment = (comment, isReply) => {
@@ -266,9 +264,7 @@ export default function CommentBottomSheet({ post, user, onClose, onCommentAdded
         {replyTo && (
           <div className="flex items-center gap-2 border-t border-ink/8 bg-ink/[0.025] px-5 py-2">
             <span className="flex-1 truncate text-xs text-ink-soft">
-              {locale === 'ko'
-                ? `${replyTo.authorName}님에게 답글`
-                : `Reply to ${replyTo.authorName}`}
+              {t('community.replyingToLabel', { name: replyTo.authorName })}
             </span>
             <button
               type="button"

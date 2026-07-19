@@ -10,10 +10,11 @@ export const FEATURES = [
   { id: 'late', label: 'Late night', labelKo: '심야 영업' },
 ];
 
-// code matches locale values ('en' | 'ko') used throughout the app
+// code matches locale values ('en' | 'ko' | 'zh-CN') used throughout the app
 export const LANGUAGES = [
   { code: 'en', short: 'EN', name: 'English' },
   { code: 'ko', short: '한', name: '한국어' },
+  { code: 'zh-CN', short: '中', name: '简体中文' },
 ];
 
 export const EMPTY_FILTERS = { cat: [], price: [], features: [] };

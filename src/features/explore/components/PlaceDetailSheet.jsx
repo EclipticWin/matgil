@@ -376,7 +376,11 @@ export default function PlaceDetailSheet({ place, selectedLocation, onBack }) {
     (rawCategory ? getCategoryLabel(rawCategory, locale) : null);
 
   const raw = distRaw(place);
-  const locationLabel = (locale === 'ko' ? selectedLocation?.labelKo : null) || selectedLocation?.label;
+  const locationLabel = locale === 'ko'
+    ? (selectedLocation?.labelKo || selectedLocation?.label)
+    : locale === 'zh-CN'
+      ? (selectedLocation?.labelZh || selectedLocation?.label)
+      : selectedLocation?.label;
   const dist = raw && locationLabel
     ? t('placeDetail.distFrom', { dist: raw, location: locationLabel })
     : raw;

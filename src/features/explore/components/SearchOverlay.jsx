@@ -124,9 +124,7 @@ export default function SearchOverlay({ open, onSelect, onClose, filterCount = 0
         {!query.trim() ? (
           <div className="mt-1 rounded-2xl bg-coral-tint px-4 py-3.5">
             <p className="text-[0.82rem] leading-relaxed text-ink-soft">
-              {locale === 'ko'
-                ? '음식 종류를 최대 3개 선택하고, 서울 내 원하는 장소를 검색해 주변 맛집을 찾아보세요.'
-                : 'Pick up to 3 food types, then search for any place in Seoul to discover matching restaurants nearby.'}
+              {t('search.guide')}
             </p>
           </div>
         ) : searching ? (
@@ -135,10 +133,15 @@ export default function SearchOverlay({ open, onSelect, onClose, filterCount = 0
           <p className="mt-6 text-center text-[0.85rem] text-ink-faint">{t('search.noResults')}</p>
         ) : (
           results.map((r) => {
-            const isEnglish = locale === 'en';
-            const matched = isEnglish ? findAnchorPlace(r, places) : null;
+            // Kakao search results are always raw Korean — for any non-Korean
+            // locale (en, zh-CN, …) prefer a matched, already-localized DB
+            // place over the raw Kakao text (falls back to English district
+            // formatting when there's no match, same as the 'en'-only
+            // behavior this replaces).
+            const isNonKorean = locale !== 'ko';
+            const matched = isNonKorean ? findAnchorPlace(r, places) : null;
             const displayName = matched ? matched.name : r.place_name;
-            const displayAddress = isEnglish
+            const displayAddress = isNonKorean
               ? (matched ? matched.address : formatSeoulDistrictAddress(r.address_name || r.road_address_name))
               : (r.road_address_name || r.address_name);
             return (

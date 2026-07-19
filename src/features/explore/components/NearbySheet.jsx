@@ -152,7 +152,11 @@ export default function NearbySheet({
   const currentHeight = dragH != null ? dragH : snap === 'full' ? full : snap === 'peek' ? peek : 0;
   const isSheetFull = currentHeight > (peek + full) / 2;
   const isDragging = gestureRef.current?.isDragging ?? false;
-  const locationLabel = (locale === 'ko' ? selectedLocation?.labelKo : null) || (selectedLocation?.label ?? 'here');
+  const locationLabel = locale === 'ko'
+    ? (selectedLocation?.labelKo || selectedLocation?.label || 'here')
+    : locale === 'zh-CN'
+      ? (selectedLocation?.labelZh || selectedLocation?.label || 'here')
+      : (selectedLocation?.label ?? 'here');
   const gpsModal = GPS_STATUSES.has(gpsStatus)
     ? { title: t(`gps.${gpsStatus}.title`), body: t(`gps.${gpsStatus}.body`) }
     : null;

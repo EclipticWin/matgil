@@ -129,7 +129,11 @@ export default function PostComposer({
                   category === cat.key ? 'bg-coral text-white' : 'bg-white text-ink-soft shadow-soft',
                 )}
               >
-                {locale === 'ko' ? (cat.labelKo ?? cat.label) : cat.label}
+                {locale === 'ko'
+                  ? (cat.labelKo ?? cat.label)
+                  : locale === 'zh-CN'
+                    ? (cat.labelZh ?? cat.label)
+                    : cat.label}
               </button>
             ))}
           </div>

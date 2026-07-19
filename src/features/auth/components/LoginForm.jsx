@@ -18,12 +18,29 @@ const AUTH_ERROR_KO = {
   'Signup is disabled': '현재 회원가입을 사용할 수 없습니다.',
 };
 
+const AUTH_ERROR_ZH = {
+  'Invalid login credentials': '请检查邮箱或密码是否正确。',
+  'Email not confirmed': '请先完成邮箱验证。',
+  'User already registered': '该邮箱已注册。',
+  'Password should be at least 6 characters': '密码至少需要6位。',
+  'Signup is disabled': '目前暂不支持注册。',
+};
+
 function mapAuthError(msg, locale) {
-  if (locale !== 'ko' || !msg) return msg;
-  for (const [en, ko] of Object.entries(AUTH_ERROR_KO)) {
-    if (msg.includes(en)) return ko;
+  if (!msg) return msg;
+  if (locale === 'ko') {
+    for (const [en, ko] of Object.entries(AUTH_ERROR_KO)) {
+      if (msg.includes(en)) return ko;
+    }
+    return '요청을 처리하지 못했습니다. 잠시 후 다시 시도해 주세요.';
   }
-  return '요청을 처리하지 못했습니다. 잠시 후 다시 시도해 주세요.';
+  if (locale === 'zh-CN') {
+    for (const [en, zh] of Object.entries(AUTH_ERROR_ZH)) {
+      if (msg.includes(en)) return zh;
+    }
+    return '请求处理失败，请稍后重试。';
+  }
+  return msg;
 }
 
 const socialClass =

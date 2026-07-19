@@ -22,7 +22,11 @@ import Spinner from '../../../shared/components/Spinner.jsx';
 export default function TodayCourseDetail({ course, selectedLocation, onBack, onSelectPlace, onSave, saveState = 'idle' }) {
   const { locale, t } = useLocale();
   const stopCount = course.stopCount ?? course.stops.length;
-  const locationLabel = (locale === 'ko' ? selectedLocation?.labelKo : null) || (selectedLocation?.label ?? 'here');
+  const locationLabel = locale === 'ko'
+    ? (selectedLocation?.labelKo || selectedLocation?.label || 'here')
+    : locale === 'zh-CN'
+      ? (selectedLocation?.labelZh || selectedLocation?.label || 'here')
+      : (selectedLocation?.label ?? 'here');
   const blurb = t('courseDetail.blurb', { location: locationLabel });
 
   const { displayDistance, displayDuration } = getDisplayMetrics(course, locale);

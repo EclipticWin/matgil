@@ -1,13 +1,13 @@
 /** Restaurant phrases grouped by situation. `korean` is spoken via TTS. */
 export const PHRASE_CATEGORIES = [
-  { id: 'waiting',  label: 'Waiting',                 labelKo: '대기' },
-  { id: 'arriving', label: 'Getting seated',           labelKo: '자리 잡기' },
-  { id: 'menu',     label: 'Choosing menu',            labelKo: '메뉴 선택' },
-  { id: 'allergy',  label: 'Allergy & dietary needs',  labelKo: '알러지 & 식이 제한' },
-  { id: 'ordering', label: 'Ordering',                 labelKo: '주문하기' },
-  { id: 'extra',    label: 'Extra requests',           labelKo: '추가 요청' },
-  { id: 'paying',   label: 'Paying',                   labelKo: '계산하기' },
-  { id: 'leaving',  label: 'Leaving',                  labelKo: '퇴장하기' },
+  { id: 'waiting',  label: 'Waiting',                 labelKo: '대기',            labelZh: '等待' },
+  { id: 'arriving', label: 'Getting seated',           labelKo: '자리 잡기',       labelZh: '入座' },
+  { id: 'menu',     label: 'Choosing menu',            labelKo: '메뉴 선택',       labelZh: '选择菜单' },
+  { id: 'allergy',  label: 'Allergy & dietary needs',  labelKo: '알러지 & 식이 제한', labelZh: '过敏与饮食禁忌' },
+  { id: 'ordering', label: 'Ordering',                 labelKo: '주문하기',        labelZh: '点餐' },
+  { id: 'extra',    label: 'Extra requests',           labelKo: '추가 요청',       labelZh: '额外要求' },
+  { id: 'paying',   label: 'Paying',                   labelKo: '계산하기',        labelZh: '结账' },
+  { id: 'leaving',  label: 'Leaving',                  labelKo: '퇴장하기',        labelZh: '离开' },
 ];
 
 export const PHRASES = [

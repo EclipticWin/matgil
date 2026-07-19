@@ -13,11 +13,31 @@ export const SEOUL_DISTRICT_EN = {
   중랑구: 'Jungnang-gu',
 };
 
+/** Seoul district (구) Korean → Simplified Chinese name map — same 25 districts as
+ *  SEOUL_DISTRICT_EN, used by courseDisplay's zh-CN district display. */
+export const SEOUL_DISTRICT_ZH = {
+  강남구: '江南区',   강동구: '江东区',  강북구: '江北区',
+  강서구: '江西区',   관악구: '冠岳区',  광진구: '广津区',
+  구로구: '九老区',   금천구: '衿川区',  노원구: '芦原区',
+  도봉구: '道峰区',   동대문구: '东大门区', 동작구: '铜雀区',
+  마포구: '麻浦区',   서대문구: '西大门区', 서초구: '瑞草区',
+  성동구: '城东区',   성북구: '城北区',  송파구: '松坡区',
+  양천구: '阳川区',   영등포구: '永登浦区', 용산구: '龙山区',
+  은평구: '恩平区',   종로구: '钟路区',  중구: '中区',
+  중랑구: '中浪区',
+};
+
 /** Best-effort district name localization: returns the English name when known,
  *  otherwise the original Korean string unchanged (never guesses/mistranslates). */
 export function translateSeoulDistrict(districtKo) {
   if (!districtKo) return districtKo;
   return SEOUL_DISTRICT_EN[districtKo] ?? districtKo;
+}
+
+/** Same as translateSeoulDistrict() but into Simplified Chinese. */
+export function translateSeoulDistrictZh(districtKo) {
+  if (!districtKo) return districtKo;
+  return SEOUL_DISTRICT_ZH[districtKo] ?? districtKo;
 }
 
 /** Pulls a "OO구" district name out of a Korean address string (same regex
