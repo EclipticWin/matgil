@@ -3,6 +3,7 @@
  * course.hr is intentionally NOT used for duration: it is a fixed lookup
  * by stop count in courseBuilder, not based on actual route distance.
  */
+import { pickTranslated } from '../../../shared/i18n/localeFallback.js';
 
 function haversineKm(lat1, lon1, lat2, lon2) {
   const R = 6371;
@@ -93,21 +94,34 @@ export function formatCourseDistance(totalDistanceM) {
   return `${(totalDistanceM / 1000).toFixed(1)} km`;
 }
 
+// Per-locale duration unit phrasing — the numeric computation below is shared;
+// only how hours/minutes are worded differs per locale.
+const DURATION_UNITS_BY_LOCALE = {
+  ko: {
+    minuteOnly: (m) => `~${m}분`,
+    hourOnly: (h) => `~${h}시간`,
+    hourAndMinute: (h, m) => `~${h}시간 ${m}분`,
+  },
+  en: {
+    minuteOnly: (m) => `~${m} min`,
+    hourOnly: (h) => `~${h} hr`,
+    hourAndMinute: (h, m) => `~${h} hr ${m} min`,
+  },
+  'zh-CN': {
+    minuteOnly: (m) => `~${m}分钟`,
+    hourOnly: (h) => `~${h}小时`,
+    hourAndMinute: (h, m) => `~${h}小时${m}分钟`,
+  },
+};
+
 export function formatCourseDuration(totalDurationMin, locale) {
   if (totalDurationMin == null) return null;
   const hours = Math.floor(totalDurationMin / 60);
   const mins = totalDurationMin % 60;
+  const units = pickTranslated(DURATION_UNITS_BY_LOCALE, locale);
 
-  if (locale === 'ko') {
-    if (totalDurationMin < 60) return `~${totalDurationMin}분`;
-    return mins === 0 ? `~${hours}시간` : `~${hours}시간 ${mins}분`;
-  }
-  if (locale === 'zh-CN') {
-    if (totalDurationMin < 60) return `~${totalDurationMin}分钟`;
-    return mins === 0 ? `~${hours}小时` : `~${hours}小时${mins}分钟`;
-  }
-  if (totalDurationMin < 60) return `~${totalDurationMin} min`;
-  return mins === 0 ? `~${hours} hr` : `~${hours} hr ${mins} min`;
+  if (totalDurationMin < 60) return units.minuteOnly(totalDurationMin);
+  return mins === 0 ? units.hourOnly(hours) : units.hourAndMinute(hours, mins);
 }
 
 /**

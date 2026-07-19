@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { getFoodCategories } from '../../../api/foodCategoryApi.js';
 import { FOOD_CATEGORY_FALLBACK } from '../data/foodCategoryFallback.js';
+import { pickTranslated } from '../../../shared/i18n/localeFallback.js';
 
 const FoodCategoryContext = createContext(null);
 
@@ -37,7 +38,9 @@ export function FoodCategoryProvider({ children }) {
     .sort((a, b) => a.sortOrder - b.sortOrder || a.key.localeCompare(b.key)), [allCategories]);
   const getCategoryLabel = useCallback((key, locale = 'en') => {
     const translations = categoryMap.get(key)?.translations ?? {};
-    return translations[locale]?.label ?? translations.en?.label ?? translations.ko?.label ?? key;
+    const labelByLocale = {};
+    for (const [loc, translation] of Object.entries(translations)) labelByLocale[loc] = translation?.label;
+    return pickTranslated(labelByLocale, locale) ?? key;
   }, [categoryMap]);
   const getCategoryIconKey = useCallback(
     (key) => categoryMap.get(key)?.iconKey ?? 'default',

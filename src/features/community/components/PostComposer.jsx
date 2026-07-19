@@ -3,6 +3,7 @@ import { cn } from '../../../shared/utils/classNames.js';
 import Button from '../../../shared/components/Button.jsx';
 import { CloseIcon } from '../../../shared/components/Icon.jsx';
 import { useLocale } from '../../../shared/i18n/LocaleProvider.jsx';
+import { pickTranslated } from '../../../shared/i18n/localeFallback.js';
 import { uploadPostImages } from '../services/communityService.js';
 import { WRITE_CATEGORIES } from '../data/communityConstants.js';
 
@@ -129,11 +130,7 @@ export default function PostComposer({
                   category === cat.key ? 'bg-coral text-white' : 'bg-white text-ink-soft shadow-soft',
                 )}
               >
-                {locale === 'ko'
-                  ? (cat.labelKo ?? cat.label)
-                  : locale === 'zh-CN'
-                    ? (cat.labelZh ?? cat.label)
-                    : cat.label}
+                {pickTranslated({ ko: cat.labelKo, en: cat.label, 'zh-CN': cat.labelZh }, locale) ?? cat.label}
               </button>
             ))}
           </div>

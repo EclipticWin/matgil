@@ -24,7 +24,7 @@ import {
 } from '../features/phrases/services/phraseBookmarkService.js';
 
 export default function PhrasesPage() {
-  const { t } = useLocale();
+  const { t, locale } = useLocale();
   const { user } = useAuth();
 
   const [activeTab, setActiveTab]   = useState('common');
@@ -75,7 +75,7 @@ export default function PhrasesPage() {
           fetchPhrasesByCategory(category),
           user ? fetchMyPhraseBookmarks(user.id) : Promise.resolve([]),
         ]);
-        if (!cancelled) setPhrases(rows.map((row) => normalizePhrase(row, bookmarkedIds)));
+        if (!cancelled) setPhrases(rows.map((row) => normalizePhrase(row, locale, bookmarkedIds)));
       } catch {
         if (!cancelled) setLoadFailed(true);
       } finally {
@@ -84,7 +84,7 @@ export default function PhrasesPage() {
     })();
 
     return () => { cancelled = true; };
-  }, [category, user, activeTab]);
+  }, [category, user, activeTab, locale]);
 
   // 인기 표현 로드 (popular 모드 진입, 카테고리 전환, 로그인 상태 변경 시)
   useEffect(() => {
@@ -99,7 +99,7 @@ export default function PhrasesPage() {
           fetchPopularPhrases({ category: popularCategory }),
           user ? fetchMyPhraseBookmarks(user.id) : Promise.resolve([]),
         ]);
-        if (!cancelled) setPopularPhrases(rows.map((row) => normalizePhrase(row, bookmarkedIds)));
+        if (!cancelled) setPopularPhrases(rows.map((row) => normalizePhrase(row, locale, bookmarkedIds)));
       } catch {
         if (!cancelled) setPopularFailed(true);
       } finally {
@@ -108,7 +108,7 @@ export default function PhrasesPage() {
     })();
 
     return () => { cancelled = true; };
-  }, [phraseMode, user, activeTab, popularCategory]);
+  }, [phraseMode, user, activeTab, popularCategory, locale]);
 
   const handleBookmark = useCallback(async (phraseId) => {
     if (!user) {
@@ -139,7 +139,7 @@ export default function PhrasesPage() {
           fetchPopularPhrases({ category: popularCategory }),
           fetchMyPhraseBookmarks(user.id),
         ]);
-        setPopularPhrases(rows.map((row) => normalizePhrase(row, bIds)));
+        setPopularPhrases(rows.map((row) => normalizePhrase(row, locale, bIds)));
       }
     } catch {
       // 롤백
@@ -148,7 +148,7 @@ export default function PhrasesPage() {
       setPhrases(rollback);
       setPopularPhrases(rollback);
     }
-  }, [user, phrases, popularPhrases, phraseMode, popularCategory]);
+  }, [user, phrases, popularPhrases, phraseMode, popularCategory, locale]);
 
   return (
     <PageShell>

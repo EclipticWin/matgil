@@ -9,6 +9,23 @@ const CORS = {
 const MAX_TRANSCRIPT_LENGTH = 500;
 const PROVIDER_TIMEOUT_MS = 10000;
 
+// Maps the app's locale code (see src/shared/i18n/localeFallback.js's
+// SUPPORTED_LOCALES) to a human-readable language name for the LLM prompt.
+// Sending the raw code (e.g. "zh-CN") instead of a name is ambiguous to the
+// model and was producing English explanations even when userLanguage was
+// "zh-CN" — this table is the fix. Unmapped locales (e.g. before a future
+// "ja" is added here) fall back to the raw code, same as elsewhere in the
+// project's locale-mapping convention.
+const LOCALE_LANGUAGE_NAMES: Record<string, string> = {
+    ko: "Korean",
+    en: "English",
+    "zh-CN": "Simplified Chinese",
+};
+
+function resolveLanguageName(userLanguage: string): string {
+    return LOCALE_LANGUAGE_NAMES[userLanguage] ?? userLanguage;
+}
+
 function jsonResponse(body: unknown, status = 200) {
     return new Response(JSON.stringify(body), {
         status,
@@ -33,6 +50,10 @@ interface AnalyzeResult {
     meaning: string;
     suggestedReplyKo: string;
     suggestedReplyRomanization: string;
+    // Short gloss of suggestedReplyKo's meaning in the user's language. Additive
+    // field (not in REQUIRED_STRING_FIELDS) — older clients that don't read it
+    // are unaffected, and a provider response missing it doesn't fail validation.
+    suggestedReplyMeaning: string;
     note: string;
 }
 
@@ -76,32 +97,36 @@ function logProviderOutcome(
 }
 
 function buildPrompt(input: AnalyzeInput): string {
+    const languageName = resolveLanguageName(input.userLanguage);
+
     return `You are a helpful assistant for foreign tourists visiting Korean restaurants.
 
 The user heard or wants to say the following text in a Korean restaurant.
 Analyze the input and return a JSON object.
 
 Input: "${input.transcript}"
-User's language: ${input.userLanguage}
+User's language: ${languageName}
 Context: ${input.context}
 
 Rules:
 - Detect if the input is Korean (ko) or another language.
-- If the input is Korean, explain the meaning in ${input.userLanguage}.
+- If the input is Korean, explain the meaning in ${languageName}. Write the "meaning" field entirely in ${languageName} — never leave it in English if the user's language is something else.
 - If the input is in another language (e.g. English), provide the natural Korean equivalent as the meaning.
 - Provide a short, natural Korean reply (suggestedReplyKo) that the user can say in the restaurant.
 - Provide romanization of the Korean reply (suggestedReplyRomanization).
+- Provide a short gloss of what suggestedReplyKo means, written entirely in ${languageName} (suggestedReplyMeaning).
 - Keep all text concise. No long explanations.
-- If the input is unrelated to a restaurant situation, set meaning to a polite message asking to try again, and set suggestedReplyKo to an empty string.
+- If the input is unrelated to a restaurant situation, set meaning to a polite message (in ${languageName}) asking to try again, and set suggestedReplyKo to an empty string.
 - Return ONLY valid JSON. No markdown, no code fences, no extra text outside the JSON.
 
 Return this exact JSON structure:
 {
   "originalPhrase": "<the input text, unchanged>",
   "detectedLanguage": "<language code, e.g. ko or en>",
-  "meaning": "<meaning or translation>",
+  "meaning": "<meaning or translation, written in ${languageName}>",
   "suggestedReplyKo": "<short natural Korean reply>",
   "suggestedReplyRomanization": "<romanization of the Korean reply>",
+  "suggestedReplyMeaning": "<gloss of suggestedReplyKo, written in ${languageName}>",
   "note": "<brief optional note, or empty string>"
 }`;
 }
@@ -220,6 +245,7 @@ function normalizeAnalyzeResult(provider: Provider, raw: string): AnalyzeResult 
         meaning: record.meaning as string,
         suggestedReplyKo: record.suggestedReplyKo as string,
         suggestedReplyRomanization: record.suggestedReplyRomanization as string,
+        suggestedReplyMeaning: typeof record.suggestedReplyMeaning === "string" ? record.suggestedReplyMeaning : "",
         note: typeof record.note === "string" ? record.note : "",
     };
 }

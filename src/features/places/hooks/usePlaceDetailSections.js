@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { getPlaceDetailSections } from '../../../api/placeDetailSectionApi.js';
 import { PLACE_DETAIL_SECTION_FALLBACK } from '../data/placeDetailSectionFallback.js';
+import { pickTranslated } from '../../../shared/i18n/localeFallback.js';
 
 // Module-level cache — the sections rarely change, so the first PlaceDetailSheet
 // (or reviews page) mount in a session fetches once and every later mount reuses it.
@@ -48,13 +49,15 @@ export function usePlaceDetailSections() {
   );
 
   function getLabel(key, locale) {
-    const t = allSections.find((s) => s.key === key)?.translations ?? {};
-    return t[locale]?.label ?? t.en?.label ?? t.ko?.label ?? key;
+    const translations = allSections.find((s) => s.key === key)?.translations ?? {};
+    const labelByLocale = {};
+    for (const [loc, translation] of Object.entries(translations)) labelByLocale[loc] = translation?.label;
+    return pickTranslated(labelByLocale, locale) ?? key;
   }
 
   function getEmpty(key, locale) {
-    const t = allSections.find((s) => s.key === key)?.translations ?? {};
-    const pick = t[locale] ?? t.en ?? t.ko ?? {};
+    const translations = allSections.find((s) => s.key === key)?.translations ?? {};
+    const pick = pickTranslated(translations, locale) ?? {};
     return { title: pick.emptyTitle ?? '', description: pick.emptyDescription ?? '' };
   }
 

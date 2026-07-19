@@ -13,14 +13,24 @@ function SectionLabel({ children }) {
   );
 }
 
+// active/inactive must render at IDENTICAL width so selecting a pill never
+// reflows the flex-wrap layout (this bit zh-CN hardest — some category
+// labels sit right at the wrap threshold, so even a few px of width drift
+// changes which pills share a row). box-border makes width = content +
+// padding + border explicitly (belt-and-suspenders alongside Tailwind's
+// Preflight, which already sets border-box globally); border-[1.5px] is
+// applied in BOTH states (only the color toggles to transparent when active)
+// so the border never adds/removes width; font-synthesis-none stops the
+// browser from synthesizing a fake bold face for CJK glyphs the real font
+// weight doesn't have, which can otherwise shift glyph advance widths.
 function Pill({ active, onClick, children }) {
   return (
     <button
       type="button"
       onClick={onClick}
       className={cn(
-        'inline-flex h-10 items-center gap-2 rounded-[0.8125rem] px-[0.9375rem] text-[0.84rem] font-semibold transition-colors',
-        active ? 'bg-coral text-white' : 'border-[1.5px] border-ink/10 bg-white text-ink',
+        'box-border inline-flex h-10 items-center gap-2 rounded-[0.8125rem] border-[1.5px] px-[0.9375rem] text-[0.84rem] font-semibold transition-colors [font-synthesis:none]',
+        active ? 'border-transparent bg-coral text-white' : 'border-ink/10 bg-white text-ink',
       )}
     >
       {children}

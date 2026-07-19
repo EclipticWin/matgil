@@ -79,11 +79,11 @@ export default function PostCommentSection({ post, user, onLoginClick, onComment
               <div
                 className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-gradient-to-br ${AVATAR_GRADIENTS[i % AVATAR_GRADIENTS.length]} text-[0.7rem] font-bold text-white`}
               >
-                {(c.author_name || 'T').charAt(0)}
+                {(c.author_name || t('community.travellerFallback')).charAt(0)}
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-baseline gap-1.5">
-                  <span className="text-[0.8rem] font-bold text-ink">{c.author_name || 'Traveller'}</span>
+                  <span className="text-[0.8rem] font-bold text-ink">{c.author_name || t('community.travellerFallback')}</span>
                   <span className="text-[0.7rem] text-ink-faint">{timeAgo(c.created_at)}</span>
                   {user && user.id === c.user_id && (
                     <button

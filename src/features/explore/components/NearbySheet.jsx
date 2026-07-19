@@ -6,6 +6,7 @@ import PlaceDetailSheet from './PlaceDetailSheet.jsx';
 import { CheckIcon, ChevronRightIcon, CloseIcon, LocateIcon } from '../../../shared/components/Icon.jsx';
 import { cn } from '../../../shared/utils/classNames.js';
 import { useLocale } from '../../../shared/i18n/LocaleProvider.jsx';
+import { pickTranslated } from '../../../shared/i18n/localeFallback.js';
 import { useAuth } from '../../auth/hooks/useAuth.jsx';
 import { saveCourse, checkCourseAlreadySaved, fetchSavedCourses, isSameCourse, DuplicateCourseError } from '../../courses/services/savedCourseService.js';
 import { localizeSnapshotForDisplay } from '../../courses/utils/courseDisplay.js';
@@ -152,11 +153,10 @@ export default function NearbySheet({
   const currentHeight = dragH != null ? dragH : snap === 'full' ? full : snap === 'peek' ? peek : 0;
   const isSheetFull = currentHeight > (peek + full) / 2;
   const isDragging = gestureRef.current?.isDragging ?? false;
-  const locationLabel = locale === 'ko'
-    ? (selectedLocation?.labelKo || selectedLocation?.label || 'here')
-    : locale === 'zh-CN'
-      ? (selectedLocation?.labelZh || selectedLocation?.label || 'here')
-      : (selectedLocation?.label ?? 'here');
+  const locationLabel = pickTranslated(
+    { ko: selectedLocation?.labelKo, en: selectedLocation?.label, 'zh-CN': selectedLocation?.labelZh },
+    locale,
+  ) ?? 'here';
   const gpsModal = GPS_STATUSES.has(gpsStatus)
     ? { title: t(`gps.${gpsStatus}.title`), body: t(`gps.${gpsStatus}.body`) }
     : null;

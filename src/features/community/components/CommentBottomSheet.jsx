@@ -125,18 +125,19 @@ export default function CommentBottomSheet({ post, user, onClose, onCommentAdded
     const isOwn = user && user.id === comment.user_id;
     const canLike = !!user && !isOwn;
     const gradient = avatarGradient(String(comment.user_id || '') || comment.author_name || '');
+    const authorName = comment.author_name || t('community.travellerFallback');
 
     return (
       <div key={comment.id} className={`flex items-start gap-2.5${isReply ? ' ml-9' : ''}`}>
         <div
           className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br ${gradient} text-[0.75rem] font-bold text-white`}
         >
-          {(comment.author_name || 'T').charAt(0)}
+          {authorName.charAt(0)}
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-1.5">
             <span className="text-[0.82rem] font-bold text-ink">
-              {comment.author_name || 'Traveller'}
+              {authorName}
             </span>
             <span className="text-[0.72rem] text-ink-faint">{formatRelativeOrAbsolute(comment.created_at)}</span>
             {isOwn && (
@@ -170,7 +171,7 @@ export default function CommentBottomSheet({ post, user, onClose, onCommentAdded
               <button
                 type="button"
                 onClick={() =>
-                  setReplyTo({ id: comment.id, authorName: comment.author_name || 'Traveller' })
+                  setReplyTo({ id: comment.id, authorName })
                 }
                 className="text-[0.75rem] font-semibold text-ink-soft"
               >

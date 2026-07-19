@@ -1,5 +1,6 @@
 import { PRESET_LOCATIONS } from '../../explore/data/locations.js';
 import { translateSeoulDistrict, translateSeoulDistrictZh, extractDistrictKo, formatKoreanAddressToEnglish } from '../../explore/data/seoulDistricts.js';
+import { pickTranslated } from '../../../shared/i18n/localeFallback.js';
 
 /**
  * Returns a short distance string for a course stop.
@@ -51,14 +52,13 @@ export function formatStopStatsParts(stop, stats, saveCount, noRatingsLabel) {
   return { head, distance: distance ? `· ${distance}` : null };
 }
 
-const ANCHOR_LABEL_KO = {
-  'Selected area': '선택한 지역',
-  'Current location': '현재 위치',
-};
-
-const ANCHOR_LABEL_ZH = {
-  'Selected area': '已选地区',
-  'Current location': '当前位置',
+// English literal anchor label -> its translation per locale (see
+// getLocalizedLocationLabel()). Keyed by the literal EN string these ad-hoc
+// "no real place selected" locations always carry as `label` (see
+// nearby.selectedArea/nearby.currentLocation in dictionary.js and HomePage.jsx).
+const ANCHOR_LABEL_TRANSLATIONS = {
+  'Selected area': { ko: '선택한 지역', 'zh-CN': '已选地区' },
+  'Current location': { ko: '현재 위치', 'zh-CN': '当前位置' },
 };
 
 const KO_TITLE_TEMPLATES = {
@@ -104,28 +104,22 @@ function detectTitleType(stops) {
 
 export function getLocalizedLocationLabel(anchorLabel, locale) {
   if (!anchorLabel) {
-    if (locale === 'ko') return '선택한 지역';
-    if (locale === 'zh-CN') return '已选地区';
-    return 'Selected area';
+    return pickTranslated({ ko: '선택한 지역', en: 'Selected area', 'zh-CN': '已选地区' }, locale);
   }
-  if (locale === 'ko') {
-    const preset = PRESET_LOCATIONS.find((p) => p.label === anchorLabel);
-    if (preset) return preset.labelKo;
-    return ANCHOR_LABEL_KO[anchorLabel] ?? anchorLabel;
+  const preset = PRESET_LOCATIONS.find((p) => p.label === anchorLabel);
+  if (preset) {
+    return pickTranslated({ ko: preset.labelKo, en: preset.label, 'zh-CN': preset.labelZh }, locale) ?? preset.label;
   }
-  if (locale === 'zh-CN') {
-    const preset = PRESET_LOCATIONS.find((p) => p.label === anchorLabel);
-    if (preset) return preset.labelZh ?? preset.label;
-    return ANCHOR_LABEL_ZH[anchorLabel] ?? anchorLabel;
-  }
-  return anchorLabel;
+  const known = ANCHOR_LABEL_TRANSLATIONS[anchorLabel];
+  if (!known) return anchorLabel;
+  return pickTranslated({ ...known, en: anchorLabel }, locale) ?? anchorLabel;
 }
 
 export function getLocalizedCourseTitle(stops, anchorLabel, locale) {
   const type = detectTitleType(stops);
   const loc = getLocalizedLocationLabel(anchorLabel, locale);
-  const templates = locale === 'ko' ? KO_TITLE_TEMPLATES : locale === 'zh-CN' ? ZH_TITLE_TEMPLATES : EN_TITLE_TEMPLATES;
-  const fallback = locale === 'ko' ? `${loc} 맛집 동선` : locale === 'zh-CN' ? `${loc}美食路线` : `${loc} Food Walk`;
+  const templates = pickTranslated({ ko: KO_TITLE_TEMPLATES, en: EN_TITLE_TEMPLATES, 'zh-CN': ZH_TITLE_TEMPLATES }, locale);
+  const fallback = pickTranslated({ ko: `${loc} 맛집 동선`, en: `${loc} Food Walk`, 'zh-CN': `${loc}美食路线` }, locale);
   return templates[type]?.(loc) ?? fallback;
 }
 
@@ -172,9 +166,10 @@ export function computeCourseThemeKey(stops, preferenceKeys) {
  *  already relies on, so results stay consistent across the two features. */
 function getLocalizedDistrict(districtKo, locale) {
   if (!districtKo) return null;
-  if (locale === 'ko') return districtKo;
-  if (locale === 'zh-CN') return translateSeoulDistrictZh(districtKo);
-  return translateSeoulDistrict(districtKo);
+  return pickTranslated(
+    { ko: districtKo, en: translateSeoulDistrict(districtKo), 'zh-CN': translateSeoulDistrictZh(districtKo) },
+    locale,
+  );
 }
 
 /** Best-effort "is this raw Korean text?" check. Kakao search results and
@@ -218,9 +213,7 @@ export function getAnchorAreaPart(savedRow, locale, { t } = {}) {
   if (anchorType === 'preset' && savedRow.anchor_key) {
     const preset = PRESET_LOCATIONS.find((p) => p.key === savedRow.anchor_key);
     if (preset) {
-      if (locale === 'ko') return preset.labelKo ?? preset.label;
-      if (locale === 'zh-CN') return preset.labelZh ?? preset.label;
-      return preset.label;
+      return pickTranslated({ ko: preset.labelKo, en: preset.label, 'zh-CN': preset.labelZh }, locale) ?? preset.label;
     }
   }
 
@@ -258,9 +251,7 @@ export function getAnchorDisplayLocation(savedRow, locale, { t } = {}) {
   if (anchorType === 'preset' && savedRow.anchor_key) {
     const preset = PRESET_LOCATIONS.find((p) => p.key === savedRow.anchor_key);
     if (preset) {
-      if (locale === 'ko') return preset.labelKo ?? preset.label;
-      if (locale === 'zh-CN') return preset.labelZh ?? preset.label;
-      return preset.label;
+      return pickTranslated({ ko: preset.labelKo, en: preset.label, 'zh-CN': preset.labelZh }, locale) ?? preset.label;
     }
   }
 
@@ -303,9 +294,7 @@ export function getCourseThemeLabel(themeKey, locale, { getCategoryLabel, t } = 
     if (label && label !== themeKey) return label;
   }
   if (t) return t('courseTitle.defaultTheme');
-  if (locale === 'ko') return '맛집';
-  if (locale === 'zh-CN') return '美食';
-  return 'Food';
+  return pickTranslated({ ko: '맛집', en: 'Food', 'zh-CN': '美食' }, locale);
 }
 
 /** Full v2 title: "{location} {theme} Walk/동선" when a location part is available,
@@ -359,9 +348,7 @@ export function getSavedCoursePreferenceLine(savedRow, locale, { getCategoryLabe
   const keys = Array.isArray(savedRow?.preference_keys) ? savedRow.preference_keys.filter(Boolean) : [];
   if (keys.length === 0) {
     if (t) return t('courseDetail.preferencesNone');
-    if (locale === 'ko') return '선택 안 함';
-    if (locale === 'zh-CN') return '未选择';
-    return 'None selected';
+    return pickTranslated({ ko: '선택 안 함', en: 'None selected', 'zh-CN': '未选择' }, locale);
   }
   if (!getCategoryLabel) return keys.join(' · ');
   return keys.map((key) => getCategoryLabel(key, locale)).join(' · ');
@@ -369,8 +356,7 @@ export function getSavedCoursePreferenceLine(savedRow, locale, { getCategoryLabe
 
 export function getLocalizedStopName(stop, locale) {
   if (!stop) return '';
-  if (locale === 'ko') return stop.nameKo ?? stop.name ?? '';
-  return stop.name ?? stop.nameKo ?? '';
+  return pickTranslated({ ko: stop.nameKo, en: stop.name }, locale) ?? stop.name ?? stop.nameKo ?? '';
 }
 
 /** Merges a saved-course stop (a route-context snapshot: distanceKm, tint, saved
@@ -436,9 +422,8 @@ export function normalizeSavedCourseForDisplay(savedRow, locale, helpers = {}) {
 // Generic placeholder labels (nearby.selectedArea / nearby.currentLocation, all
 // locales) carry no real location information, so they are hidden rather than shown.
 const MEANINGLESS_ANCHOR_LABELS = new Set([
-  ...Object.keys(ANCHOR_LABEL_KO),
-  ...Object.values(ANCHOR_LABEL_KO),
-  ...Object.values(ANCHOR_LABEL_ZH),
+  ...Object.keys(ANCHOR_LABEL_TRANSLATIONS),
+  ...Object.values(ANCHOR_LABEL_TRANSLATIONS).flatMap((translations) => Object.values(translations)),
 ]);
 
 function isMeaningfulAnchorLabel(label) {

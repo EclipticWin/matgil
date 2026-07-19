@@ -13,6 +13,7 @@ import Thumbnail from '../../../shared/components/Thumbnail.jsx';
 import Spinner from '../../../shared/components/Spinner.jsx';
 import { cn } from '../../../shared/utils/classNames.js';
 import { useLocale } from '../../../shared/i18n/LocaleProvider.jsx';
+import { pickTranslated } from '../../../shared/i18n/localeFallback.js';
 import { useAuth } from '../../auth/hooks/useAuth.jsx';
 import { ROUTES } from '../../../shared/constants/routes.js';
 import { useFoodCategories } from '../context/FoodCategoryProvider.jsx';
@@ -376,11 +377,10 @@ export default function PlaceDetailSheet({ place, selectedLocation, onBack }) {
     (rawCategory ? getCategoryLabel(rawCategory, locale) : null);
 
   const raw = distRaw(place);
-  const locationLabel = locale === 'ko'
-    ? (selectedLocation?.labelKo || selectedLocation?.label)
-    : locale === 'zh-CN'
-      ? (selectedLocation?.labelZh || selectedLocation?.label)
-      : selectedLocation?.label;
+  const locationLabel = pickTranslated(
+    { ko: selectedLocation?.labelKo, en: selectedLocation?.label, 'zh-CN': selectedLocation?.labelZh },
+    locale,
+  );
   const dist = raw && locationLabel
     ? t('placeDetail.distFrom', { dist: raw, location: locationLabel })
     : raw;

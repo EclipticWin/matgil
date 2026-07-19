@@ -34,7 +34,7 @@ export default function PhraseCard({ phrase, onBookmark }) {
       <div className="min-w-0 flex-1">
         <p className="text-lg font-bold tracking-tight text-ink">{phrase.korean}</p>
         <p className="mt-0.5 text-xs font-semibold italic text-ink-faint">{phrase.romanization}</p>
-        <p className="mt-1 text-sm text-ink-soft">{phrase.intentEn}</p>
+        <p className="mt-1 text-sm text-ink-soft">{phrase.meaning}</p>
         {phrase.note ? (
           <p className="mt-1 text-xs text-ink-faint">{phrase.note}</p>
         ) : null}

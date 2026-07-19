@@ -100,7 +100,7 @@ export default function EditProfileSheet({ currentName, onSave, onClose }) {
           value={newPw}
           onChange={(e) => setNewPw(e.target.value)}
           className="w-full rounded-2xl border-[1.5px] border-stone-200 bg-white px-4 py-3 text-[0.95rem] text-ink outline-none placeholder:text-ink-faint focus:border-stone-400 focus:ring-1 focus:ring-stone-200"
-          placeholder="6자 이상"
+          placeholder={t('my.newPasswordPlaceholder')}
         />
 
         <label className="mb-1.5 mt-2.5 block text-sm font-semibold text-ink-soft">

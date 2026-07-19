@@ -2,6 +2,7 @@ import { PRESET_LOCATIONS } from '../data/locations.js';
 import { PinIcon, CheckIcon } from '../../../shared/components/Icon.jsx';
 import { cn } from '../../../shared/utils/classNames.js';
 import { useLocale } from '../../../shared/i18n/LocaleProvider.jsx';
+import { pickTranslated } from '../../../shared/i18n/localeFallback.js';
 
 export default function LocationSheet({ value, onSelect, onClose }) {
   const { locale, t } = useLocale();
@@ -15,11 +16,7 @@ export default function LocationSheet({ value, onSelect, onClose }) {
       <div className="no-scrollbar flex-1 overflow-y-auto px-3.5 pb-5 pt-1">
         {PRESET_LOCATIONS.map((loc) => {
           const active = value?.key === loc.key;
-          const displayLabel = locale === 'ko'
-            ? (loc.labelKo ?? loc.label)
-            : locale === 'zh-CN'
-              ? (loc.labelZh ?? loc.label)
-              : loc.label;
+          const displayLabel = pickTranslated({ ko: loc.labelKo, en: loc.label, 'zh-CN': loc.labelZh }, locale) ?? loc.label;
           return (
             <button
               key={loc.key}

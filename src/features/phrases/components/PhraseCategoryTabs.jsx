@@ -1,5 +1,6 @@
 import { cn } from '../../../shared/utils/classNames.js';
 import { useLocale } from '../../../shared/i18n/LocaleProvider.jsx';
+import { pickTranslated } from '../../../shared/i18n/localeFallback.js';
 
 /** Horizontal, scrollable category selector. Receives categories as props. */
 export default function PhraseCategoryTabs({ categories, value, onChange }) {
@@ -9,11 +10,7 @@ export default function PhraseCategoryTabs({ categories, value, onChange }) {
       <div className="flex min-w-max gap-2">
         {categories.map((cat) => {
           const active = value === cat.id;
-          const label = locale === 'ko'
-            ? (cat.labelKo ?? cat.label)
-            : locale === 'zh-CN'
-              ? (cat.labelZh ?? cat.label)
-              : cat.label;
+          const label = pickTranslated({ ko: cat.labelKo, en: cat.label, 'zh-CN': cat.labelZh }, locale) ?? cat.label;
           return (
             <button
               key={cat.id}

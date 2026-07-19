@@ -1,6 +1,7 @@
 import { COMMUNITY_FILTERS } from '../data/communityPosts.js';
 import { cn } from '../../../shared/utils/classNames.js';
 import { useLocale } from '../../../shared/i18n/LocaleProvider.jsx';
+import { pickTranslated } from '../../../shared/i18n/localeFallback.js';
 
 /** Horizontal sub-tab chips for filtering community posts. */
 export default function CommunityTabs({ value, onChange }) {
@@ -11,11 +12,7 @@ export default function CommunityTabs({ value, onChange }) {
         <div className="flex min-w-max gap-2">
           {COMMUNITY_FILTERS.map((f) => {
             const active = value === f.key;
-            const label = locale === 'ko'
-              ? (f.labelKo ?? f.label)
-              : locale === 'zh-CN'
-                ? (f.labelZh ?? f.label)
-                : f.label;
+            const label = pickTranslated({ ko: f.labelKo, en: f.label, 'zh-CN': f.labelZh }, locale) ?? f.label;
             return (
               <button
                 key={f.key}

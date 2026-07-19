@@ -10,6 +10,7 @@ import {
   CheckIcon,
 } from '../../../shared/components/Icon.jsx';
 import { useLocale } from '../../../shared/i18n/LocaleProvider.jsx';
+import { pickTranslated } from '../../../shared/i18n/localeFallback.js';
 import { getDisplayMetrics } from '../../courses/utils/courseMetrics.js';
 import { formatStopStatsParts } from '../../courses/utils/courseDisplay.js';
 import { fetchPlaceReviewStatsBatch } from '../../places/services/placeReviewService.js';
@@ -22,11 +23,10 @@ import Spinner from '../../../shared/components/Spinner.jsx';
 export default function TodayCourseDetail({ course, selectedLocation, onBack, onSelectPlace, onSave, saveState = 'idle' }) {
   const { locale, t } = useLocale();
   const stopCount = course.stopCount ?? course.stops.length;
-  const locationLabel = locale === 'ko'
-    ? (selectedLocation?.labelKo || selectedLocation?.label || 'here')
-    : locale === 'zh-CN'
-      ? (selectedLocation?.labelZh || selectedLocation?.label || 'here')
-      : (selectedLocation?.label ?? 'here');
+  const locationLabel = pickTranslated(
+    { ko: selectedLocation?.labelKo, en: selectedLocation?.label, 'zh-CN': selectedLocation?.labelZh },
+    locale,
+  ) ?? 'here';
   const blurb = t('courseDetail.blurb', { location: locationLabel });
 
   const { displayDistance, displayDuration } = getDisplayMetrics(course, locale);

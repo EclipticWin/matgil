@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { loadKakaoMapSdk } from '../map/loadKakaoMapSdk.js';
 import { PinIcon } from '../../../shared/components/Icon.jsx';
+import { useLocale } from '../../../shared/i18n/LocaleProvider.jsx';
 
 const INITIAL_LEVEL = 5;
 const CORAL = '#F8481F';
@@ -41,6 +42,7 @@ function makeLocationMarkerContent() {
 }
 
 export default function KakaoMap({ selectedLocation, course, onMapMoved, mapApiRef }) {
+  const { t } = useLocale();
   const containerRef = useRef(null);
   const mapRef = useRef(null);
   const overlaysRef = useRef([]);
@@ -196,7 +198,7 @@ export default function KakaoMap({ selectedLocation, course, onMapMoved, mapApiR
         <div className="absolute inset-0 flex items-center justify-center">
           <div className="flex flex-col items-center gap-2 text-ink-faint/60">
             <PinIcon size={26} className="text-coral/40" />
-            <span className="text-xs font-semibold uppercase tracking-wide">Map view</span>
+            <span className="text-xs font-semibold uppercase tracking-wide">{t('nearby.mapUnavailable')}</span>
           </div>
         </div>
       )}

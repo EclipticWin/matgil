@@ -7,6 +7,7 @@ import Button from '../shared/components/Button.jsx';
 import TopBar from '../shared/components/TopBar.jsx';
 import BottomNavigation from '../features/navigation/components/BottomNavigation.jsx';
 import { useLocale } from '../shared/i18n/LocaleProvider.jsx';
+import { pickTranslated } from '../shared/i18n/localeFallback.js';
 
 const inputClass =
   'h-[3.25rem] w-full rounded-2xl border-[1.5px] border-ink/10 bg-white px-4 text-[0.95rem] text-ink outline-none transition-colors placeholder:text-ink-faint focus:border-coral';
@@ -16,35 +17,27 @@ const inputClass =
 const nicknameInputClass =
   'h-[3.25rem] w-full rounded-2xl border-[1.5px] border-ink/10 bg-white px-4 text-[0.95rem] text-ink outline-none transition-colors placeholder:text-ink-faint focus:border-stone-400';
 
-const AUTH_ERROR_KO = {
-  'User already registered': '이미 가입된 이메일입니다.',
-  'Password should be at least 6 characters': '비밀번호는 6자 이상이어야 합니다.',
-  'Signup is disabled': '현재 회원가입을 사용할 수 없습니다.',
-  'Email not confirmed': '이메일 인증을 완료해 주세요.',
+// Known Supabase auth error substrings -> translated message per locale. en has
+// no entry here on purpose — an English screen shows Supabase's own message
+// verbatim (see mapAuthError()'s early return), it never needs a "translation".
+const AUTH_ERROR_TRANSLATIONS = {
+  'User already registered': { ko: '이미 가입된 이메일입니다.', 'zh-CN': '该邮箱已注册。' },
+  'Password should be at least 6 characters': { ko: '비밀번호는 6자 이상이어야 합니다.', 'zh-CN': '密码至少需要6位。' },
+  'Signup is disabled': { ko: '현재 회원가입을 사용할 수 없습니다.', 'zh-CN': '目前暂不支持注册。' },
+  'Email not confirmed': { ko: '이메일 인증을 완료해 주세요.', 'zh-CN': '请先完成邮箱验证。' },
 };
 
-const AUTH_ERROR_ZH = {
-  'User already registered': '该邮箱已注册。',
-  'Password should be at least 6 characters': '密码至少需要6位。',
-  'Signup is disabled': '目前暂不支持注册。',
-  'Email not confirmed': '请先完成邮箱验证。',
+const AUTH_ERROR_GENERIC_FALLBACK = {
+  ko: '요청을 처리하지 못했습니다. 잠시 후 다시 시도해 주세요.',
+  'zh-CN': '请求处理失败，请稍后重试。',
 };
 
 function mapAuthError(msg, locale) {
-  if (!msg) return msg;
-  if (locale === 'ko') {
-    for (const [en, ko] of Object.entries(AUTH_ERROR_KO)) {
-      if (msg.includes(en)) return ko;
-    }
-    return '요청을 처리하지 못했습니다. 잠시 후 다시 시도해 주세요.';
+  if (!msg || locale === 'en') return msg;
+  for (const [en, translations] of Object.entries(AUTH_ERROR_TRANSLATIONS)) {
+    if (msg.includes(en)) return pickTranslated(translations, locale) ?? msg;
   }
-  if (locale === 'zh-CN') {
-    for (const [en, zh] of Object.entries(AUTH_ERROR_ZH)) {
-      if (msg.includes(en)) return zh;
-    }
-    return '请求处理失败，请稍后重试。';
-  }
-  return msg;
+  return pickTranslated(AUTH_ERROR_GENERIC_FALLBACK, locale) ?? msg;
 }
 
 export default function SignUpPage() {

@@ -15,6 +15,7 @@ export const DICTIONARY = {
       findRoutesHere: 'Find routes here',
       selectedArea: 'Selected area',
       currentLocation: 'Current location',
+      mapUnavailable: 'Map view',
     },
     courseDetail: {
       label: "★ Today's pick",
@@ -170,6 +171,7 @@ export const DICTIONARY = {
     community: {
       title: 'Community',
       subtitle: 'Tips from travellers eating in Seoul',
+      travellerFallback: 'Traveller',
       noMatches: 'No matches yet',
       post: 'Post',
       loginToPost: 'Log in to post',
@@ -267,6 +269,7 @@ export const DICTIONARY = {
       profileUpdated: 'Profile updated',
       profileUpdateFailed: 'Failed to update profile',
       newPassword: 'New password',
+      newPasswordPlaceholder: 'At least 6 characters',
       confirmPassword: 'Confirm password',
       passwordMismatch: 'Passwords do not match',
       passwordTooShort: 'Password must be at least 6 characters',
@@ -353,6 +356,7 @@ export const DICTIONARY = {
       findRoutesHere: '여기서 동선 찾기',
       selectedArea: '선택한 지역',
       currentLocation: '현재 위치',
+      mapUnavailable: '지도 화면',
     },
     courseDetail: {
       label: '★ 오늘의 추천',
@@ -508,6 +512,7 @@ export const DICTIONARY = {
     community: {
       title: '커뮤니티',
       subtitle: '서울에서 식사한 여행자들의 팁',
+      travellerFallback: '여행자',
       noMatches: '아직 게시물이 없습니다.',
       post: '글쓰기',
       loginToPost: '로그인 후 글쓰기',
@@ -605,6 +610,7 @@ export const DICTIONARY = {
       profileUpdated: '프로필이 수정되었습니다',
       profileUpdateFailed: '프로필 수정에 실패했습니다',
       newPassword: '새 비밀번호',
+      newPasswordPlaceholder: '6자 이상',
       confirmPassword: '비밀번호 확인',
       passwordMismatch: '비밀번호가 일치하지 않습니다',
       passwordTooShort: '비밀번호는 6자 이상이어야 합니다',
@@ -691,6 +697,7 @@ export const DICTIONARY = {
       findRoutesHere: '在这里查找路线',
       selectedArea: '已选地区',
       currentLocation: '当前位置',
+      mapUnavailable: '地图画面',
     },
     courseDetail: {
       label: '★ 今日推荐',
@@ -846,6 +853,7 @@ export const DICTIONARY = {
     community: {
       title: '社区',
       subtitle: '来自首尔旅行者的美食贴士',
+      travellerFallback: '游客',
       noMatches: '暂无相关内容',
       post: '发布',
       loginToPost: '登录后即可发布',
@@ -943,6 +951,7 @@ export const DICTIONARY = {
       profileUpdated: '资料已更新',
       profileUpdateFailed: '资料更新失败',
       newPassword: '新密码',
+      newPasswordPlaceholder: '至少6位',
       confirmPassword: '确认密码',
       passwordMismatch: '两次输入的密码不一致',
       passwordTooShort: '密码至少需要6位',

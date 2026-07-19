@@ -133,11 +133,20 @@ export default function SearchOverlay({ open, onSelect, onClose, filterCount = 0
           <p className="mt-6 text-center text-[0.85rem] text-ink-faint">{t('search.noResults')}</p>
         ) : (
           results.map((r) => {
-            // Kakao search results are always raw Korean — for any non-Korean
-            // locale (en, zh-CN, …) prefer a matched, already-localized DB
-            // place over the raw Kakao text (falls back to English district
-            // formatting when there's no match, same as the 'en'-only
-            // behavior this replaces).
+            // Kakao's search API is only ever queried with the Korean keyword
+            // the user typed — making it understand a Chinese-language query
+            // is explicitly out of scope here (see the zh-CN i18n work log).
+            // Kakao results themselves are therefore always raw Korean text.
+            // For any non-Korean UI locale (en, zh-CN, …) we prefer a
+            // matched, already-localized DB place (findAnchorPlace() below —
+            // its name/address already resolved through the shared zh-CN ->
+            // en -> ko fallback chain, same as everywhere else) over that raw
+            // Kakao text. When there's NO internal-place match, the result is
+            // external data this project has no Chinese translation for: the
+            // name stays raw Korean, and the address falls back to the
+            // English "Seoul · District" abbreviation (formatSeoulDistrictAddress)
+            // for zh-CN too, not a Chinese one — an accepted, documented
+            // exception (see the zh-CN i18n work log's fallback-exceptions list).
             const isNonKorean = locale !== 'ko';
             const matched = isNonKorean ? findAnchorPlace(r, places) : null;
             const displayName = matched ? matched.name : r.place_name;

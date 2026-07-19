@@ -21,6 +21,10 @@ export default function PostCard({
   const [errorUrls, setErrorUrls] = useState(new Set());
   const [viewerOpen, setViewerOpen] = useState(false);
   const gradient = avatarGradient(post.userId || post.author);
+  // normalizeDbPost() (communityService.js) stores the literal, locale-neutral
+  // "Traveller" sentinel when a post has no author_name (same convention
+  // ReviewCard.jsx uses for "Deleted user") — translated here at render time.
+  const authorName = post.author === 'Traveller' ? t('community.travellerFallback') : post.author;
   const isDbPost = post.userId !== undefined;
   const isOwn = isDbPost && user && user.id === post.userId;
   const canLike = isDbPost && user && !isOwn;
@@ -43,10 +47,10 @@ export default function PostCard({
           <div
             className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br ${gradient} font-display text-[1.0625rem] font-bold text-white`}
           >
-            {post.author.charAt(0)}
+            {authorName.charAt(0)}
           </div>
           <div className="min-w-0 flex-1">
-            <p className="text-[0.9rem] font-bold text-ink">{post.author}</p>
+            <p className="text-[0.9rem] font-bold text-ink">{authorName}</p>
             <p className="mt-px text-xs text-ink-faint">
               {post.from} · {post.ago}
             </p>
