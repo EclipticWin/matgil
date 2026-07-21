@@ -15,3 +15,7 @@ supabase/.temp/
 # etc
 tour-api-chs-seoul-restaurants.json
 tour-api-ko-restaurants.json
+tour-api-chs-match-candidates.json
+tour-api-chs-review-details.csv
+tour-api-chs-review-mappings.json
+tour-api-chs-safe-mappings.json

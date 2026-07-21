@@ -519,7 +519,7 @@ export const DICTIONARY = {
       noPopularPhrasesInCategory: '이 카테고리에는 아직 인기 표현이 없습니다.',
     },
     location: {
-      title: '기준 위치 선택',
+      title: '핫플레이스',
     },
     community: {
       title: '커뮤니티',

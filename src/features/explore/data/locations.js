@@ -8,7 +8,9 @@ export const PRESET_LOCATIONS = [
   { key: 'gyeongbokgung',  label: 'Gyeongbokgung',   labelKo: '경복궁',      labelZh: '景福宫',   lat: 37.5796, lng: 126.9770, type: 'landmark' },
   { key: 'itaewon',        label: 'Itaewon',          labelKo: '이태원',      labelZh: '梨泰院',   lat: 37.5345, lng: 126.9946, type: 'area' },
   { key: 'dongdaemun',     label: 'Dongdaemun',       labelKo: '동대문',      labelZh: '东大门',   lat: 37.5700, lng: 127.0095, type: 'area' },
+  { key: 'gwangjang_market', label: 'Gwangjang Market', labelKo: '광장시장', labelZh: '广藏市场', lat: 37.5701196320637, lng: 126.999798964693, type: 'area' },
   { key: 'yeouido',        label: 'Yeouido',          labelKo: '여의도',      labelZh: '汝矣岛',   lat: 37.5219, lng: 126.9246, type: 'area' },
+  { key: 'jamsil',         label: 'Jamsil',           labelKo: '잠실',        labelZh: '蚕室',     lat: 37.513859279255, lng: 127.101857941447, type: 'area' },
 ];
 
 export const DEFAULT_LOCATION = PRESET_LOCATIONS[0];
