@@ -1,5 +1,6 @@
 import { supabase } from "../lib/supabase.js";
 import { pickTranslatedRow } from "../shared/i18n/localeFallback.js";
+import { fetchAllPlaceReviewStats } from "../features/places/services/placeReviewService.js";
 
 export function normalizePlace(row, locale = "ko") {
   const texts = row.mg_place_texts ?? [];
@@ -47,6 +48,11 @@ export function normalizePlace(row, locale = "ko") {
     hasLocation: details.has_location ?? false,
 
     matgilCategoryKeys: row.matgil_category_keys ?? [],
+
+    // Only ever populated by getPlacesWithReviewStats() below (Map tab) — a plain
+    // getPlaces() call leaves these at their no-reviews-yet default.
+    ratingAvg: null,
+    ratingCount: 0,
   };
 }
 
@@ -71,6 +77,35 @@ export async function getPlaces(locale = "ko") {
   if (error) throw error;
 
   return (data ?? []).map((row) => normalizePlace(row, locale));
+}
+
+/** Map tab only — everything getPlaces() returns, plus mg_place_review_stats merged
+ *  onto each place (ratingAvg/ratingCount), for the FilterSheet's minimum-rating
+ *  filter. Kept separate from getPlaces() so PopularPage/recommendationService/etc.
+ *  never pay for a stats fetch they don't use.
+ *
+ *  Fetches all active places and all review-stats rows independently (fetchAllPlaceReviewStats(),
+ *  paginated — never a per-place or single oversized .in() lookup) and merges them by place_id.
+ *  If the stats fetch fails, the place list is still returned in full — only
+ *  reviewStatsAvailable flips to false, so the caller can disable the rating filter
+ *  without losing FOOD TYPE filtering or location-based recommendations. A stats
+ *  fetch that succeeds with zero rows (e.g. no reviews exist yet) is a normal,
+ *  available result — reviewStatsAvailable stays true. */
+export async function getPlacesWithReviewStats(locale = "ko") {
+  const places = await getPlaces(locale);
+
+  let statsByPlaceId;
+  try {
+    statsByPlaceId = await fetchAllPlaceReviewStats();
+  } catch {
+    return { places, reviewStatsAvailable: false };
+  }
+
+  const merged = places.map((p) => {
+    const stats = statsByPlaceId.get(p.id);
+    return stats ? { ...p, ratingAvg: stats.ratingAvg, ratingCount: stats.ratingCount } : p;
+  });
+  return { places: merged, reviewStatsAvailable: true };
 }
 
 /** Batched lookup for a set of place ids — one query regardless of list size (used by

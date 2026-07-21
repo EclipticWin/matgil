@@ -89,6 +89,10 @@ export const DICTIONARY = {
       goodFor: 'Good for',
       catLimit: 'You can select up to 3 food types.',
       showResults: 'Show results',
+      rating: 'Minimum rating',
+      noMinimumRating: 'No minimum rating',
+      minimumRatingValue: '{rating} stars and up',
+      ratingUnavailable: 'Rating information is temporarily unavailable.',
     },
     language: {
       title: 'Language',
@@ -430,6 +434,10 @@ export const DICTIONARY = {
       goodFor: '이런 분께',
       catLimit: '음식 종류는 최대 3개까지 선택할 수 있어요.',
       showResults: '결과 보기',
+      rating: '최소 별점',
+      noMinimumRating: '최소 별점 없음',
+      minimumRatingValue: '별점 {rating}점 이상',
+      ratingUnavailable: '별점 정보를 현재 불러올 수 없습니다.',
     },
     language: {
       title: '언어 선택',
@@ -771,6 +779,10 @@ export const DICTIONARY = {
       goodFor: '适合人群',
       catLimit: '最多可选择3种美食类型。',
       showResults: '查看结果',
+      rating: '最低评分',
+      noMinimumRating: '不限最低评分',
+      minimumRatingValue: '{rating}分以上',
+      ratingUnavailable: '暂时无法加载评分信息。',
     },
     language: {
       title: '语言',

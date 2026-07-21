@@ -59,6 +59,43 @@ export async function fetchPlaceReviewStatsBatch(placeIds) {
   return new Map((data ?? []).map((row) => [row.place_id, row]));
 }
 
+const ALL_REVIEW_STATS_PAGE_SIZE = 1000;
+
+/** Every row of mg_place_review_stats — for the Map tab's rating filter, which needs
+ *  a stat for any of the active places rather than a known, bounded id list, so it
+ *  can't use fetchPlaceReviewStatsBatch(placeIds) without risking an oversized .in()
+ *  (one row per Kakao place with reviews, not one per review, but the table only
+ *  grows over time). Paginated with .range() rather than trusting Supabase's default
+ *  row cap, ordered by place_id so pages don't overlap or skip rows as new reviews
+ *  land between requests. rating_avg/rating_count are normalized to numbers here
+ *  (Postgres numeric comes back as a string, e.g. "5.0") — a row with an unusable
+ *  value is dropped rather than merged in, so it's treated the same as no row at all. */
+export async function fetchAllPlaceReviewStats() {
+  const statsByPlaceId = new Map();
+  let from = 0;
+  for (;;) {
+    const to = from + ALL_REVIEW_STATS_PAGE_SIZE - 1;
+    // eslint-disable-next-line no-await-in-loop
+    const { data, error } = await supabase
+      .from('mg_place_review_stats')
+      .select('place_id, rating_avg, rating_count')
+      .order('place_id', { ascending: true })
+      .range(from, to);
+    if (error) throw error;
+
+    for (const row of data ?? []) {
+      const ratingAvg = Number(row.rating_avg);
+      const ratingCount = Number(row.rating_count);
+      if (!Number.isFinite(ratingAvg) || !Number.isFinite(ratingCount)) continue;
+      statsByPlaceId.set(row.place_id, { ratingAvg, ratingCount });
+    }
+
+    if (!data || data.length < ALL_REVIEW_STATS_PAGE_SIZE) break;
+    from += ALL_REVIEW_STATS_PAGE_SIZE;
+  }
+  return statsByPlaceId;
+}
+
 /** Reviews for one place, newest first (created_at desc, id desc — matches the
  *  partial index backing this query). Pass `cursor` (the last row of the previous
  *  page) for cursor-based pagination instead of offset pagination. */

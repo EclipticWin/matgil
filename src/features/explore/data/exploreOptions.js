@@ -17,15 +17,27 @@ export const LANGUAGES = [
   { code: 'zh-CN', short: '中', name: '简体中文' },
 ];
 
-export const EMPTY_FILTERS = { cat: [], price: [], features: [] };
+export const EMPTY_FILTERS = { cat: [], price: [], features: [], minimumRating: 0 };
 
 export const filterCount = (f) =>
-  (Array.isArray(f.cat) ? f.cat.length : 0) + f.price.length + f.features.length;
+  (Array.isArray(f.cat) ? f.cat.length : 0) + f.price.length + f.features.length + (f.minimumRating > 0 ? 1 : 0);
 
 function matchesCat(place, cats) {
   const arr = Array.isArray(cats) ? cats : [];
   if (arr.length === 0) return true;
   return arr.some((cat) => (place.matgilCategoryKeys ?? []).includes(cat));
+}
+
+/** A place passes when its average review rating (mg_place_review_stats.rating_avg,
+ *  merged onto the place object as ratingAvg/ratingCount by getPlacesWithReviewStats)
+ *  is at or above minimumRating. Places with no reviews yet, or whose stats came back
+ *  non-numeric, only pass when no minimum is set (0 = no rating filter). */
+function matchesRating(place, minimumRating) {
+  const min = Number(minimumRating) || 0;
+  if (min <= 0) return true;
+  const avg = Number(place.ratingAvg);
+  const count = Number(place.ratingCount);
+  return Number.isFinite(avg) && Number.isFinite(count) && count > 0 && avg >= min;
 }
 
 /** Apply the current filters to a list of restaurants. */
@@ -34,6 +46,7 @@ export function applyFilters(list, f) {
     (r) =>
       matchesCat(r, f.cat) &&
       (f.price.length === 0 || f.price.includes(r.price)) &&
-      (f.features.length === 0 || f.features.every((x) => (r.features || []).includes(x))),
+      (f.features.length === 0 || f.features.every((x) => (r.features || []).includes(x))) &&
+      matchesRating(r, f.minimumRating),
   );
 }

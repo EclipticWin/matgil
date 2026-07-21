@@ -6,10 +6,9 @@ import PlaceDetailSheet from './PlaceDetailSheet.jsx';
 import { CheckIcon, ChevronRightIcon, CloseIcon, LocateIcon } from '../../../shared/components/Icon.jsx';
 import { cn } from '../../../shared/utils/classNames.js';
 import { useLocale } from '../../../shared/i18n/LocaleProvider.jsx';
-import { pickTranslated } from '../../../shared/i18n/localeFallback.js';
 import { useAuth } from '../../auth/hooks/useAuth.jsx';
 import { saveCourse, checkCourseAlreadySaved, fetchSavedCourses, isSameCourse, DuplicateCourseError } from '../../courses/services/savedCourseService.js';
-import { localizeSnapshotForDisplay } from '../../courses/utils/courseDisplay.js';
+import { getLocalizedLocationLabel, getLocationDisplayName, localizeSnapshotForDisplay } from '../../courses/utils/courseDisplay.js';
 import { normalizeCourseMetrics } from '../../courses/utils/courseMetrics.js';
 import { ROUTES } from '../../../shared/constants/routes.js';
 import { findScrollParent } from '../../../shared/utils/dom.js';
@@ -29,6 +28,7 @@ export default function NearbySheet({
   onSelectCourse,
   selectedLocation,
   selectedFoodTypes = [],
+  minimumRating = 0,
   isLoading = false,
   gpsStatus = 'idle',
   onGpsClick,
@@ -46,6 +46,12 @@ export default function NearbySheet({
   const [snap, setSnap] = useState('peek');
   const [dragH, setDragH] = useState(null);
   const [selectedCourse, setSelectedCourse] = useState(null);
+  // True only when selectedCourse was opened straight from the live `courses` list
+  // (see openDetail(course, { live: true })) — never for a saved-course snapshot
+  // opened via initialCourse/initialPlaceId, whose id can coincidentally collide
+  // with a live 'recommended-N'/'today-pick' id left over from when it was saved.
+  // Gates the locale-resync effect below so it never touches a saved snapshot.
+  const [isLiveCourseDetail, setIsLiveCourseDetail] = useState(false);
   const [selectedPlace, setSelectedPlace] = useState(null);
   const preCollapseSnap = useRef('peek');
 
@@ -122,12 +128,46 @@ export default function NearbySheet({
     }
   }, [initialPlaceId, initialCourse, courses]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Close detail when selected location changes (prevents stale course display on hot place switch)
+  // Exits an open course detail back to the list exactly when the candidate pool was
+  // rebuilt for a reason the user should see as "this is a new result set" — the
+  // anchor location changed, or FOOD TYPE/minimum-rating was actually applied via
+  // Show Results (selectedFoodTypes/minimumRating below only change at that moment —
+  // draft edits inside FilterSheet stay local until then). A `courses`/`activeCourse`
+  // change with NEITHER of those (in practice: a locale switch re-fetching places and
+  // regenerating every stop's text) instead refreshes an open, LIVE detail's content
+  // by id rather than leaving the old language on screen — never a saved-course
+  // snapshot (isLiveCourseDetail gates that; see its declaration above). Falls back
+  // to the new first course only if that id has genuinely disappeared from the pool.
+  const closeTriggerRef = useRef({ selectedLocation, selectedFoodTypes, minimumRating });
   useEffect(() => {
-    setSelectedCourse(null);
-    setSelectedPlace(null);
-    setSaveState('idle');
-  }, [selectedLocation]); // eslint-disable-line react-hooks/exhaustive-deps
+    const prev = closeTriggerRef.current;
+    const shouldClose =
+      prev.selectedLocation !== selectedLocation ||
+      prev.selectedFoodTypes !== selectedFoodTypes ||
+      prev.minimumRating !== minimumRating;
+    closeTriggerRef.current = { selectedLocation, selectedFoodTypes, minimumRating };
+
+    if (shouldClose) {
+      setSelectedCourse(null);
+      setIsLiveCourseDetail(false);
+      setSelectedPlace(null);
+      setSaveState('idle');
+      return;
+    }
+
+    if (!isLiveCourseDetail || !selectedCourse) return;
+    const latest = courses?.find((c) => c.id === selectedCourse.id);
+    if (latest) {
+      if (latest !== selectedCourse) setSelectedCourse(latest);
+    } else if (courses && courses.length > 0) {
+      setSelectedCourse(courses[0]);
+    } else {
+      setSelectedCourse(null);
+      setIsLiveCourseDetail(false);
+      setSelectedPlace(null);
+      setSaveState('idle');
+    }
+  }, [selectedLocation, selectedFoodTypes, minimumRating, courses]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Fetch saved courses for badge display on course list
   useEffect(() => {
@@ -153,10 +193,15 @@ export default function NearbySheet({
   const currentHeight = dragH != null ? dragH : snap === 'full' ? full : snap === 'peek' ? peek : 0;
   const isSheetFull = currentHeight > (peek + full) / 2;
   const isDragging = gestureRef.current?.isDragging ?? false;
-  const locationLabel = pickTranslated(
-    { ko: selectedLocation?.labelKo, en: selectedLocation?.label, 'zh-CN': selectedLocation?.labelZh },
-    locale,
-  ) ?? 'here';
+  // Same anchor-name resolution buildOneCourse() uses for the course title (see
+  // getLocationDisplayName()'s doc comment in courseDisplay.js) — previously this
+  // read selectedLocation.label/labelKo/labelZh directly, which for source==='map'
+  // is permanently the generic "Selected area" HomePage.jsx sets at click time
+  // (augmentWithReverseGeocode only ever updates address/area/placeName, never
+  // label), so this header never picked up the reverse-geocoded district the way
+  // the course title already does. getLocalizedLocationLabel() re-translates the
+  // preset/generic-label cases the same way it always has for course titles.
+  const locationLabel = getLocalizedLocationLabel(getLocationDisplayName(selectedLocation, locale), locale) ?? 'here';
   const gpsModal = GPS_STATUSES.has(gpsStatus)
     ? { title: t(`gps.${gpsStatus}.title`), body: t(`gps.${gpsStatus}.body`) }
     : null;
@@ -231,8 +276,9 @@ export default function NearbySheet({
 
   const handleExpand = () => setSnap(preCollapseSnap.current || 'peek');
 
-  const openDetail = (c) => {
+  const openDetail = (c, { live = false } = {}) => {
     setSelectedCourse(c);
+    setIsLiveCourseDetail(live);
     setSelectedPlace(null);
     setSnap('full');
     setDragH(null);
@@ -240,6 +286,7 @@ export default function NearbySheet({
 
   const closeDetail = () => {
     setSelectedCourse(null);
+    setIsLiveCourseDetail(false);
     setSelectedPlace(null);
     setSaveState('idle');
   };
@@ -390,8 +437,16 @@ export default function NearbySheet({
           )
         ) : (
           <>
-            <div className="shrink-0 cursor-grab touch-none px-5 pb-2 pt-0.5">
-              <h2 className="select-none font-display text-[1.15rem] font-bold tracking-tight text-ink">
+            {/* pt-1.5 (handle wrapper's pb-1.5 + this pt-1.5 = 12px) matches the
+                handle-to-title gap FilterSheet gets from its handle's mb-3 — same
+                12px, split across two sibling boxes here instead of one margin.
+                pb-3.5 (+ the scroll container's own pt-1, untouched so it doesn't also
+                shift the loading/empty states) makes the title-to-TODAY'S-PICKS gap
+                18px, 1.5x the previous 12px (8+4). Title text size now matches
+                FilterSheet's Filters heading (text-[1.375rem]) instead of running
+                smaller. */}
+            <div className="shrink-0 cursor-grab touch-none px-5 pb-3.5 pt-1.5">
+              <h2 className="select-none font-display text-[1.375rem] font-bold tracking-tight text-ink">
                 {t('nearby.header', { location: locationLabel })}
               </h2>
             </div>
@@ -424,7 +479,7 @@ export default function NearbySheet({
                                 isActive={isActive}
                                 onClick={() => {
                                   onSelectCourse?.(course);
-                                  openDetail(course);
+                                  openDetail(course, { live: true });
                                 }}
                               />
                               {alreadySaved && (

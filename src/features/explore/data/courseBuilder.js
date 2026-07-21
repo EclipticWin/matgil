@@ -1,5 +1,5 @@
 import { calcDistanceKm } from './locations.js';
-import { getLocalizedCourseTitle, appendCourseSequenceNumber } from '../../courses/utils/courseDisplay.js';
+import { getLocalizedCourseTitle, appendCourseSequenceNumber, getLocationDisplayName } from '../../courses/utils/courseDisplay.js';
 
 const DEFAULT_STOP_COUNT = 3;
 const COURSE_CANDIDATE_LIMIT = 20;
@@ -201,7 +201,11 @@ function buildOneCourse(candidates, selectedLocation, foodTypes, courseId, accen
   }
 
   const { stops, score, dist } = chosen;
-  const title = getLocalizedCourseTitle(stops, selectedLocation.label, locale);
+  // getLocationDisplayName() prefers the reverse-geocoded district over the generic
+  // "Selected area" label once one is available (map-center anchors only — see its
+  // doc comment in courseDisplay.js) so the title reflects the actual place instead
+  // of staying generic forever.
+  const title = getLocalizedCourseTitle(stops, getLocationDisplayName(selectedLocation, locale), locale);
 
   return {
     id: courseId,
@@ -285,17 +289,26 @@ export function buildRecommendedCourses({
     courses.push(course);
   }
 
-  // Multiple courses for the same anchor can end up with the exact same title
+  // Multiple courses for the same anchor CAN end up with the exact same title
   // (detectTitleType() inside getLocalizedCourseTitle buckets by stops' categories,
   // and several courses easily land in the same bucket — e.g. three "Itaewon Food
-  // Walk" cards with no way to tell them apart). Number every card once there's
-  // more than one, using each course's own stable `id` (`recommended-N`) as the
-  // sequence source rather than trusting array position to stay in sync.
-  if (courses.length > 1) {
-    for (const course of courses) {
-      const sequenceNumber = Number(course.id.split('-').pop());
-      course.title = appendCourseSequenceNumber(course.title, sequenceNumber);
-    }
+  // Walk" cards with no way to tell them apart) — but usually don't, since distinct
+  // stop combinations often land in distinct buckets. Numbering EVERY card whenever
+  // there's more than one (the previous behavior) reads as nonsense once titles are
+  // already distinct — "... Cafe & Bites 1", "... Noodle Walk 2", "... Food Walk 3"
+  // all have a meaningless trailing number. Only the courses that share the exact
+  // same generated title get numbered, 1-based within that shared-title group, in
+  // stable array order (the courses array is already fixed by scoring above).
+  const titleCounts = new Map();
+  for (const course of courses) {
+    titleCounts.set(course.title, (titleCounts.get(course.title) ?? 0) + 1);
+  }
+  const seenPerTitle = new Map();
+  for (const course of courses) {
+    if ((titleCounts.get(course.title) ?? 0) <= 1) continue;
+    const sequenceNumber = (seenPerTitle.get(course.title) ?? 0) + 1;
+    seenPerTitle.set(course.title, sequenceNumber);
+    course.title = appendCourseSequenceNumber(course.title, sequenceNumber);
   }
 
   return courses;

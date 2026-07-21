@@ -15,7 +15,7 @@ function formatSeoulDistrictAddress(addressStr) {
   return `Seoul · ${districtEn}`;
 }
 
-export default function SearchOverlay({ open, onSelect, onClose, filterCount = 0, onFilterClick, places = [] }) {
+export default function SearchOverlay({ open, onSelect, onClose, onFilterClick, places = [] }) {
   const { locale, t } = useLocale();
   const [mounted, setMounted] = useState(open);
   const [closing, setClosing] = useState(false);
@@ -110,11 +110,6 @@ export default function SearchOverlay({ open, onSelect, onClose, filterCount = 0
             className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-ink-soft"
           >
             <FunnelIcon size={18} />
-            {filterCount > 0 && (
-              <span className="absolute right-0.5 top-0.5 flex h-[1.125rem] min-w-[1.125rem] items-center justify-center rounded-full border-2 border-white bg-ink px-1 text-[0.6rem] font-extrabold text-white">
-                {filterCount}
-              </span>
-            )}
           </button>
         </div>
       </div>

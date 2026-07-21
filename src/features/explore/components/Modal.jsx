@@ -113,8 +113,12 @@ export default function Modal({
 
       const offset = g.currentOffset;
       if (offset > CLOSE_THRESHOLD) {
-        el.style.transition = '';
-        el.style.transform = '';
+        // Leave the inline translateY(offset) in place — clearing it here reverts the
+        // sheet to translateY(0) for a frame before `.modal-out`'s close keyframe
+        // (matgil-mdown) even starts, since that keyframe has no explicit 0% and
+        // picks up whatever the current inline transform is as its implicit start.
+        // Clearing to '' made every drag-close jump back up to the open position
+        // before animating back down. Onward from here it continues in one direction.
         onCloseRef.current();
       } else {
         el.style.transition = 'transform 0.25s ease';
@@ -198,10 +202,9 @@ export default function Modal({
     if (g.isDragging) {
       const offset = g.currentOffset;
       if (offset > CLOSE_THRESHOLD) {
-        if (sheetElRef.current) {
-          sheetElRef.current.style.transition = '';
-          sheetElRef.current.style.transform = '';
-        }
+        // Same reasoning as the touch path's onTouchEnd above: leave the inline
+        // translateY(offset) as-is so `.modal-out`'s implicit-0% close keyframe
+        // starts from the current drag position instead of snapping to translateY(0).
         onClose();
       } else {
         const el = sheetElRef.current;

@@ -1,10 +1,9 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useLocale } from '../shared/i18n/LocaleProvider.jsx';
-import { getPlaces } from '../api/placeApi.js';
+import { getPlacesWithReviewStats } from '../api/placeApi.js';
 import {
   EMPTY_FILTERS,
-  filterCount,
   applyFilters,
 } from '../features/explore/data/exploreOptions.js';
 import { DEFAULT_LOCATION, sortPlacesByDistance } from '../features/explore/data/locations.js';
@@ -31,6 +30,9 @@ export default function HomePage() {
   const [isSearching, setIsSearching] = useState(false);
   const [places, setPlaces] = useState([]);
   const [placesLoading, setPlacesLoading] = useState(true);
+  // false only once getPlacesWithReviewStats() confirms the stats fetch failed —
+  // starts true so the rating filter isn't disabled while the very first load is in flight.
+  const [reviewStatsAvailable, setReviewStatsAvailable] = useState(true);
   const [selectedLocation, setSelectedLocation] = useState(DEFAULT_LOCATION);
   const [anchorPlace, setAnchorPlace] = useState(null);
   const [gpsStatus, setGpsStatus] = useState('idle'); // 'idle'|'loading'|'active'|'denied'|'error'|'unsupported'
@@ -64,10 +66,11 @@ export default function HomePage() {
     setPlacesLoading(true);
     setAnchorPlace(null);
     setActiveCourseId(null);
-    getPlaces(locale)
-      .then((data) => {
+    getPlacesWithReviewStats(locale)
+      .then(({ places: data, reviewStatsAvailable: statsOk }) => {
         if (!cancelled) {
           setPlaces(data);
+          setReviewStatsAvailable(statsOk);
           setPlacesLoading(false);
         }
       })
@@ -87,9 +90,18 @@ export default function HomePage() {
     return () => ro.disconnect();
   }, []);
 
+  // When the review-stats fetch failed, minimumRating can't be evaluated (every place
+  // would look review-less) — force it back to 0 so FOOD TYPE/location filtering still
+  // works instead of the candidate pool silently going empty. filters itself stays
+  // untouched so the committed minimumRating reappears once stats become available again.
+  const effectiveFilters = useMemo(
+    () => (reviewStatsAvailable ? filters : { ...filters, minimumRating: 0 }),
+    [filters, reviewStatsAvailable],
+  );
+
   const nearby = useMemo(
-    () => sortPlacesByDistance(applyFilters(places, filters), selectedLocation),
-    [places, filters, selectedLocation],
+    () => sortPlacesByDistance(applyFilters(places, effectiveFilters), selectedLocation),
+    [places, effectiveFilters, selectedLocation],
   );
 
   const recommendedCourses = useMemo(
@@ -97,11 +109,11 @@ export default function HomePage() {
     [nearby, selectedLocation, filters.cat, anchorPlace, locale],
   );
 
-  // Reset to first course whenever location or food-type filter changes.
+  // Reset to first course whenever location, food-type, or minimum-rating filter changes.
   useEffect(() => {
     setActiveCourseId(null);
     setSavedCourseForMap(null);
-  }, [selectedLocation, filters.cat]);
+  }, [selectedLocation, filters.cat, filters.minimumRating]);
 
   // Process savedCourse from router state (navigating from SavedCourseDetailPage)
   useEffect(() => {
@@ -113,8 +125,6 @@ export default function HomePage() {
   const activeCourse =
     savedCourseForMap ??
     (recommendedCourses.find((c) => c.id === activeCourseId) ?? recommendedCourses[0] ?? null);
-
-  const count = filterCount(filters);
 
   function handleMapMoved() {
     setShowFindHere(true);
@@ -215,11 +225,6 @@ export default function HomePage() {
             className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-ink-soft"
           >
             <FunnelIcon size={18} />
-            {count > 0 && (
-              <span className="absolute right-0.5 top-0.5 flex h-[1.125rem] min-w-[1.125rem] items-center justify-center rounded-full border-2 border-white bg-ink px-1 text-[0.6rem] font-extrabold text-white">
-                {count}
-              </span>
-            )}
           </button>
         </div>
 
@@ -273,6 +278,7 @@ export default function HomePage() {
         }}
         selectedLocation={selectedLocation}
         selectedFoodTypes={filters.cat}
+        minimumRating={filters.minimumRating}
         isLoading={placesLoading}
         gpsStatus={gpsStatus}
         onGpsClick={handleGpsClick}
@@ -286,14 +292,18 @@ export default function HomePage() {
         open={isSearching}
         onSelect={handleSearchSelect}
         onClose={() => setIsSearching(false)}
-        filterCount={count}
         onFilterClick={() => setSheet('filters')}
         places={places}
       />
 
       {/* filter sheet */}
       <Modal open={sheet === 'filters'} onClose={() => setSheet(null)} variant="sheet" fullHeight draggableClose>
-        <FilterSheet value={filters} onApply={setFilters} onClose={() => setSheet(null)} />
+        <FilterSheet
+          value={filters}
+          onApply={setFilters}
+          onClose={() => setSheet(null)}
+          ratingFilterAvailable={reviewStatsAvailable}
+        />
       </Modal>
 
       {/* language modal */}

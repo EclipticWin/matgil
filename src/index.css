@@ -147,6 +147,76 @@
 .search-overlay-in { animation: matgil-sfade 0.15s ease both; }
 .search-overlay-out { animation: matgil-sfade-out 0.12s ease forwards; }
 
+/* ── Map-tab filter sheet: minimum-rating slider ────────────
+   Scoped to this class (not a bare `input[type=range]` rule) so no other range
+   input inherits it. `-webkit-appearance: none` on the input itself is required —
+   without it, some Chromium builds silently keep rendering the native (thicker,
+   darker) track no matter what ::-webkit-slider-runnable-track says below. Once
+   appearance is reset, WebKit also stops auto-centering the thumb on the track (it
+   top-aligns it instead), so the thumb needs an explicit negative margin-top to sit
+   centered on the thin track — Firefox has no such quirk and centers
+   ::-moz-range-thumb on ::-moz-range-track on its own.
+   Progress (left of thumb, filled) vs remaining (right of thumb) track color is
+   never coral (coral is reserved for the active stars above it) — both are ink-
+   family neutrals, just at different alpha so the current position stays legible.
+   WebKit has no native progress pseudo-element, so FilterSheet.jsx writes the
+   drag position into the `--rating-progress` custom property every render and a
+   linear-gradient with two hard color stops at that position draws the split;
+   Firefox's ::-moz-range-progress already renders (and clips) the filled portion
+   natively, so it needs no custom property at all. */
+.matgil-rating-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  background: transparent;
+}
+.matgil-rating-slider::-webkit-slider-runnable-track {
+  height: 4px;
+  border-radius: 9999px;
+  background: linear-gradient(
+    to right,
+    rgba(38, 26, 17, 0.48) 0%,
+    rgba(38, 26, 17, 0.48) var(--rating-progress, 0%),
+    rgba(168, 153, 138, 0.18) var(--rating-progress, 0%),
+    rgba(168, 153, 138, 0.18) 100%
+  );
+}
+.matgil-rating-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 9999px;
+  background: #a8998a;
+  margin-top: -7px; /* (18px thumb - 4px track) / 2, centers the thumb on the track */
+  cursor: pointer;
+}
+.matgil-rating-slider::-moz-range-track {
+  height: 4px;
+  border-radius: 9999px;
+  background: rgba(168, 153, 138, 0.18);
+}
+.matgil-rating-slider::-moz-range-progress {
+  height: 4px;
+  border-radius: 9999px;
+  background: rgba(38, 26, 17, 0.48);
+}
+.matgil-rating-slider::-moz-range-thumb {
+  width: 18px;
+  height: 18px;
+  border-radius: 9999px;
+  background: #a8998a;
+  border: none;
+  cursor: pointer;
+}
+.matgil-rating-slider:focus-visible {
+  outline: 2px solid rgba(168, 153, 138, 0.6);
+  outline-offset: 3px;
+}
+.matgil-rating-slider:disabled::-webkit-slider-thumb,
+.matgil-rating-slider:disabled::-moz-range-thumb {
+  cursor: not-allowed;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .animate-rise,
   .animate-pop {

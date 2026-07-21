@@ -115,6 +115,34 @@ export function getLocalizedLocationLabel(anchorLabel, locale) {
   return pickTranslated({ ...known, en: anchorLabel }, locale) ?? anchorLabel;
 }
 
+/** Course-title/header location name for a *live* Map-tab selectedLocation object
+ *  (HomePage.jsx's `{ source, label, area, placeName, address, key }` state — not a
+ *  saved-course DB row, so getAnchorAreaPart() below doesn't apply here). Mirrors
+ *  that function's anchor_type='map' priority (docs/45): the reverse-geocoded
+ *  district (selectedLocation.area, populated asynchronously by
+ *  reverseGeocodeService.js — falling back to extractDistrictKo(selectedLocation.address)
+ *  on the rare response that has an address but no region_2depth_name) through the
+ *  same "{area} 일대"/"{area} Area" wording courseTitle.areaSuffix uses for saved
+ *  courses — inlined here rather than routed through the runtime dictionary because
+ *  this module has no `t()`/React context available (same pattern as
+ *  getCourseThemeLabel()'s no-helpers fallback above).
+ *  Falls through to the plain label (e.g. "Selected area") until geocoding resolves
+ *  or if it fails — never blocks course generation.
+ *  'search'/'gps'/preset locations are untouched: search already carries the picked
+ *  place's own name as `label` (more specific than any district), GPS intentionally
+ *  keeps its generic "Current location" wording per this feature's scope (only the
+ *  map-center flow lost a real location name), and a preset's `label` is already a
+ *  proper-noun location getLocalizedLocationLabel() below re-translates. */
+export function getLocationDisplayName(selectedLocation, locale) {
+  if (!selectedLocation) return null;
+  if (selectedLocation.source === 'map') {
+    const districtKo = selectedLocation.area || extractDistrictKo(selectedLocation.address);
+    const area = getLocalizedDistrict(districtKo, locale);
+    if (area) return pickTranslated({ ko: `${area} 일대`, en: `${area} Area`, 'zh-CN': `${area}一带` }, locale);
+  }
+  return selectedLocation.label ?? null;
+}
+
 export function getLocalizedCourseTitle(stops, anchorLabel, locale) {
   const type = detectTitleType(stops);
   const loc = getLocalizedLocationLabel(anchorLabel, locale);
