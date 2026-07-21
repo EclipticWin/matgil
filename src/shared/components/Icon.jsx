@@ -167,6 +167,18 @@ export function SparkleIcon(p) {
   );
 }
 
+/** Two-sparkle "AI magic" mark (one large + one small four-point star) — used to
+ *  flag AI-generated/analyzed content. Deliberately bigger and more star-shaped
+ *  than SparkleIcon's single diamond so it doesn't read as a small "+". */
+export function AiSparklesIcon(p) {
+  return (
+    <Svg vb="0 0 24 24" {...p}>
+      <path d="M9 2L11 7L16 9L11 11L9 16L7 11L2 9L7 7Z" fill="currentColor" />
+      <path d="M19 3L20 5L22 6L20 7L19 9L18 7L16 6L18 5Z" fill="currentColor" />
+    </Svg>
+  );
+}
+
 export function CloseIcon(p) {
   return (
     <Svg vb="0 0 18 18" {...p}>

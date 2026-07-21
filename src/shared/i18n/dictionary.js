@@ -141,6 +141,7 @@ export const DICTIONARY = {
     },
     phrases: {
       title: 'Phrases',
+      subtitle: 'Practical Korean phrases for dining in Seoul',
       common: 'Common phrases',
       voice: 'Voice help',
       tapToHear: 'Tap to hear it in Korean',
@@ -148,6 +149,7 @@ export const DICTIONARY = {
       listening: 'Listening...',
       analyzing: 'Analyzing...',
       tapAgain: 'Tap to speak again.',
+      voiceAiDescription: 'Turn your speech into Korean and understand Korean speech in your language.',
       voiceDenied: 'Voice access denied.',
       voiceError: 'Could not understand. Please try again.',
       voiceUnsupported: 'Voice input is not supported here.',
@@ -167,7 +169,6 @@ export const DICTIONARY = {
       popularAll: 'All',
       noPopularPhrases: 'No popular phrases yet.',
       noPopularPhrasesInCategory: 'No popular phrases in this category yet.',
-      popularDescription: 'Most saved phrases',
     },
     location: {
       title: 'Choose a hot place',
@@ -327,6 +328,7 @@ export const DICTIONARY = {
       login: 'Log in',
       empty: 'No saved routes yet',
       emptyHint: 'Save a route to find it here later.',
+      exploreRoutes: 'Explore food routes',
       save: 'Save course',
       saving: 'Saving...',
       saved: 'Saved',
@@ -346,6 +348,7 @@ export const DICTIONARY = {
       removeFailed: 'Failed to remove saved place.',
       retry: 'Retry',
       remove: 'Remove saved place',
+      explorePlaces: 'Explore places',
     },
   },
 
@@ -486,6 +489,7 @@ export const DICTIONARY = {
     },
     phrases: {
       title: '표현',
+      subtitle: '여행 중 바로 꺼내 쓰는 실전 한국어 표현',
       common: '자주 쓰는 표현',
       voice: '음성 도움',
       tapToHear: '한국어로 들어보세요',
@@ -493,6 +497,7 @@ export const DICTIONARY = {
       listening: '듣고 있어요...',
       analyzing: '분석 중...',
       tapAgain: '다시 말하려면 누르세요.',
+      voiceAiDescription: '내 음성을 한국어로 바꾸고, 한국어 음성을 내 언어로 이해해 보세요.',
       voiceDenied: '음성 접근이 거부됐습니다.',
       voiceError: '이해하지 못했습니다. 다시 시도해주세요.',
       voiceUnsupported: '이 브라우저에서는 음성 입력을 지원하지 않습니다.',
@@ -512,7 +517,6 @@ export const DICTIONARY = {
       popularAll: '전체',
       noPopularPhrases: '아직 인기 표현이 없습니다.',
       noPopularPhrasesInCategory: '이 카테고리에는 아직 인기 표현이 없습니다.',
-      popularDescription: '많이 저장된 표현',
     },
     location: {
       title: '기준 위치 선택',
@@ -672,6 +676,7 @@ export const DICTIONARY = {
       login: '로그인',
       empty: '저장한 코스가 없어요',
       emptyHint: '마음에 드는 코스를 저장하면 여기에 표시돼요.',
+      exploreRoutes: '맛집 동선 찾아보기',
       save: '코스 저장',
       saving: '저장 중...',
       saved: '저장됨',
@@ -691,6 +696,7 @@ export const DICTIONARY = {
       removeFailed: '저장한 가게를 해제하지 못했어요.',
       retry: '다시 시도',
       remove: '저장 해제',
+      explorePlaces: '맛집 둘러보기',
     },
   },
 
@@ -831,6 +837,7 @@ export const DICTIONARY = {
     },
     phrases: {
       title: '常用语',
+      subtitle: '在首尔用餐时随时可用的实用韩语表达',
       common: '常用表达',
       voice: '语音助手',
       tapToHear: '点击听韩语发音',
@@ -838,6 +845,7 @@ export const DICTIONARY = {
       listening: '正在聆听...',
       analyzing: '正在分析...',
       tapAgain: '点击可再次说话。',
+      voiceAiDescription: '将我的语音转换为韩语，并用我的语言理解韩语语音。',
       voiceDenied: '语音权限被拒绝。',
       voiceError: '无法识别，请重试。',
       voiceUnsupported: '此环境不支持语音输入。',
@@ -857,7 +865,6 @@ export const DICTIONARY = {
       popularAll: '全部',
       noPopularPhrases: '暂无热门表达。',
       noPopularPhrasesInCategory: '该分类暂无热门表达。',
-      popularDescription: '收藏最多的表达',
     },
     location: {
       title: '选择热门地点',
@@ -1017,6 +1024,7 @@ export const DICTIONARY = {
       login: '登录',
       empty: '暂无收藏的路线',
       emptyHint: '收藏路线后即可在这里查看。',
+      exploreRoutes: '探索美食路线',
       save: '收藏路线',
       saving: '保存中...',
       saved: '已收藏',
@@ -1036,6 +1044,7 @@ export const DICTIONARY = {
       removeFailed: '取消收藏失败。',
       retry: '重试',
       remove: '取消收藏',
+      explorePlaces: '探索餐厅',
     },
   },
 };

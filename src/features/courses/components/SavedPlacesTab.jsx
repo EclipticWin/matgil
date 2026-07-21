@@ -8,6 +8,7 @@ import { setLastPlaceView } from '../../explore/data/lastPlaceView.js';
 import SavedPlaceCard from '../../places/components/SavedPlaceCard.jsx';
 import EmptyState from '../../../shared/components/EmptyState.jsx';
 import Spinner from '../../../shared/components/Spinner.jsx';
+import Button from '../../../shared/components/Button.jsx';
 import { HeartIcon } from '../../../shared/components/Icon.jsx';
 import { ROUTES } from '../../../shared/constants/routes.js';
 
@@ -109,6 +110,11 @@ export default function SavedPlacesTab() {
         icon={<HeartIcon active size={22} />}
         title={t('savedPlaces.empty')}
         description={t('savedPlaces.emptyHint')}
+        action={
+          <Button onClick={() => navigate(ROUTES.home)} className="h-11 px-6 text-sm">
+            {t('savedPlaces.explorePlaces')}
+          </Button>
+        }
       />
     );
   }

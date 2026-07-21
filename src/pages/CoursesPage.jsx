@@ -7,10 +7,10 @@ import PageShell from '../shared/components/PageShell.jsx';
 import PageHeader from '../shared/components/PageHeader.jsx';
 import EmptyState from '../shared/components/EmptyState.jsx';
 import Button from '../shared/components/Button.jsx';
+import UnderlineTabs from '../shared/components/UnderlineTabs.jsx';
 import { RouteIcon } from '../shared/components/Icon.jsx';
 import { useLocale } from '../shared/i18n/LocaleProvider.jsx';
 import { ROUTES } from '../shared/constants/routes.js';
-import { cn } from '../shared/utils/classNames.js';
 
 const TABS = [
   { key: 'routes', labelKey: 'courses.tabRoutes' },
@@ -50,21 +50,12 @@ export default function CoursesPage() {
           탭을 오갈 때마다 다시 조회하지 않는다(각 탭이 스스로 최초 1회만 로딩). */}
       {user && (
         <>
-          <div className="mt-4 flex gap-1 border-b border-ink/8">
-            {TABS.map((item) => (
-              <button
-                key={item.key}
-                type="button"
-                onClick={() => setTab(item.key)}
-                className={cn(
-                  'flex-1 border-b-2 py-2.5 text-center text-[0.85rem] font-bold transition-colors',
-                  tab === item.key ? 'border-coral text-coral' : 'border-transparent text-ink-faint',
-                )}
-              >
-                {t(item.labelKey)}
-              </button>
-            ))}
-          </div>
+          <UnderlineTabs
+            tabs={TABS.map((item) => ({ id: item.key, label: t(item.labelKey) }))}
+            value={tab}
+            onChange={setTab}
+            className="mt-4"
+          />
 
           <div className={tab === 'routes' ? 'mt-5' : 'hidden'}>
             <SavedRoutesTab />

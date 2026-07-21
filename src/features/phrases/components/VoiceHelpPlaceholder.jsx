@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { MicIcon, SpeakerIcon } from '../../../shared/components/Icon.jsx';
+import { MicIcon, SpeakerIcon, AiSparklesIcon } from '../../../shared/components/Icon.jsx';
 import { speakKorean } from '../services/ttsService.js';
 import { supabase } from '../../../lib/supabase.js';
 import {
@@ -126,6 +126,12 @@ export default function VoiceHelpPlaceholder() {
           : status === 'done'       ? t('phrases.tapAgain')
           : errorMsg}
       </p>
+
+      {/* AI 기능 설명 — 마이크 버튼/상태 문구와 예시 결과 카드 사이에 가볍게 표시 */}
+      <div className="mt-3 flex max-w-xs items-start justify-center gap-1.5 text-center text-xs text-ink-faint">
+        <AiSparklesIcon size={17} className="shrink-0 text-coral" />
+        <p>{t('phrases.voiceAiDescription')}</p>
+      </div>
 
       {/* Result card — shown in idle (example) and done (analysis result) */}
       {showCard && (

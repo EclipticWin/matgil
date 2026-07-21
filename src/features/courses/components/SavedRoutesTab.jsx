@@ -4,6 +4,7 @@ import { useSavedCourses } from '../hooks/useSavedCourses.jsx';
 import CourseCard from './CourseCard.jsx';
 import EmptyState from '../../../shared/components/EmptyState.jsx';
 import Spinner from '../../../shared/components/Spinner.jsx';
+import Button from '../../../shared/components/Button.jsx';
 import { RouteIcon, TrashIcon } from '../../../shared/components/Icon.jsx';
 import { useLocale } from '../../../shared/i18n/LocaleProvider.jsx';
 import { ROUTES } from '../../../shared/constants/routes.js';
@@ -44,6 +45,11 @@ export default function SavedRoutesTab() {
         icon={<RouteIcon size={26} />}
         title={t('savedCourses.empty')}
         description={t('savedCourses.emptyHint')}
+        action={
+          <Button onClick={() => navigate(ROUTES.home)} className="h-11 px-6 text-sm">
+            {t('savedCourses.exploreRoutes')}
+          </Button>
+        }
       />
     );
   }

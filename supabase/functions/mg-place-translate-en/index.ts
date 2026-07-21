@@ -194,6 +194,8 @@ Return ONLY valid JSON matching the exact structure below. No markdown, no code 
 - Never replace a brand name or proper noun with a semantic (meaning-based) translation — always keep the original Korean in parentheses.
 - When you are not confident about a proper noun, romanize it conservatively (plain, readable romanization) rather than guessing at a meaning, but still keep the original Korean in parentheses.
   Examples: 남포면옥 → "Nampomyeonok (남포면옥)", 무교동 북어국집 → "Mugyodong Bugeogukjip (무교동 북어국집)", 가나돈까스의집 → "Gana Donkatsu House (가나돈까스의집)"
+- If the Korean name starts with a "[백년가게]" prefix (a government "Centennial Store" recognition badge for businesses open 30+ years), never delete it. Render its meaning in English as "Centennial Store: " immediately before the translated name, and still keep the FULL original Korean text — including the "[백년가게]" prefix itself — in the parentheses.
+  Example: [백년가게] 삼거리 먼지막 순대국 → "Centennial Store: Samgeori Meonjimak Sundaeguk ([백년가게] 삼거리 먼지막 순대국)"
 
 [Menu items — first_menu_items, treat_menu_items]
 - The source below already splits first_menu/treat_menu into an ARRAY of individual menu items. Translate each array element independently and return an array with the EXACT SAME NUMBER of elements, in the SAME ORDER. Never merge two items into one, split one item into two, drop an item, or add an item that isn't in the source array — the output array length must equal the input array length exactly.
@@ -255,8 +257,20 @@ ${buildOutputSchemaExample(row)}`;
 // validation failure so the model can target-fix just that, instead of
 // re-translating everything from scratch (which risks introducing a NEW mistake
 // while "fixing" the old one).
+// Best-effort extraction of the `address` field from a prior (untrusted, not yet
+// shape-validated) model output, so the corrective prompt can quote back exactly
+// what the model previously produced for the address — returns null rather than
+// throwing when priorRaw isn't shaped as expected.
+function extractPriorAddress(priorRaw: unknown): string | null {
+    if (typeof priorRaw !== "object" || priorRaw === null) return null;
+    const address = (priorRaw as Record<string, unknown>).address;
+    return typeof address === "string" ? address : null;
+}
+
 function buildCorrectivePrompt(row: KoTextRow, priorRaw: unknown, validationError: string): string {
     const input = buildSourceInputPayload(row);
+    const priorAddress = extractPriorAddress(priorRaw);
+    const requiredAddressNumbers = extractNumberTokens(row.address);
 
     return `You previously translated the following Korean restaurant data, but your JSON output failed a validation check. Fix ONLY the specific problem described below — do not re-translate or rewrite fields that were already correct.
 
@@ -268,6 +282,12 @@ ${JSON.stringify(priorRaw, null, 2)}
 
 Validation failure reason:
 ${validationError}
+
+[Address accuracy — apply this whenever the failure above involves the address's numbers]
+- Original Korean address (full): ${row.address ?? "(null)"}
+- Number tokens required from the original address, in order: ${requiredAddressNumbers.length > 0 ? requiredAddressNumbers.join(", ") : "(none)"}
+- Your previous translated address: ${priorAddress ?? "(none)"}
+- Every required number token listed above must appear in your corrected address exactly as many times as listed — never omit, change, or add a number.
 
 Rules to apply while fixing this:
 - Never change, omit, or invent any number, day of week, business hour, building number, floor, or menu item from the Korean source.
@@ -492,6 +512,21 @@ const MUST_NOT_BECOME_NULL_KEYS: (keyof TranslatedText)[] = [
     "address", "open_time", "rest_date", "parking", "packing",
 ];
 
+// The Korean source may carry a "[백년가게]" ("Centennial Store" — a government
+// recognition badge for businesses open 30+ years) prefix on `name`. The prompt
+// asks the model to render it as "Centennial Store: " while still keeping the
+// full original Korean (prefix included) in parentheses — but the badge prefix
+// itself isn't part of the store's own name, so it's excluded only from this
+// comparison, never from the output data.
+const CENTENNIAL_STORE_PREFIX = "[백년가게]";
+
+// NFKC-normalizes and collapses whitespace so the name-preservation check below
+// isn't tripped up by spacing or width-variant differences between the Korean
+// source and the model's output.
+function normalizeForNameComparison(text: string): string {
+    return text.normalize("NFKC").replace(/\s+/g, "");
+}
+
 interface ValidationResult {
     ok: boolean;
     error?: string;
@@ -534,10 +569,21 @@ function validateTranslation(row: KoTextRow, raw: unknown): ValidationResult {
         return { ok: false, error: "Translated name is empty." };
     }
     // The prompt requires "English Name (한글 원문)" — if the Korean original
-    // name doesn't appear anywhere in the translated name, the model likely
-    // drifted into an unrelated or invented value.
-    if (row.name && !restored.name.includes(row.name)) {
-        return { ok: false, error: "Translated name does not preserve the original Korean text." };
+    // name's body doesn't appear anywhere in the translated name, the model
+    // likely drifted into an unrelated or invented value. A "[백년가게]" badge
+    // prefix (see CENTENNIAL_STORE_PREFIX) is excluded from this comparison only —
+    // the prompt still requires it in the output's parenthetical Korean text, this
+    // just doesn't force it to also appear literally in that exact bracketed form
+    // right before the comparison. The comparison itself is NFKC-normalized and
+    // whitespace-insensitive so spacing/width variants don't cause a false failure.
+    const originalNameBody = row.name && row.name.startsWith(CENTENNIAL_STORE_PREFIX)
+        ? row.name.slice(CENTENNIAL_STORE_PREFIX.length)
+        : row.name;
+    if (originalNameBody) {
+        const normalizedBody = normalizeForNameComparison(originalNameBody);
+        if (normalizedBody && !normalizeForNameComparison(restored.name).includes(normalizedBody)) {
+            return { ok: false, error: "Translated name does not preserve the original Korean text." };
+        }
     }
 
     for (const key of MUST_NOT_BECOME_NULL_KEYS) {

@@ -8,6 +8,7 @@ import { SpeakerIcon } from '../shared/components/Icon.jsx';
 import { isTTSSupported } from '../features/phrases/services/ttsService.js';
 import PageShell from '../shared/components/PageShell.jsx';
 import PageHeader from '../shared/components/PageHeader.jsx';
+import UnderlineTabs from '../shared/components/UnderlineTabs.jsx';
 import { cn } from '../shared/utils/classNames.js';
 import { useLocale } from '../shared/i18n/LocaleProvider.jsx';
 import { useAuth } from '../features/auth/hooks/useAuth.jsx';
@@ -152,31 +153,20 @@ export default function PhrasesPage() {
 
   return (
     <PageShell>
-      <PageHeader title={t('phrases.title')} />
+      <PageHeader
+        title={t('phrases.title')}
+        subtitle={t('phrases.subtitle')}
+        subtitleClassName="[text-wrap:pretty]"
+      />
 
-      {/* 1차 탭: Common phrases / Voice help */}
-      <div className="mt-3 flex rounded-xl bg-ink/5 p-1">
-        {TOP_TABS.map((tab) => (
-          <button
-            key={tab.id}
-            type="button"
-            onClick={() => setActiveTab(tab.id)}
-            className={cn(
-              'flex-1 rounded-lg py-2 text-sm font-bold transition-colors',
-              activeTab === tab.id
-                ? 'bg-white text-ink shadow-soft'
-                : 'text-ink-soft',
-            )}
-          >
-            {tab.label}
-          </button>
-        ))}
-      </div>
+      {/* 1차 탭: Common phrases / Voice help — text 중심 스위처(당근마켓 스타일),
+          Courses 페이지와 공유하는 UnderlineTabs 컴포넌트 사용 */}
+      <UnderlineTabs tabs={TOP_TABS} value={activeTab} onChange={setActiveTab} className="mt-5" />
 
       {activeTab === 'common' && (
         <>
           {/* 2차 탭: All phrases / Popular */}
-          <div className="mt-4 flex rounded-xl bg-ink/5 p-1">
+          <div className="mt-5 flex rounded-xl bg-ink/5 p-1">
             {PHRASE_MODE_TABS.map((tab) => (
               <button
                 key={tab.id}
@@ -203,19 +193,19 @@ export default function PhrasesPage() {
           {/* 일반 표현 모드 */}
           {phraseMode === 'all' && (
             <>
-              {isTTSSupported() && (
-                <div className="mt-4 inline-flex items-center gap-1.5 rounded-xl bg-coral-tint px-3 py-1.5 text-[0.8rem] font-semibold text-coral-deep">
-                  <SpeakerIcon size={15} className="text-coral" /> {t('phrases.tapToHear')}
-                </div>
-              )}
-
-              <div className="mt-4 min-w-0 max-w-full overflow-hidden">
+              <div className="mt-5 min-w-0 max-w-full overflow-hidden">
                 <PhraseCategoryTabs
                   categories={categories}
                   value={category}
                   onChange={setCategory}
                 />
               </div>
+
+              {isTTSSupported() && (
+                <div className="mt-4 inline-flex items-center gap-1.5 rounded-xl bg-coral-tint px-3 py-1.5 text-[0.8rem] font-semibold text-coral-deep">
+                  <SpeakerIcon size={15} className="text-coral" /> {t('phrases.tapToHear')}
+                </div>
+              )}
 
               {loadFailed ? (
                 <p className="mt-6 text-center text-sm text-ink-faint">
@@ -238,7 +228,7 @@ export default function PhrasesPage() {
           {/* 인기 표현 모드 */}
           {phraseMode === 'popular' && (
             <>
-              <div className="mt-4 min-w-0 max-w-full overflow-hidden">
+              <div className="mt-5 min-w-0 max-w-full overflow-hidden">
                 <PhraseCategoryTabs
                   categories={[
                     { id: 'all', label: 'All', labelKo: '전체', labelZh: '全部' },
@@ -249,7 +239,11 @@ export default function PhrasesPage() {
                 />
               </div>
 
-              <p className="mt-3 text-xs text-ink-faint">{t('phrases.popularDescription')}</p>
+              {isTTSSupported() && (
+                <div className="mt-4 inline-flex items-center gap-1.5 rounded-xl bg-coral-tint px-3 py-1.5 text-[0.8rem] font-semibold text-coral-deep">
+                  <SpeakerIcon size={15} className="text-coral" /> {t('phrases.tapToHear')}
+                </div>
+              )}
 
               {popularFailed ? (
                 <p className="mt-6 text-center text-sm text-ink-faint">
