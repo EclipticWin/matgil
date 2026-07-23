@@ -8,10 +8,20 @@ const CLOSE_THRESHOLD = 80;  // px downward before release triggers close
  * Overlay shell for bottom-sheet and center modals.
  *
  * Props:
- *  variant="sheet"   → slides up from the bottom
- *  variant="center"  → pops in centered
- *  fullHeight        → sheet occupies full height minus 12 px (covers floating search bar)
- *  draggableClose    → sheet can be dragged downward to dismiss (with threshold)
+ *  variant="sheet"       → slides up from the bottom
+ *  variant="center"      → pops in centered
+ *  fullHeight            → sheet occupies full height minus 12 px (covers floating search bar)
+ *  draggableClose        → sheet can be dragged downward to dismiss (with threshold)
+ *  dismissOnBackdrop     → variant="center" only. The full-screen centering wrapper
+ *                          sits on top of the backdrop button below it, so a center
+ *                          modal's dark area doesn't close on click by default (the
+ *                          click lands on this wrapper, which normally has no
+ *                          handler). Opt-in per call site rather than a global
+ *                          default so existing center modals that rely on an
+ *                          explicit button (AuthRequiredModal, delete
+ *                          confirmations, ...) keep requiring one; sheet variant is
+ *                          unaffected either way — its own backdrop already works
+ *                          (the sheet itself only covers the bottom of the screen).
  */
 export default function Modal({
   open,
@@ -19,6 +29,7 @@ export default function Modal({
   variant = 'sheet',
   fullHeight = false,
   draggableClose = false,
+  dismissOnBackdrop = false,
   children,
 }) {
   const [mounted, setMounted] = useState(open);
@@ -251,7 +262,10 @@ export default function Modal({
           {children}
         </div>
       ) : (
-        <div className="absolute inset-0 flex items-center justify-center p-7">
+        <div
+          className="absolute inset-0 flex items-center justify-center p-7"
+          onClick={dismissOnBackdrop ? (e) => { if (e.target === e.currentTarget) onClose(); } : undefined}
+        >
           <div className="modal-center relative flex max-h-[76%] w-full max-w-[20rem] flex-col overflow-hidden rounded-[1.5rem] bg-paper-soft shadow-card">
             {children}
           </div>

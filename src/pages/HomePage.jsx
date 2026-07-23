@@ -18,29 +18,10 @@ import LocationSheet from '../features/explore/components/LocationSheet.jsx';
 import SearchOverlay from '../features/explore/components/SearchOverlay.jsx';
 import NearbySheet from '../features/explore/components/NearbySheet.jsx';
 import KakaoMap from '../features/explore/components/KakaoMap.jsx';
-import { PinIcon, FunnelIcon, FlameIcon, GlobeIcon, CloseIcon } from '../shared/components/Icon.jsx';
-
-const ZH_INFO_NOTICE_SESSION_KEY = 'matgil_zh_info_notice_seen';
-
-// sessionStorage (not localStorage — this notice is meant to reappear in a fresh
-// session, see the spec) can throw in some environments (privacy mode, storage
-// disabled); either helper failing must never block a language switch, so both
-// are wrapped and degrade to "not seen yet" / "silently didn't persist".
-function hasSeenChineseInfoNotice() {
-  try {
-    return sessionStorage.getItem(ZH_INFO_NOTICE_SESSION_KEY) === '1';
-  } catch {
-    return false;
-  }
-}
-
-function markChineseInfoNoticeSeen() {
-  try {
-    sessionStorage.setItem(ZH_INFO_NOTICE_SESSION_KEY, '1');
-  } catch {
-    // best-effort only
-  }
-}
+import LocaleInfoNotice from '../features/explore/components/LocaleInfoNotice.jsx';
+import { useLocaleNotice } from '../features/explore/hooks/useLocaleNotice.js';
+import { useEscapeToClose } from '../shared/hooks/useEscapeToClose.js';
+import { PinIcon, FunnelIcon, FlameIcon, GlobeIcon } from '../shared/components/Icon.jsx';
 
 /** Map tab — full-bleed map with floating controls and a draggable "Eat near here" sheet. */
 export default function HomePage() {
@@ -49,10 +30,11 @@ export default function HomePage() {
   const navigate = useNavigate();
   const [filters, setFilters] = useState(EMPTY_FILTERS);
   const [sheet, setSheet] = useState(null); // 'filters' | 'language' | 'location' | null
-  // Shown only right after the user explicitly picks zh-CN in LanguageModal (see
-  // handleLanguageSelected) — never from a useEffect watching `locale`, so a
-  // page load/refresh that already has zh-CN saved never triggers it on its own.
-  const [showChineseInfoNotice, setShowChineseInfoNotice] = useState(false);
+  // DB-driven notice (mg_locale_notices) shown only right after the user
+  // explicitly picks a locale in LanguageModal (see handleLanguageSelected) —
+  // never from a useEffect watching `locale`, so a page load/refresh never
+  // triggers a query or the modal on its own.
+  const { notice: localeNotice, handleLanguageSelected: loadLocaleNotice, closeNotice: closeLocaleNotice } = useLocaleNotice();
   const [isSearching, setIsSearching] = useState(false);
   const [places, setPlaces] = useState([]);
   const [placesLoading, setPlacesLoading] = useState(true);
@@ -231,28 +213,18 @@ export default function HomePage() {
     setShowFindHere(false);
   }
 
-  // Fires once per LanguageModal pick, right before it closes (see its onClick) —
-  // never from watching `locale` itself, so a saved zh-CN locale restored on load
-  // or kept across a refresh never re-triggers this on its own.
-  function handleLanguageSelected(code) {
-    if (code === 'zh-CN' && !hasSeenChineseInfoNotice()) {
-      markChineseInfoNoticeSeen();
-      setShowChineseInfoNotice(true);
-    }
+  // Fires on every LanguageModal pick, right before it closes (see its onClick) —
+  // never from watching `locale` itself, so a saved locale restored on load or
+  // kept across a refresh never triggers this on its own. No locale-specific
+  // branch: the DB row (mg_locale_notices, via useLocaleNotice) is the sole
+  // decider of whether a notice shows for the picked locale, so picking the
+  // same locale again always re-queries and re-shows if still active.
+  async function handleLanguageSelected(code) {
+    setSheet(null);
+    await loadLocaleNotice(code);
   }
 
-  // Modal.jsx has no built-in Escape handling for any variant, and adding one
-  // there would change every sheet/center modal's keyboard behavior at once —
-  // out of scope for a notice that only this one modal needs. Scoped to just
-  // this state instead of a global always-on listener.
-  useEffect(() => {
-    if (!showChineseInfoNotice) return;
-    function handleKeyDown(e) {
-      if (e.key === 'Escape') setShowChineseInfoNotice(false);
-    }
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [showChineseInfoNotice]);
+  useEscapeToClose(!!localeNotice, closeLocaleNotice);
 
   return (
     <div ref={mapRef} className="relative h-full overflow-hidden bg-map-land">
@@ -363,31 +335,16 @@ export default function HomePage() {
       </Modal>
 
       {/* language modal */}
-      <Modal open={sheet === 'language'} onClose={() => setSheet(null)} variant="center">
+      <Modal open={sheet === 'language'} onClose={() => setSheet(null)} variant="center" dismissOnBackdrop>
         <LanguageModal onClose={() => setSheet(null)} onLanguageSelected={handleLanguageSelected} />
       </Modal>
 
-      {/* zh-CN info notice — opens right after LanguageModal closes on a zh-CN pick
-          (handleLanguageSelected), never overlapping it (same click batches both
-          `sheet` and `showChineseInfoNotice` in one render). */}
-      <Modal open={showChineseInfoNotice} onClose={() => setShowChineseInfoNotice(false)} variant="center">
-        <div className="flex shrink-0 items-start justify-between gap-3 px-5 pb-1.5 pt-5">
-          <h2 className="font-display text-[1.15rem] font-bold tracking-tight text-ink">
-            {t('language.chineseNoticeTitle')}
-          </h2>
-          <button
-            type="button"
-            aria-label="Close"
-            onClick={() => setShowChineseInfoNotice(false)}
-            className="shrink-0 p-1 text-ink-soft"
-          >
-            <CloseIcon />
-          </button>
-        </div>
-        <div className="space-y-1.5 px-5 pb-6 pt-1">
-          <p className="text-[0.85rem] leading-relaxed text-ink-soft">{t('language.chineseNoticeBodyLine1')}</p>
-          <p className="text-[0.85rem] leading-relaxed text-ink-soft">{t('language.chineseNoticeBodyLine2')}</p>
-        </div>
+      {/* locale info notice — opens right after LanguageModal closes on a direct
+          pick (handleLanguageSelected), only when mg_locale_notices has an
+          active row for that locale. dismissOnBackdrop comes from the DB row
+          itself so an admin can control it per notice. */}
+      <Modal open={!!localeNotice} onClose={closeLocaleNotice} variant="center" dismissOnBackdrop={localeNotice?.dismissOnBackdrop ?? false}>
+        {localeNotice && <LocaleInfoNotice title={localeNotice.title} message={localeNotice.message} onClose={closeLocaleNotice} />}
       </Modal>
 
       {/* hot place preset sheet */}

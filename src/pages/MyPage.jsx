@@ -3,8 +3,10 @@ import { Navigate } from 'react-router-dom';
 import { useAuth } from '../features/auth/hooks/useAuth.jsx';
 import { fetchMyActivityCounts } from '../features/community/services/communityService.js';
 import LanguageModal from '../features/explore/components/LanguageModal.jsx';
+import LocaleInfoNotice from '../features/explore/components/LocaleInfoNotice.jsx';
 import Modal from '../features/explore/components/Modal.jsx';
 import { LANGUAGES } from '../features/explore/data/exploreOptions.js';
+import { useLocaleNotice } from '../features/explore/hooks/useLocaleNotice.js';
 import EditProfileSheet from '../features/profile/components/EditProfileSheet.jsx';
 import LikedPostsView from '../features/profile/components/LikedPostsView.jsx';
 import MyPostsView from '../features/profile/components/MyPostsView.jsx';
@@ -13,6 +15,7 @@ import Card from '../shared/components/Card.jsx';
 import PageHeader from '../shared/components/PageHeader.jsx';
 import PageShell from '../shared/components/PageShell.jsx';
 import { ROUTES } from '../shared/constants/routes.js';
+import { useEscapeToClose } from '../shared/hooks/useEscapeToClose.js';
 import { useLocale } from '../shared/i18n/LocaleProvider.jsx';
 import { avatarGradient } from '../shared/utils/avatarColor.js';
 
@@ -25,6 +28,19 @@ export default function MyPage() {
   const [editingProfile, setEditingProfile] = useState(false);
   const [langOpen, setLangOpen] = useState(false);
   const [toast, setToast] = useState('');
+
+  // DB-driven notice (mg_locale_notices) shown only right after the user
+  // explicitly picks a locale in LanguageModal (see handleLanguageSelected) —
+  // never from an effect watching `locale`, so a saved locale restored on
+  // load never triggers a query or the modal on its own.
+  const { notice: localeNotice, handleLanguageSelected: loadLocaleNotice, closeNotice: closeLocaleNotice } = useLocaleNotice();
+
+  useEscapeToClose(!!localeNotice, closeLocaleNotice);
+
+  async function handleLanguageSelected(code) {
+    setLangOpen(false);
+    await loadLocaleNotice(code);
+  }
 
   const loadCounts = useCallback(() => {
     if (!user) return;
@@ -137,8 +153,12 @@ export default function MyPage() {
         />
       )}
 
-      <Modal open={langOpen} onClose={() => setLangOpen(false)} variant="center">
-        <LanguageModal onClose={() => setLangOpen(false)} />
+      <Modal open={langOpen} onClose={() => setLangOpen(false)} variant="center" dismissOnBackdrop>
+        <LanguageModal onClose={() => setLangOpen(false)} onLanguageSelected={handleLanguageSelected} />
+      </Modal>
+
+      <Modal open={!!localeNotice} onClose={closeLocaleNotice} variant="center" dismissOnBackdrop={localeNotice?.dismissOnBackdrop ?? false}>
+        {localeNotice && <LocaleInfoNotice title={localeNotice.title} message={localeNotice.message} onClose={closeLocaleNotice} />}
       </Modal>
     </PageShell>
   );
