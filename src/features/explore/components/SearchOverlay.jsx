@@ -1,29 +1,31 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { CloseIcon, FunnelIcon, PinIcon } from '../../../shared/components/Icon.jsx';
 import { searchPlacesByKeyword } from '../services/kakaoPlaceSearchService.js';
-import { findAnchorPlace } from '../services/anchorMatchService.js';
+import { buildMergedSearchResults, resolveKakaoSearchKeyword } from '../services/placeSearchService.js';
 import { useLocale } from '../../../shared/i18n/LocaleProvider.jsx';
-import { SEOUL_DISTRICT_EN } from '../data/seoulDistricts.js';
-
-function formatSeoulDistrictAddress(addressStr) {
-  if (!addressStr) return null;
-  if (!addressStr.includes('서울')) return addressStr;
-  const match = addressStr.match(/([가-힣]+구)/);
-  if (!match) return 'Seoul';
-  const districtEn = SEOUL_DISTRICT_EN[match[1]];
-  if (!districtEn) return addressStr;
-  return `Seoul · ${districtEn}`;
-}
 
 export default function SearchOverlay({ open, onSelect, onClose, onFilterClick, places = [] }) {
   const { locale, t } = useLocale();
   const [mounted, setMounted] = useState(open);
   const [closing, setClosing] = useState(false);
+  // What the user actually typed — never rewritten, always what's shown in the
+  // input and used for preset/internal-place search. Kakao is a separate leg
+  // (see resolveKakaoSearchKeyword()): it may be called with a different,
+  // Korean keyword than this, but this value itself is untouched either way.
   const [query, setQuery] = useState('');
-  const [results, setResults] = useState([]);
+  // Kakao's async leg only — { userQuery, data } so a response is only ever
+  // used for the userQuery it actually answers (see `kakaoRaw` below), never
+  // compared against the (possibly different) Korean keyword Kakao was called
+  // with. preset/internal-place results are synchronous and don't need this.
+  const [kakaoState, setKakaoState] = useState({ userQuery: '', data: [] });
   const [searching, setSearching] = useState(false);
   const inputRef = useRef(null);
   const timerRef = useRef(null);
+  // Bumped on every query change (and on reopen) so a Kakao response that
+  // resolves after the user has already moved on — typed something else,
+  // cleared the box, or closed the overlay — is discarded instead of
+  // clobbering whatever is on screen for the current query.
+  const requestSeqRef = useRef(0);
 
   // Mount / unmount with closing animation
   useEffect(() => {
@@ -31,7 +33,9 @@ export default function SearchOverlay({ open, onSelect, onClose, onFilterClick, 
       setMounted(true);
       setClosing(false);
       setQuery('');
-      setResults([]);
+      setKakaoState({ userQuery: '', data: [] });
+      setSearching(false);
+      requestSeqRef.current += 1;
     } else if (mounted) {
       setClosing(true);
       const t = setTimeout(() => setMounted(false), 150);
@@ -47,31 +51,109 @@ export default function SearchOverlay({ open, onSelect, onClose, onFilterClick, 
     }
   }, [open, mounted, closing]);
 
-  // Debounced Kakao Places search
+  // Debounced Kakao Places search — preset/internal-place results are computed
+  // synchronously in the `results` useMemo below and never wait on this.
+  // Kakao itself is called with resolveKakaoSearchKeyword(trimmed), NOT the raw
+  // user query — for a query that exactly matches a preset (in any locale, e.g.
+  // "广藏市场"/"蚕室") this substitutes that preset's own Korean Kakao keyword,
+  // since Kakao cannot search a zh-CN string at all and searches some ko/en
+  // presets better with a dedicated keyword than their bare display name (see
+  // resolveKakaoSearchKeyword()'s doc comment). Everything else about the
+  // query — what's shown in the input, and what preset/internal-place search
+  // and dedupe use below — stays the user's original, untouched `query`.
   useEffect(() => {
     const trimmed = query.trim();
+    const mySeq = (requestSeqRef.current += 1);
+    clearTimeout(timerRef.current);
+
     if (!trimmed) {
-      setResults([]);
       setSearching(false);
-      clearTimeout(timerRef.current);
       return;
     }
+
     setSearching(true);
-    clearTimeout(timerRef.current);
+    const kakaoQuery = resolveKakaoSearchKeyword(trimmed);
     timerRef.current = setTimeout(async () => {
+      let data = [];
       try {
-        const data = await searchPlacesByKeyword(trimmed);
-        setResults(data);
+        data = await searchPlacesByKeyword(kakaoQuery);
       } catch {
-        setResults([]);
+        data = [];
       } finally {
-        setSearching(false);
+        if (requestSeqRef.current === mySeq) {
+          setKakaoState({ userQuery: trimmed, data });
+          setSearching(false);
+        }
       }
     }, 300);
     return () => clearTimeout(timerRef.current);
   }, [query]);
 
+  const trimmedQuery = query.trim();
+  // Only trust kakaoState.data when it actually belongs to the current USER
+  // query — never compared against the (possibly different) Kakao keyword it
+  // was fetched with. Otherwise (query just changed, response for the old one
+  // hasn't been discarded by the effect above yet) treat it as empty rather
+  // than show a stale query's Kakao results next to the new query's
+  // preset/internal ones.
+  const kakaoRaw = kakaoState.userQuery === trimmedQuery ? kakaoState.data : [];
+  const results = useMemo(
+    () => (trimmedQuery ? buildMergedSearchResults({ query: trimmedQuery, locale, places, kakaoResults: kakaoRaw }) : []),
+    [trimmedQuery, locale, places, kakaoRaw],
+  );
+
   if (!mounted) return null;
+
+  function handleResultClick(entry) {
+    if (entry.resultType === 'preset') {
+      // Raw preset object, untouched — no source/key/categoryGroupCode added,
+      // so HomePage.handleSearchSelect() treats it exactly like a LocationSheet
+      // preset pick (anchor=null, selectedLocation=the preset itself).
+      onSelect(entry.raw);
+      return;
+    }
+    if (entry.resultType === 'internal-place') {
+      const place = entry.raw;
+      onSelect({
+        key: null,
+        label: place.name,
+        labelKo: place.nameKo,
+        lat: place.latitude,
+        lng: place.longitude,
+        source: 'search',
+        address: place.address,
+        internalPlaceId: place.id,
+      });
+      return;
+    }
+    // kakao
+    const r = entry.raw;
+    if (entry.internalPlaceId != null) {
+      onSelect({
+        key: null,
+        label: entry.displayName,
+        labelKo: entry.matchedNameKo ?? r.place_name,
+        lat: entry.lat,
+        lng: entry.lng,
+        source: 'search',
+        address: entry.displayAddress,
+        categoryGroupCode: r.category_group_code,
+        internalPlaceId: entry.internalPlaceId,
+      });
+      return;
+    }
+    onSelect({
+      key: null,
+      label: r.place_name,
+      lat: entry.lat,
+      lng: entry.lng,
+      source: 'search',
+      // Road-name address preferred, falling back to the jibun address
+      // (mg_saved_courses.anchor_address_original convention — see docs/42).
+      address: r.road_address_name || r.address_name,
+      categoryGroupCode: r.category_group_code,
+    });
+  }
 
   return (
     <div className={`absolute inset-0 z-40 flex flex-col bg-white ${closing ? 'search-overlay-out' : 'search-overlay-in'}`}>
@@ -116,71 +198,41 @@ export default function SearchOverlay({ open, onSelect, onClose, onFilterClick, 
 
       {/* ── Content area ── */}
       <div className="no-scrollbar flex-1 overflow-y-auto px-4 pb-8 pt-1">
-        {!query.trim() ? (
+        {!trimmedQuery ? (
           <div className="mt-1 rounded-2xl bg-coral-tint px-4 py-3.5">
             <p className="text-[0.82rem] leading-relaxed text-ink-soft">
               {t('search.guide')}
             </p>
           </div>
+        ) : results.length > 0 ? (
+          // Preset/internal-place results are already computed synchronously above,
+          // so they render immediately even while the Kakao leg (searching===true)
+          // is still in flight — a slow or zero-result Kakao response never hides
+          // results the app already knows about.
+          results.map((entry) => (
+            <button
+              key={entry.id}
+              type="button"
+              onClick={() => handleResultClick(entry)}
+              className="mb-1 flex w-full items-center gap-3.5 rounded-2xl px-3 py-3.5 text-left transition-colors hover:bg-ink/[0.04]"
+            >
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white text-coral shadow-soft">
+                <PinIcon size={15} />
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block text-[0.95rem] font-semibold text-ink">{entry.displayName}</span>
+                {entry.displayAddress && (
+                  <span className="mt-0.5 block truncate text-[0.75rem] text-ink-faint">
+                    {entry.displayAddress}
+                  </span>
+                )}
+              </span>
+            </button>
+          ))
         ) : searching ? (
           <p className="mt-6 text-center text-[0.85rem] text-ink-faint">{t('search.searching')}</p>
-        ) : results.length === 0 ? (
-          <p className="mt-6 text-center text-[0.85rem] text-ink-faint">{t('search.noResults')}</p>
         ) : (
-          results.map((r) => {
-            // Kakao's search API is only ever queried with the Korean keyword
-            // the user typed — making it understand a Chinese-language query
-            // is explicitly out of scope here (see the zh-CN i18n work log).
-            // Kakao results themselves are therefore always raw Korean text.
-            // For any non-Korean UI locale (en, zh-CN, …) we prefer a
-            // matched, already-localized DB place (findAnchorPlace() below —
-            // its name/address already resolved through the shared zh-CN ->
-            // en -> ko fallback chain, same as everywhere else) over that raw
-            // Kakao text. When there's NO internal-place match, the result is
-            // external data this project has no Chinese translation for: the
-            // name stays raw Korean, and the address falls back to the
-            // English "Seoul · District" abbreviation (formatSeoulDistrictAddress)
-            // for zh-CN too, not a Chinese one — an accepted, documented
-            // exception (see the zh-CN i18n work log's fallback-exceptions list).
-            const isNonKorean = locale !== 'ko';
-            const matched = isNonKorean ? findAnchorPlace(r, places) : null;
-            const displayName = matched ? matched.name : r.place_name;
-            const displayAddress = isNonKorean
-              ? (matched ? matched.address : formatSeoulDistrictAddress(r.address_name || r.road_address_name))
-              : (r.road_address_name || r.address_name);
-            return (
-              <button
-                key={r.id}
-                type="button"
-                onClick={() => {
-                  onSelect({
-                    key: null,
-                    label: r.place_name,
-                    lat: Number(r.y),
-                    lng: Number(r.x),
-                    source: 'search',
-                    // Road-name address preferred, falling back to the jibun address
-                    // (mg_saved_courses.anchor_address_original convention — see docs/42).
-                    address: r.road_address_name || r.address_name,
-                    categoryGroupCode: r.category_group_code,
-                  });
-                }}
-                className="mb-1 flex w-full items-center gap-3.5 rounded-2xl px-3 py-3.5 text-left transition-colors hover:bg-ink/[0.04]"
-              >
-                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white text-coral shadow-soft">
-                  <PinIcon size={15} />
-                </span>
-                <span className="min-w-0 flex-1">
-                  <span className="block text-[0.95rem] font-semibold text-ink">{displayName}</span>
-                  {displayAddress && (
-                    <span className="mt-0.5 block truncate text-[0.75rem] text-ink-faint">
-                      {displayAddress}
-                    </span>
-                  )}
-                </span>
-              </button>
-            );
-          })
+          <p className="mt-6 text-center text-[0.85rem] text-ink-faint">{t('search.noResults')}</p>
         )}
       </div>
     </div>

@@ -3,8 +3,12 @@ import { CloseIcon, CheckIcon } from '../../../shared/components/Icon.jsx';
 import { cn } from '../../../shared/utils/classNames.js';
 import { useLocale } from '../../../shared/i18n/LocaleProvider.jsx';
 
-/** Centered language picker. Reads and writes locale via LocaleProvider. */
-export default function LanguageModal({ onClose }) {
+/** Centered language picker. Reads and writes locale via LocaleProvider.
+ *  `onLanguageSelected(code)` is optional — called right before `onClose()` so a
+ *  parent (HomePage) can react to the specific code the user just picked (e.g.
+ *  showing the zh-CN info notice) without this component knowing anything about
+ *  that follow-up UI itself. */
+export default function LanguageModal({ onClose, onLanguageSelected }) {
   const { locale, setLocale, t } = useLocale();
   return (
     <>
@@ -24,6 +28,7 @@ export default function LanguageModal({ onClose }) {
               type="button"
               onClick={() => {
                 setLocale(l.code);
+                onLanguageSelected?.(l.code);
                 onClose();
               }}
               className={cn(

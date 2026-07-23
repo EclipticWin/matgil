@@ -96,6 +96,9 @@ export const DICTIONARY = {
     },
     language: {
       title: 'Language',
+      chineseNoticeTitle: 'Chinese Information Notice',
+      chineseNoticeBodyLine1: 'Chinese place information is being added gradually.',
+      chineseNoticeBodyLine2: 'If you cannot find the place you are looking for, please search for its name using the English alphabet.',
     },
     gps: {
       denied: {
@@ -444,6 +447,9 @@ export const DICTIONARY = {
     },
     language: {
       title: '언어 선택',
+      chineseNoticeTitle: '중국어 정보 안내',
+      chineseNoticeBodyLine1: '현재 중국어 장소 정보를 순차적으로 추가하고 있습니다.',
+      chineseNoticeBodyLine2: '원하는 장소가 검색되지 않으면 장소 이름을 영문 알파벳으로 검색해 주세요.',
     },
     gps: {
       denied: {
@@ -792,6 +798,9 @@ export const DICTIONARY = {
     },
     language: {
       title: '语言',
+      chineseNoticeTitle: '中文信息提示',
+      chineseNoticeBodyLine1: '目前正在逐步补充中文地点信息。',
+      chineseNoticeBodyLine2: '若未能搜索到您想找的地点，请使用英文字母输入地点名称进行搜索。',
     },
     gps: {
       denied: {

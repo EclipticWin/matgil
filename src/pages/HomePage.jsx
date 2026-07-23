@@ -18,7 +18,29 @@ import LocationSheet from '../features/explore/components/LocationSheet.jsx';
 import SearchOverlay from '../features/explore/components/SearchOverlay.jsx';
 import NearbySheet from '../features/explore/components/NearbySheet.jsx';
 import KakaoMap from '../features/explore/components/KakaoMap.jsx';
-import { PinIcon, FunnelIcon, FlameIcon, GlobeIcon } from '../shared/components/Icon.jsx';
+import { PinIcon, FunnelIcon, FlameIcon, GlobeIcon, CloseIcon } from '../shared/components/Icon.jsx';
+
+const ZH_INFO_NOTICE_SESSION_KEY = 'matgil_zh_info_notice_seen';
+
+// sessionStorage (not localStorage — this notice is meant to reappear in a fresh
+// session, see the spec) can throw in some environments (privacy mode, storage
+// disabled); either helper failing must never block a language switch, so both
+// are wrapped and degrade to "not seen yet" / "silently didn't persist".
+function hasSeenChineseInfoNotice() {
+  try {
+    return sessionStorage.getItem(ZH_INFO_NOTICE_SESSION_KEY) === '1';
+  } catch {
+    return false;
+  }
+}
+
+function markChineseInfoNoticeSeen() {
+  try {
+    sessionStorage.setItem(ZH_INFO_NOTICE_SESSION_KEY, '1');
+  } catch {
+    // best-effort only
+  }
+}
 
 /** Map tab — full-bleed map with floating controls and a draggable "Eat near here" sheet. */
 export default function HomePage() {
@@ -27,6 +49,10 @@ export default function HomePage() {
   const navigate = useNavigate();
   const [filters, setFilters] = useState(EMPTY_FILTERS);
   const [sheet, setSheet] = useState(null); // 'filters' | 'language' | 'location' | null
+  // Shown only right after the user explicitly picks zh-CN in LanguageModal (see
+  // handleLanguageSelected) — never from a useEffect watching `locale`, so a
+  // page load/refresh that already has zh-CN saved never triggers it on its own.
+  const [showChineseInfoNotice, setShowChineseInfoNotice] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
   const [places, setPlaces] = useState([]);
   const [placesLoading, setPlacesLoading] = useState(true);
@@ -180,10 +206,17 @@ export default function HomePage() {
   }
 
   function handleSearchSelect(loc) {
-    const kakaoResult = loc.source === 'search' && loc.categoryGroupCode
-      ? { category_group_code: loc.categoryGroupCode, y: String(loc.lat), x: String(loc.lng), place_name: loc.label }
-      : null;
-    const anchor = kakaoResult ? findAnchorPlace(kakaoResult, places) : null;
+    // internalPlaceId means SearchOverlay already resolved this selection to a
+    // specific mg_places row (an internal-DB-place result, or a Kakao result it
+    // matched via findAnchorPlace) — use that id directly instead of re-deriving
+    // it through fuzzy category/geo/name matching a second time.
+    let anchor = null;
+    if (loc.internalPlaceId != null) {
+      anchor = places.find((p) => p.id === loc.internalPlaceId) ?? null;
+    } else if (loc.source === 'search' && loc.categoryGroupCode) {
+      const kakaoResult = { category_group_code: loc.categoryGroupCode, y: String(loc.lat), x: String(loc.lng), place_name: loc.label };
+      anchor = findAnchorPlace(kakaoResult, places);
+    }
     setSelectedLocation(loc);
     setAnchorPlace(anchor);
     setIsSearching(false);
@@ -197,6 +230,29 @@ export default function HomePage() {
     setGpsStatus('idle');
     setShowFindHere(false);
   }
+
+  // Fires once per LanguageModal pick, right before it closes (see its onClick) —
+  // never from watching `locale` itself, so a saved zh-CN locale restored on load
+  // or kept across a refresh never re-triggers this on its own.
+  function handleLanguageSelected(code) {
+    if (code === 'zh-CN' && !hasSeenChineseInfoNotice()) {
+      markChineseInfoNoticeSeen();
+      setShowChineseInfoNotice(true);
+    }
+  }
+
+  // Modal.jsx has no built-in Escape handling for any variant, and adding one
+  // there would change every sheet/center modal's keyboard behavior at once —
+  // out of scope for a notice that only this one modal needs. Scoped to just
+  // this state instead of a global always-on listener.
+  useEffect(() => {
+    if (!showChineseInfoNotice) return;
+    function handleKeyDown(e) {
+      if (e.key === 'Escape') setShowChineseInfoNotice(false);
+    }
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [showChineseInfoNotice]);
 
   return (
     <div ref={mapRef} className="relative h-full overflow-hidden bg-map-land">
@@ -308,7 +364,30 @@ export default function HomePage() {
 
       {/* language modal */}
       <Modal open={sheet === 'language'} onClose={() => setSheet(null)} variant="center">
-        <LanguageModal onClose={() => setSheet(null)} />
+        <LanguageModal onClose={() => setSheet(null)} onLanguageSelected={handleLanguageSelected} />
+      </Modal>
+
+      {/* zh-CN info notice — opens right after LanguageModal closes on a zh-CN pick
+          (handleLanguageSelected), never overlapping it (same click batches both
+          `sheet` and `showChineseInfoNotice` in one render). */}
+      <Modal open={showChineseInfoNotice} onClose={() => setShowChineseInfoNotice(false)} variant="center">
+        <div className="flex shrink-0 items-start justify-between gap-3 px-5 pb-1.5 pt-5">
+          <h2 className="font-display text-[1.15rem] font-bold tracking-tight text-ink">
+            {t('language.chineseNoticeTitle')}
+          </h2>
+          <button
+            type="button"
+            aria-label="Close"
+            onClick={() => setShowChineseInfoNotice(false)}
+            className="shrink-0 p-1 text-ink-soft"
+          >
+            <CloseIcon />
+          </button>
+        </div>
+        <div className="space-y-1.5 px-5 pb-6 pt-1">
+          <p className="text-[0.85rem] leading-relaxed text-ink-soft">{t('language.chineseNoticeBodyLine1')}</p>
+          <p className="text-[0.85rem] leading-relaxed text-ink-soft">{t('language.chineseNoticeBodyLine2')}</p>
+        </div>
       </Modal>
 
       {/* hot place preset sheet */}
