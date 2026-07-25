@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation } from 'react-router-dom';
 import { useAuth } from '../features/auth/hooks/useAuth.jsx';
+import { useAuthPrompt } from '../features/auth/hooks/useAuthPrompt.jsx';
 import { COMMUNITY_POSTS, filterPosts } from '../features/community/data/communityPosts.js';
 import {
   fetchPosts,
@@ -18,12 +19,13 @@ import PostComposer from '../features/community/components/PostComposer.jsx';
 import CommentBottomSheet from '../features/community/components/CommentBottomSheet.jsx';
 import { PencilIcon } from '../shared/components/Icon.jsx';
 import PageHeader from '../shared/components/PageHeader.jsx';
-import { ROUTES } from '../shared/constants/routes.js';
 import { useLocale } from '../shared/i18n/LocaleProvider.jsx';
+import { buildReturnTo } from '../shared/utils/authRedirect.js';
 
 export default function CommunityPage() {
   const { user } = useAuth();
-  const navigate = useNavigate();
+  const { openAuthPrompt } = useAuthPrompt();
+  const location = useLocation();
   const { locale, t } = useLocale();
 
   const [filter, setFilter] = useState('all');
@@ -31,7 +33,6 @@ export default function CommunityPage() {
   const [likedPostIds, setLikedPostIds] = useState(new Set());
   const [composing, setComposing] = useState(false);
   const [editingPost, setEditingPost] = useState(null);
-  const [loginPrompt, setLoginPrompt] = useState(false);
   const [commentPost, setCommentPost] = useState(null); // post object for CommentBottomSheet
 
   const isPopular = filter === 'popular';
@@ -66,7 +67,7 @@ export default function CommunityPage() {
 
   // — compose —
   const handlePostButtonClick = () => {
-    if (!user) { setLoginPrompt(true); return; }
+    if (!user) { openAuthPrompt({ messageKey: 'community.joinPrompt', returnTo: buildReturnTo(location) }); return; }
     setComposing(true);
   };
 
@@ -98,7 +99,7 @@ export default function CommunityPage() {
 
   // — like —
   const handleLike = async (post) => {
-    if (!user) return;
+    if (!user) { openAuthPrompt({ messageKey: 'community.joinPrompt', returnTo: buildReturnTo(location) }); return; }
     const alreadyLiked = likedPostIds.has(post.id);
     setLikedPostIds((prev) => {
       const next = new Set(prev);
@@ -171,40 +172,6 @@ export default function CommunityPage() {
         <PencilIcon /> {t('community.post')}
       </button>
 
-      {/* login prompt sheet */}
-      {loginPrompt && (
-        <div
-          className="absolute inset-0 z-50 flex flex-col justify-end bg-black/30"
-          onClick={() => setLoginPrompt(false)}
-        >
-          <div
-            className="animate-rise rounded-t-3xl bg-paper px-5 pb-8 pt-5"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <p className="mb-2 text-center font-display text-lg font-bold text-ink">
-              {t('community.loginToPost')}
-            </p>
-            <p className="mb-5 text-center text-sm text-ink-soft">
-              {t('community.joinPrompt')}
-            </p>
-            <div className="flex gap-2.5">
-              <button
-                className="flex-1 rounded-2xl border-[1.5px] border-coral py-3.5 font-bold text-coral"
-                onClick={() => setLoginPrompt(false)}
-              >
-                {t('community.later')}
-              </button>
-              <button
-                className="flex-1 rounded-2xl bg-coral py-3.5 font-bold text-white"
-                onClick={() => { setLoginPrompt(false); navigate(ROUTES.login); }}
-              >
-                {t('community.login')}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* new post composer */}
       {composing && (
         <PostComposer
@@ -234,7 +201,7 @@ export default function CommunityPage() {
           user={user}
           onClose={() => setCommentPost(null)}
           onCommentAdded={loadPosts}
-          onLoginClick={() => { setCommentPost(null); setLoginPrompt(true); }}
+          onLoginClick={() => { setCommentPost(null); openAuthPrompt({ messageKey: 'community.joinPrompt', returnTo: buildReturnTo(location) }); }}
         />
       )}
     </>

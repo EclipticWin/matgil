@@ -1,11 +1,17 @@
 import { useNavigate } from 'react-router-dom';
 import Modal from '../../explore/components/Modal.jsx';
-import { ROUTES } from '../../../shared/constants/routes.js';
 import { useLocale } from '../../../shared/i18n/LocaleProvider.jsx';
+import { navigateToLogin } from '../../../shared/utils/authRedirect.js';
 
-/** Centered "please log in" prompt shared by place bookmarking and review writing.
- *  `bodyKey` picks the context-specific body copy (e.g. 'placeDetail.loginToSave'). */
-export default function AuthRequiredModal({ open, onClose, bodyKey }) {
+/** Centered "please log in" prompt. Purely presentational — mounted/unmounted
+ *  entirely by its caller (AuthPromptRenderer in App.jsx) based on whether a
+ *  prompt is open, so this component never has to decide for itself whether
+ *  to render an overlay. `bodyKey` picks the context-specific body copy
+ *  (e.g. 'placeDetail.loginToSave'). `returnTo` is passed in as-is (captured
+ *  by the caller when the prompt was opened — see useAuthPrompt.jsx) rather
+ *  than read from useLocation() here, since this component can stay mounted
+ *  while the app navigates elsewhere underneath it. */
+export default function AuthRequiredModal({ open, onClose, bodyKey, returnTo }) {
   const navigate = useNavigate();
   const { t } = useLocale();
 
@@ -24,7 +30,7 @@ export default function AuthRequiredModal({ open, onClose, bodyKey }) {
           </button>
           <button
             type="button"
-            onClick={() => { onClose(); navigate(ROUTES.login); }}
+            onClick={() => { onClose(); navigateToLogin(navigate, returnTo); }}
             className="flex-1 rounded-2xl bg-coral py-3 text-sm font-bold text-white"
           >
             {t('auth.login')}

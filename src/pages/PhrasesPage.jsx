@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useLocation } from 'react-router-dom';
 import { PHRASE_CATEGORIES } from '../features/phrases/data/phrases.js';
 import PhraseCategoryTabs from '../features/phrases/components/PhraseCategoryTabs.jsx';
 import PhraseCard from '../features/phrases/components/PhraseCard.jsx';
@@ -12,6 +13,8 @@ import UnderlineTabs from '../shared/components/UnderlineTabs.jsx';
 import { cn } from '../shared/utils/classNames.js';
 import { useLocale } from '../shared/i18n/LocaleProvider.jsx';
 import { useAuth } from '../features/auth/hooks/useAuth.jsx';
+import { useAuthPrompt } from '../features/auth/hooks/useAuthPrompt.jsx';
+import { buildReturnTo } from '../shared/utils/authRedirect.js';
 import {
   fetchPhraseCategories,
   fetchPhrasesByCategory,
@@ -27,6 +30,8 @@ import {
 export default function PhrasesPage() {
   const { t, locale } = useLocale();
   const { user } = useAuth();
+  const { openAuthPrompt } = useAuthPrompt();
+  const location = useLocation();
 
   const [activeTab, setActiveTab]   = useState('common');
   const [phraseMode, setPhraseMode] = useState('all');
@@ -43,8 +48,6 @@ export default function PhrasesPage() {
   const [popularPhrases, setPopularPhrases]   = useState([]);
   const [popularLoading, setPopularLoading]   = useState(false);
   const [popularFailed, setPopularFailed]     = useState(false);
-
-  const [loginBanner, setLoginBanner] = useState(false);
 
   const TOP_TABS = [
     { id: 'common', label: t('phrases.common') },
@@ -113,8 +116,7 @@ export default function PhrasesPage() {
 
   const handleBookmark = useCallback(async (phraseId) => {
     if (!user) {
-      setLoginBanner(true);
-      setTimeout(() => setLoginBanner(false), 3000);
+      openAuthPrompt({ messageKey: 'phrases.loginToBookmark', returnTo: buildReturnTo(location) });
       return;
     }
 
@@ -149,7 +151,7 @@ export default function PhrasesPage() {
       setPhrases(rollback);
       setPopularPhrases(rollback);
     }
-  }, [user, phrases, popularPhrases, phraseMode, popularCategory, locale]);
+  }, [user, phrases, popularPhrases, phraseMode, popularCategory, locale, openAuthPrompt, location]);
 
   return (
     <PageShell>
@@ -183,12 +185,6 @@ export default function PhrasesPage() {
               </button>
             ))}
           </div>
-
-          {loginBanner && (
-            <div className="mt-3 rounded-xl bg-coral-tint px-4 py-2.5 text-sm font-semibold text-coral-deep">
-              {t('phrases.loginToBookmark')}
-            </div>
-          )}
 
           {/* 일반 표현 모드 */}
           {phraseMode === 'all' && (

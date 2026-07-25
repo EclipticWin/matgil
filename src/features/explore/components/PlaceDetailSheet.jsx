@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faHeart as faHeartSolid } from '@fortawesome/free-solid-svg-icons';
 import { faHeart as faHeartRegular } from '@fortawesome/free-regular-svg-icons';
@@ -18,7 +18,9 @@ import { cn } from '../../../shared/utils/classNames.js';
 import { useLocale } from '../../../shared/i18n/LocaleProvider.jsx';
 import { pickTranslated } from '../../../shared/i18n/localeFallback.js';
 import { useAuth } from '../../auth/hooks/useAuth.jsx';
+import { useAuthPrompt } from '../../auth/hooks/useAuthPrompt.jsx';
 import { ROUTES } from '../../../shared/constants/routes.js';
+import { buildReturnTo } from '../../../shared/utils/authRedirect.js';
 import { useFoodCategories } from '../context/FoodCategoryProvider.jsx';
 import { usePlaceDetailSections } from '../../places/hooks/usePlaceDetailSections.js';
 import { isPlaceBookmarked, addPlaceBookmark, removePlaceBookmark, fetchPlaceBookmarkStatsBatch } from '../../places/services/placeBookmarkService.js';
@@ -26,7 +28,6 @@ import { fetchPlaceReviewStats, fetchPlaceReviews, fetchMyPlaceReview, deletePla
 import PlaceLocationMap from '../../places/components/PlaceLocationMap.jsx';
 import ReviewCard from '../../places/components/ReviewCard.jsx';
 import ReviewComposer from '../../places/components/ReviewComposer.jsx';
-import AuthRequiredModal from '../../places/components/AuthRequiredModal.jsx';
 import DeleteReviewConfirmModal from '../../places/components/DeleteReviewConfirmModal.jsx';
 import { setLastPlaceView } from '../data/lastPlaceView.js';
 import { buildPlaceShareUrl, copyToClipboard } from '../../../shared/utils/shareUtils.js';
@@ -103,7 +104,9 @@ function SectionHeader({ Icon, label }) {
 export default function PlaceDetailSheet({ place, selectedLocation, onBack }) {
   const { locale, t } = useLocale();
   const { user } = useAuth();
+  const { openAuthPrompt } = useAuthPrompt();
   const navigate = useNavigate();
+  const location = useLocation();
   const { categoryMap, getCategoryLabel } = useFoodCategories();
   const { activeSections, getLabel, getEmpty } = usePlaceDetailSections();
 
@@ -122,7 +125,6 @@ export default function PlaceDetailSheet({ place, selectedLocation, onBack }) {
   // ── 개별 가게 북마크 ──
   const [isBookmarked, setIsBookmarked] = useState(false);
   const [bookmarkBusy, setBookmarkBusy] = useState(false);
-  const [authModal, setAuthModal] = useState(null); // null | 'bookmark' | 'review'
 
   // ── 공유 ──
   const [sharing, setSharing] = useState(false);
@@ -321,7 +323,7 @@ export default function PlaceDetailSheet({ place, selectedLocation, onBack }) {
 
   async function handleBookmarkClick() {
     if (!user) {
-      setAuthModal('bookmark');
+      openAuthPrompt({ messageKey: 'placeDetail.loginToSave', returnTo: buildReturnTo(location) });
       return;
     }
     if (bookmarkBusy) return;
@@ -377,7 +379,7 @@ export default function PlaceDetailSheet({ place, selectedLocation, onBack }) {
 
   function handleWriteReviewClick() {
     if (!user) {
-      setAuthModal('review');
+      openAuthPrompt({ messageKey: 'placeDetail.loginToReview', returnTo: buildReturnTo(location) });
       return;
     }
     setLastPlaceView({ placeId: place.id, selectedLocation });
@@ -762,12 +764,6 @@ export default function PlaceDetailSheet({ place, selectedLocation, onBack }) {
 
         <div className="h-5" />
       </div>
-
-      <AuthRequiredModal
-        open={authModal != null}
-        onClose={() => setAuthModal(null)}
-        bodyKey={authModal === 'review' ? 'placeDetail.loginToReview' : 'placeDetail.loginToSave'}
-      />
 
       <DeleteReviewConfirmModal
         open={deleteTarget != null}

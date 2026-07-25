@@ -6,6 +6,7 @@ import { FacebookIcon, GoogleIcon, PinIcon } from '../../../shared/components/Ic
 import { ROUTES } from '../../../shared/constants/routes.js';
 import { useLocale } from '../../../shared/i18n/LocaleProvider.jsx';
 import { pickTranslated } from '../../../shared/i18n/localeFallback.js';
+import { storeOAuthReturnTo, clearOAuthReturnTo } from '../../../shared/utils/authRedirect.js';
 import { useAuth } from '../hooks/useAuth.jsx';
 
 const inputClass =
@@ -38,7 +39,7 @@ function mapAuthError(msg, locale) {
 const socialClass =
   'flex h-[3.625rem] w-[3.625rem] items-center justify-center rounded-full bg-white shadow-soft border-[1.5px] border-ink/5 active:scale-95 transition-transform';
 
-export default function LoginForm({ onDone }) {
+export default function LoginForm({ onDone, returnTo }) {
   const { login } = useAuth();
   const navigate = useNavigate();
   const { locale, t } = useLocale();
@@ -70,6 +71,11 @@ export default function LoginForm({ onDone }) {
     setBusy(true);
 
     try {
+      // OAuth leaves the SPA entirely, so this component's `returnTo` prop
+      // (from location.state) can't survive the round trip — stash it in
+      // sessionStorage; AppRouter reads it back once the user is signed in.
+      storeOAuthReturnTo(returnTo);
+
       const redirectTo =
         `${window.location.origin}${import.meta.env.BASE_URL}`;
 
@@ -84,6 +90,10 @@ export default function LoginForm({ onDone }) {
         throw oauthError;
       }
     } catch (err) {
+      // The redirect never actually happened (rejected/thrown before the
+      // browser left the app) — undo the returnTo stash above so it can't be
+      // picked up by a later, unrelated sign-in (e.g. falling back to email).
+      clearOAuthReturnTo();
       console.error(`${provider} OAuth failed:`, err);
 
       const message = err?.message?.toLowerCase() ?? '';

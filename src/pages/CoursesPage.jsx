@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../features/auth/hooks/useAuth.jsx';
 import SavedRoutesTab from '../features/courses/components/SavedRoutesTab.jsx';
 import SavedPlacesTab from '../features/courses/components/SavedPlacesTab.jsx';
@@ -10,7 +10,7 @@ import Button from '../shared/components/Button.jsx';
 import UnderlineTabs from '../shared/components/UnderlineTabs.jsx';
 import { RouteIcon } from '../shared/components/Icon.jsx';
 import { useLocale } from '../shared/i18n/LocaleProvider.jsx';
-import { ROUTES } from '../shared/constants/routes.js';
+import { goToLoginWithReturn } from '../shared/utils/authRedirect.js';
 
 const TABS = [
   { key: 'routes', labelKey: 'courses.tabRoutes' },
@@ -21,6 +21,7 @@ export default function CoursesPage() {
   const { t } = useLocale();
   const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [tab, setTab] = useState('routes');
 
   return (
@@ -39,7 +40,7 @@ export default function CoursesPage() {
           title={t('savedCourses.loginPrompt')}
           description={t('savedCourses.loginHint')}
           action={
-            <Button onClick={() => navigate(ROUTES.login)}>
+            <Button onClick={() => goToLoginWithReturn(navigate, location)}>
               {t('savedCourses.login')}
             </Button>
           }

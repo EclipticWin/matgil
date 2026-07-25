@@ -1,5 +1,6 @@
 import { LocaleProvider } from '../shared/i18n/LocaleProvider.jsx';
 import { AuthProvider } from '../features/auth/hooks/useAuth.jsx';
+import { AuthPromptProvider } from '../features/auth/hooks/useAuthPrompt.jsx';
 import { RecommendationProvider } from '../features/recommendation/hooks/useRecommendation.jsx';
 import { BookmarkProvider } from '../shared/hooks/useBookmarks.jsx';
 import { FoodCategoryProvider } from '../features/explore/context/FoodCategoryProvider.jsx';
@@ -13,9 +14,11 @@ export default function Providers({ children }) {
     <LocaleProvider>
       <FoodCategoryProvider>
         <AuthProvider>
-          <RecommendationProvider>
-            <BookmarkProvider>{children}</BookmarkProvider>
-          </RecommendationProvider>
+          <AuthPromptProvider>
+            <RecommendationProvider>
+              <BookmarkProvider>{children}</BookmarkProvider>
+            </RecommendationProvider>
+          </AuthPromptProvider>
         </AuthProvider>
       </FoodCategoryProvider>
     </LocaleProvider>

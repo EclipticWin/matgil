@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { useLocale } from '../shared/i18n/LocaleProvider.jsx';
 import { useAuth } from '../features/auth/hooks/useAuth.jsx';
+import { useAuthPrompt } from '../features/auth/hooks/useAuthPrompt.jsx';
 import { getPlaceById } from '../api/placeApi.js';
 import {
   fetchPlaceReviewStats,
@@ -13,12 +14,12 @@ import {
 import { usePlaceDetailSections } from '../features/places/hooks/usePlaceDetailSections.js';
 import ReviewCard from '../features/places/components/ReviewCard.jsx';
 import ReviewComposer from '../features/places/components/ReviewComposer.jsx';
-import AuthRequiredModal from '../features/places/components/AuthRequiredModal.jsx';
 import DeleteReviewConfirmModal from '../features/places/components/DeleteReviewConfirmModal.jsx';
 import Button from '../shared/components/Button.jsx';
 import Spinner from '../shared/components/Spinner.jsx';
 import { BackIcon } from '../shared/components/Icon.jsx';
 import { ROUTES } from '../shared/constants/routes.js';
+import { buildReturnTo } from '../shared/utils/authRedirect.js';
 
 const PAGE_SIZE = 5;
 const STARS = [5, 4, 3, 2, 1];
@@ -45,9 +46,11 @@ function RatingDistributionBars({ distribution, total }) {
 export default function PlaceReviewsPage() {
   const { placeId } = useParams();
   const navigate = useNavigate();
-  const { state: routeState } = useLocation();
+  const location = useLocation();
+  const { state: routeState } = location;
   const { locale, t } = useLocale();
   const { user } = useAuth();
+  const { openAuthPrompt } = useAuthPrompt();
   const { getLabel, getEmpty } = usePlaceDetailSections();
 
   const numericPlaceId = Number(placeId);
@@ -65,7 +68,6 @@ export default function PlaceReviewsPage() {
   const [myReview, setMyReview] = useState(null);
   const [myReviewLoading, setMyReviewLoading] = useState(true);
   const [showComposer, setShowComposer] = useState(!!routeState?.openWrite);
-  const [showAuthModal, setShowAuthModal] = useState(false);
   const [editingReviewId, setEditingReviewId] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deleteBusy, setDeleteBusy] = useState(false);
@@ -166,7 +168,7 @@ export default function PlaceReviewsPage() {
   }
 
   function handleWriteClick() {
-    if (!user) { setShowAuthModal(true); return; }
+    if (!user) { openAuthPrompt({ messageKey: 'placeDetail.loginToReview', returnTo: buildReturnTo(location) }); return; }
     setShowComposer(true);
   }
 
@@ -352,12 +354,6 @@ export default function PlaceReviewsPage() {
           </>
         )}
       </div>
-
-      <AuthRequiredModal
-        open={showAuthModal}
-        onClose={() => setShowAuthModal(false)}
-        bodyKey="placeDetail.loginToReview"
-      />
 
       <DeleteReviewConfirmModal
         open={deleteTarget != null}

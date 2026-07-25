@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation } from 'react-router-dom';
 import CourseCard from '../../courses/components/CourseCard.jsx';
 import TodayCourseDetail from './TodayCourseDetail.jsx';
 import PlaceDetailSheet from './PlaceDetailSheet.jsx';
@@ -7,10 +7,11 @@ import { CheckIcon, ChevronRightIcon, CloseIcon, LocateIcon } from '../../../sha
 import { cn } from '../../../shared/utils/classNames.js';
 import { useLocale } from '../../../shared/i18n/LocaleProvider.jsx';
 import { useAuth } from '../../auth/hooks/useAuth.jsx';
+import { useAuthPrompt } from '../../auth/hooks/useAuthPrompt.jsx';
 import { saveCourse, checkCourseAlreadySaved, fetchSavedCourses, isSameCourse, DuplicateCourseError } from '../../courses/services/savedCourseService.js';
 import { getLocalizedLocationLabel, getLocationDisplayName, localizeSnapshotForDisplay } from '../../courses/utils/courseDisplay.js';
 import { normalizeCourseMetrics } from '../../courses/utils/courseMetrics.js';
-import { ROUTES } from '../../../shared/constants/routes.js';
+import { buildReturnTo } from '../../../shared/utils/authRedirect.js';
 import { findScrollParent } from '../../../shared/utils/dom.js';
 import Spinner from '../../../shared/components/Spinner.jsx';
 
@@ -38,7 +39,8 @@ export default function NearbySheet({
 }) {
   const { locale, t } = useLocale();
   const { user } = useAuth();
-  const navigate = useNavigate();
+  const { openAuthPrompt } = useAuthPrompt();
+  const location = useLocation();
 
   const peek = vh ? Math.round(vh * 0.44) : 300;
   const full = vh ? vh - FULL_TOP_OFFSET_PX : 560;
@@ -297,7 +299,7 @@ export default function NearbySheet({
   async function handleSave() {
     if (saveState === 'saving' || saveState === 'saved' || saveState === 'checking') return;
     if (!user) {
-      navigate(ROUTES.login);
+      openAuthPrompt({ messageKey: 'savedCourses.loginToSave', returnTo: buildReturnTo(location) });
       return;
     }
     setSaveState('saving');

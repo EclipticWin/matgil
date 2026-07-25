@@ -1,5 +1,8 @@
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { useEffect } from 'react';
+import { Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import { ROUTES } from '../shared/constants/routes.js';
+import { consumeOAuthReturnTo } from '../shared/utils/authRedirect.js';
+import { useAuth } from '../features/auth/hooks/useAuth.jsx';
 import AppLayout from '../shared/components/AppLayout.jsx';
 
 import LoginPage from '../pages/LoginPage.jsx';
@@ -27,6 +30,20 @@ import MyPage from '../pages/MyPage.jsx';
  *  - Tab pages render inside <AppLayout/>, which adds the bottom navigation.
  */
 export default function AppRouter() {
+  const { user } = useAuth();
+  const navigate = useNavigate();
+
+  // OAuth (Google/Facebook) always redirects back to the app root, so this is
+  // the one place that can restore the page a "log in required" prompt was
+  // opened from for that flow — see storeOAuthReturnTo() in LoginForm.jsx.
+  // No-ops (nothing to consume) for the ordinary email/password login, which
+  // already handles its own returnTo via LoginPage's onDone.
+  useEffect(() => {
+    if (!user) return;
+    const returnTo = consumeOAuthReturnTo();
+    if (returnTo) navigate(returnTo, { replace: true });
+  }, [user, navigate]);
+
   return (
     <Routes>
       <Route path={ROUTES.login} element={<LoginPage />} />
