@@ -107,6 +107,22 @@ export function HeartIcon({ active, ...p }) {
   );
 }
 
+/** Node-graph "share" icon (3 circles + 2 connecting lines) — standard
+ *  share-2 style. Currently only used by PlaceDetailSheet's detail-screen
+ *  action row, but defined here alongside the rest of the shared icon set
+ *  since nothing else in the app already provides a share icon. */
+export function ShareIcon(p) {
+  return (
+    <Svg vb="0 0 24 24" {...p}>
+      <circle cx="18" cy="5" r="3" stroke="currentColor" strokeWidth="1.8" />
+      <circle cx="6" cy="12" r="3" stroke="currentColor" strokeWidth="1.8" />
+      <circle cx="18" cy="19" r="3" stroke="currentColor" strokeWidth="1.8" />
+      <line x1="8.59" y1="13.51" x2="15.42" y2="17.49" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+      <line x1="15.41" y1="6.51" x2="8.59" y2="10.49" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+    </Svg>
+  );
+}
+
 export function SpeakerIcon(p) {
   return (
     <Svg vb="0 0 22 22" {...p}>

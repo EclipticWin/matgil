@@ -1,10 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { faHeart as faHeartSolid } from '@fortawesome/free-solid-svg-icons';
+import { faHeart as faHeartRegular } from '@fortawesome/free-regular-svg-icons';
 import {
   BackIcon,
   ClockIcon,
-  HeartIcon,
   PinIcon,
+  ShareIcon,
   SparkleIcon,
   StarIcon,
   WalkIcon,
@@ -26,6 +29,7 @@ import ReviewComposer from '../../places/components/ReviewComposer.jsx';
 import AuthRequiredModal from '../../places/components/AuthRequiredModal.jsx';
 import DeleteReviewConfirmModal from '../../places/components/DeleteReviewConfirmModal.jsx';
 import { setLastPlaceView } from '../data/lastPlaceView.js';
+import { buildPlaceShareUrl, copyToClipboard } from '../../../shared/utils/shareUtils.js';
 
 // scrollend를 지원하지 않는 브라우저를 위한 디바운스 백업(ms). 실제 스크롤이
 // 끝난 뒤에도 억제 상태가 영원히 풀리지 않는 경우(예: 이미 목표 위치라 스크롤
@@ -120,6 +124,10 @@ export default function PlaceDetailSheet({ place, selectedLocation, onBack }) {
   const [bookmarkBusy, setBookmarkBusy] = useState(false);
   const [authModal, setAuthModal] = useState(null); // null | 'bookmark' | 'review'
 
+  // ── 공유 ──
+  const [sharing, setSharing] = useState(false);
+  const [shareToast, setShareToast] = useState('');
+
   // ── 가게 저장 수 (mg_place_bookmark_stats — 저장한 사용자 수만, 목록/ID는 노출하지 않음) ──
   const [saveCount, setSaveCount] = useState(0);
   const [saveCountLoading, setSaveCountLoading] = useState(true);
@@ -142,6 +150,13 @@ export default function PlaceDetailSheet({ place, selectedLocation, onBack }) {
     const timer = setTimeout(() => setPhotoWarning(false), 5000);
     return () => clearTimeout(timer);
   }, [photoWarning]);
+
+  // 공유 링크 복사 결과 토스트 — 잠시 보여준 뒤 자동으로 닫는다.
+  useEffect(() => {
+    if (!shareToast) return;
+    const timer = setTimeout(() => setShareToast(''), 3000);
+    return () => clearTimeout(timer);
+  }, [shareToast]);
 
   // 로그인 사용자가 이 가게에 이미 가진 활성 리뷰. null이 아니면 "Write a review"
   // 버튼을 숨긴다 — DB가 1인 1활성 리뷰만 허용하므로, 조회가 끝나기 전에는(로딩 중)
@@ -326,6 +341,40 @@ export default function PlaceDetailSheet({ place, selectedLocation, onBack }) {
     }
   }
 
+  // navigator.share must be called synchronously inside the click handler (some
+  // browsers reject it otherwise) — no awaits/setTimeout before the call itself.
+  // A user-cancelled share (AbortError) is silent: no toast, no console noise,
+  // and no clipboard fallback. Any other failure (or no Web Share support at
+  // all) falls back to copying the place's own URL to the clipboard.
+  async function handleShareClick() {
+    if (sharing) return;
+    setSharing(true);
+    const shareUrl = buildPlaceShareUrl(place.id);
+    let needsClipboardFallback = !navigator.share;
+
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: place.name,
+          text: t('placeDetail.shareText', { name: place.name }),
+          url: shareUrl,
+        });
+      } catch (err) {
+        if (err?.name !== 'AbortError') {
+          console.warn('Web Share failed, falling back to clipboard copy', err);
+          needsClipboardFallback = true;
+        }
+      }
+    }
+
+    if (needsClipboardFallback) {
+      const copied = await copyToClipboard(shareUrl);
+      if (!copied) console.warn('Clipboard copy failed');
+      setShareToast(copied ? t('placeDetail.shareCopied') : t('placeDetail.shareCopyFailed'));
+    }
+    setSharing(false);
+  }
+
   function handleWriteReviewClick() {
     if (!user) {
       setAuthModal('review');
@@ -405,9 +454,9 @@ export default function PlaceDetailSheet({ place, selectedLocation, onBack }) {
   const reviewCount = reviewStats?.rating_count ?? 0;
 
   return (
-    <div className="flex h-full flex-col">
+    <div className="relative flex h-full flex-col">
       {/* 헤더: 뒤로가기 버튼 */}
-      <div className="shrink-0 px-5 pb-3 pt-4">
+      <div className="shrink-0 px-5 pb-2.5 pt-4">
         <button
           type="button"
           onClick={onBack}
@@ -420,53 +469,74 @@ export default function PlaceDetailSheet({ place, selectedLocation, onBack }) {
 
       {/* 스크롤 본문 */}
       <div ref={scrollRef} className="no-scrollbar flex-1 overflow-y-auto">
-        {/* 식당명 + 저장 하트 */}
+        {/* 식당명 — 이 줄에는 제목만, 하트/공유는 아래 통계 줄 오른쪽으로 */}
         <div className="px-5 pb-1.5">
-          <div className="flex items-start justify-between gap-3">
-            <h2 className="min-w-0 flex-1 font-display text-[1.375rem] font-bold leading-tight tracking-tight text-ink">
-              {place.name}
-            </h2>
-            <button
-              type="button"
-              onClick={handleBookmarkClick}
-              disabled={bookmarkBusy}
-              aria-label={isBookmarked ? 'Remove from saved places' : 'Save this place'}
-              className={cn(
-                'flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition-colors',
-                isBookmarked ? 'text-coral' : 'text-ink-faint',
-              )}
-            >
-              <HeartIcon active={isBookmarked} size={20} />
-            </button>
-          </div>
+          <h2 className="break-words font-display text-[1.375rem] font-bold leading-tight tracking-tight text-ink">
+            {place.name}
+          </h2>
 
-          {/* 평균 별점 + 리뷰 수 + 저장 수 */}
-          <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[0.82rem] font-semibold text-ink-soft">
-            {!reviewStatsLoading && (
+          {/* 평균 별점 + 리뷰 수 + 저장 수 (왼쪽) · 좋아요/공유 액션 (오른쪽) —
+              제목 ↔ 통계 줄 간격은 mt-2(기존 mt-1의 약 2배). 통계 그룹 내부
+              간격(gap-[5px])과 가운데점 구조는 이전 그대로 유지, 변경 없음. */}
+          <div className="mt-2 flex items-center justify-between gap-3">
+            <div className="flex min-w-0 flex-wrap items-center gap-[5px] text-[0.82rem] font-semibold text-ink-soft">
+              {!reviewStatsLoading && (
+                <button
+                  type="button"
+                  onClick={() => handleTabClick('reviews')}
+                  className="inline-flex items-center gap-[5px]"
+                >
+                  {reviewCount > 0 ? (
+                    <>
+                      <StarIcon size={19} className="text-coral" />
+                      {/* 평균 별점 + 리뷰 개수를 "5.0 (2)" 형태로 병합 — locale별
+                          "reviews"/"리뷰"/"条评价" 문구 없이 괄호 안 숫자만 표시
+                          (reviewCountOne/reviewCountOther 문구는 이 상단 줄에서만
+                          쓰지 않을 뿐, dictionary 키 자체는 그대로 유지). */}
+                      <span>{Number(reviewStats.rating_avg).toFixed(1)} ({reviewCount})</span>
+                    </>
+                  ) : (
+                    getEmpty('reviews', locale).title
+                  )}
+                </button>
+              )}
+              {/* 리뷰 수 ↔ 저장 수 사이 구분점 — 리뷰 부분이 실제로 렌더된 경우에만
+                  표시(docs/44). 부모의 gap-[5px]가 좌우에 동일하게 적용된다. */}
+              {!reviewStatsLoading && !saveCountLoading && (
+                <span className="text-ink-faint" aria-hidden="true">·</span>
+              )}
+              {/* 저장 수 — 저장한 사용자 수만(개인정보 비노출), 0도 표시.
+                  통계용 작은 하트는 액션용 FontAwesome 하트와 별개(모양 변경 없음). */}
+              {!saveCountLoading && (
+                <span className="inline-flex items-center gap-[5px]">
+                  <span aria-hidden="true">♥</span>
+                  <span>{saveCount}</span>
+                </span>
+              )}
+            </div>
+
+            <div className="flex shrink-0 items-center gap-1.5 pr-0.5">
               <button
                 type="button"
-                onClick={() => handleTabClick('reviews')}
-                className="inline-flex items-center gap-1.5"
-              >
-                {reviewCount > 0 ? (
-                  <>
-                    <StarIcon size={11} className="text-coral" />
-                    {Number(reviewStats.rating_avg).toFixed(1)} ·{' '}
-                    {t(reviewCount === 1 ? 'placeDetail.reviewCountOne' : 'placeDetail.reviewCountOther', { count: reviewCount })}
-                  </>
-                ) : (
-                  getEmpty('reviews', locale).title
+                onClick={handleBookmarkClick}
+                disabled={bookmarkBusy}
+                aria-label={isBookmarked ? 'Remove from saved places' : 'Save this place'}
+                className={cn(
+                  'flex h-6 w-7 shrink-0 items-center justify-center rounded-full transition-colors',
+                  isBookmarked ? 'text-coral' : 'text-ink-faint',
                 )}
+              >
+                <FontAwesomeIcon icon={isBookmarked ? faHeartSolid : faHeartRegular} className="h-[18px] w-[18px]" />
               </button>
-            )}
-            {/* 저장 수 — 저장한 사용자 수만(개인정보 비노출), 0도 표시.
-                "· " 접두사는 리뷰 부분이 실제로 렌더된 경우에만 붙인다(docs/44 —
-                이전에는 flex gap만 있고 가운데점 문자 자체가 없었다). */}
-            {!saveCountLoading && (
-              <span className="inline-flex items-center gap-1">
-                {!reviewStatsLoading && '· '}♥ {saveCount}
-              </span>
-            )}
+              <button
+                type="button"
+                onClick={handleShareClick}
+                aria-label={t('placeDetail.share')}
+                className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-ink-faint"
+              >
+                <ShareIcon size={18} />
+              </button>
+            </div>
           </div>
         </div>
 
@@ -706,6 +776,15 @@ export default function PlaceDetailSheet({ place, selectedLocation, onBack }) {
         busy={deleteBusy}
         failed={deleteFailed}
       />
+
+      {/* 공유 링크 복사 결과 토스트 — 기존 레이아웃을 밀지 않도록 오버레이로 표시 */}
+      {shareToast && (
+        <div className="pointer-events-none absolute inset-x-0 bottom-4 z-30 flex justify-center px-5">
+          <div className="rounded-full bg-ink/85 px-4 py-2 text-xs font-semibold text-white shadow-lg">
+            {shareToast}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
