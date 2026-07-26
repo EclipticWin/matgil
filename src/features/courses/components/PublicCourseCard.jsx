@@ -31,10 +31,15 @@ import { RANK_BAND_STYLES, RANK_MEDAL_SRC } from '../utils/rankDisplay.js';
  *  getPublicCourseAnchorDisplay in courseDisplay.js), or null to render no
  *  line at all — the label/separator around it come from the dictionary so
  *  ko/en/zh-CN each get their own correct punctuation.
- *  `onToggleHeart`/`onViewDetail` are two independent handlers on two
- *  structural sibling buttons (the heart, and the card's own info region +
- *  "동선 상세 보기") — never nested, so a heart click can never trigger
- *  navigation and vice versa. */
+ *  `onToggleHeart`/`onViewDetail` are two independent actions: the whole card
+ *  (this component's own outer element — `role="button"`/`tabIndex={0}`,
+ *  same pattern PublicPlaceCard already uses) calls `onViewDetail` on
+ *  click/Enter/Space, while the heart is a real nested `<button>` that calls
+ *  `e.stopPropagation()` before `onToggleHeart` so a heart tap can never also
+ *  fire the card's own navigation. The "동선 상세 보기" row is decorative text
+ *  now (not its own button) — it used to duplicate `onViewDetail` on its own
+ *  `<button>`, which after this change would have double-fired (once from
+ *  itself, once from bubbling up to the card's own onClick). */
 export default function PublicCourseCard({
   course,
   rank = null,
@@ -58,16 +63,22 @@ export default function PublicCourseCard({
   const rankStyle = rank != null && rank >= 1 && rank <= 3 ? RANK_BAND_STYLES[rank] : null;
 
   return (
-    <div className="overflow-hidden rounded-3xl bg-white shadow-[0_4px_14px_rgba(38,26,17,0.06),0_12px_30px_rgba(38,26,17,0.048)]">
+    <div
+      role="button"
+      tabIndex={0}
+      onClick={onViewDetail}
+      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onViewDetail(); } }}
+      className="overflow-hidden rounded-3xl bg-white text-left shadow-[0_4px_14px_rgba(38,26,17,0.06),0_12px_30px_rgba(38,26,17,0.048)]"
+    >
       {/* Info region — rank/title/anchor/stops-counts, colored end-to-end for
           rank 1-3 (including its own bottom border) or plain white otherwise.
           A separate element from the white route-path region below it, not a
-          shared padded box, so the color never bleeds past this border. */}
-      <button
-        type="button"
-        onClick={onViewDetail}
+          shared padded box, so the color never bleeds past this border.
+          Plain div now (not its own button) — the whole card above already
+          handles the click/keyboard activation. */}
+      <div
         className={cn(
-          'block w-full border-b border-ink/5 px-[0.9375rem] py-[0.9375rem] text-left',
+          'w-full border-b border-ink/5 px-[0.9375rem] py-[0.9375rem]',
           rankStyle ? rankStyle.wrap : 'bg-white',
         )}
       >
@@ -135,7 +146,7 @@ export default function PublicCourseCard({
             {t('courseCard.restaurantCount', { n: restaurantCount })} · {t('courseCard.cafeCount', { n: cafeCount })}
           </span>
         </div>
-      </button>
+      </div>
 
       {/* Route path + save/view-detail row — always plain white, never
           touched by the rank color above. */}
@@ -153,7 +164,13 @@ export default function PublicCourseCard({
               longer encodes saved state. */}
           <button
             type="button"
-            onClick={onToggleHeart}
+            onClick={(e) => { e.stopPropagation(); onToggleHeart(); }}
+            // Enter/Space on this focused button fires its own click (stopped
+            // above), but the KEYDOWN itself still bubbles to the card's own
+            // onKeyDown regardless of that stopPropagation (click and keydown
+            // are separate dispatches) — stopped here too, or Enter/Space on
+            // the heart would ALSO trigger the card's onViewDetail.
+            onKeyDown={(e) => e.stopPropagation()}
             disabled={busy}
             aria-label={isSaved ? t('savedCourses.saved') : t('publicFeed.saveCourseAria')}
             className="inline-flex items-center gap-1 text-[0.72rem] font-bold text-ink-soft transition-colors hover:text-ink active:text-ink disabled:opacity-50"
@@ -162,14 +179,15 @@ export default function PublicCourseCard({
             {t('publicFeed.saveCount', { n: saveCount })}
           </button>
 
-          <button
-            type="button"
-            onClick={onViewDetail}
-            className="inline-flex shrink-0 items-center gap-0.5 text-[0.75rem] font-bold text-ink-soft transition-colors hover:text-ink active:text-ink"
-          >
+          {/* Decorative hint, not its own interactive element — the whole
+              card already navigates to the same place on click/Enter/Space
+              (see the outer div), so a second nested button here would just
+              double-fire onViewDetail (once from itself, once from bubbling
+              up to the card). */}
+          <span className="inline-flex shrink-0 items-center gap-0.5 text-[0.75rem] font-bold text-ink-soft">
             {t('courseCard.viewDetails')}
             <ChevronRightIcon size={11} aria-hidden="true" />
-          </button>
+          </span>
         </div>
       </div>
     </div>

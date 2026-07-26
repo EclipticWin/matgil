@@ -15,6 +15,7 @@ import ResultPage from '../pages/ResultPage.jsx';
 import ExplorePage from '../pages/ExplorePage.jsx';
 import CourseDetailPage from '../pages/CourseDetailPage.jsx';
 import SavedCourseDetailPage from '../pages/SavedCourseDetailPage.jsx';
+import PublicCourseDetailPage from '../pages/PublicCourseDetailPage.jsx';
 import PlaceDetailPage from '../pages/PlaceDetailPage.jsx';
 import PlaceReviewsPage from '../pages/PlaceReviewsPage.jsx';
 import CommunityPage from '../pages/CommunityPage.jsx';
@@ -57,6 +58,7 @@ export default function AppRouter() {
       <Route path={ROUTES.result} element={<ResultPage />} />
       <Route path={ROUTES.courseDetail(':id')} element={<CourseDetailPage />} />
       <Route path={ROUTES.savedCourseDetail(':id')} element={<SavedCourseDetailPage />} />
+      <Route path={ROUTES.publicCourseDetailPattern} element={<PublicCourseDetailPage />} />
       <Route path={ROUTES.placeDetail(':placeId')} element={<PlaceDetailPage />} />
       <Route path={ROUTES.placeReviews(':placeId')} element={<PlaceReviewsPage />} />
       {/* Old public-tab URL — /courses/:id (an individual course) is a

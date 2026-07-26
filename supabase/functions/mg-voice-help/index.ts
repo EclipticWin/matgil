@@ -26,6 +26,46 @@ function resolveLanguageName(userLanguage: string): string {
     return LOCALE_LANGUAGE_NAMES[userLanguage] ?? userLanguage;
 }
 
+// Speech-recognition language codes the frontend's language picker can send
+// (see VoiceHelpPlaceholder.jsx's SPEECH_LANGUAGE_OPTIONS) — deliberately a
+// closed set, not free-form BCP-47, so an unrecognized/spoofed value always
+// falls back to something safe instead of ever reaching the LLM prompt as-is.
+const ALLOWED_SOURCE_LANGUAGES = ["ko-KR", "en-US", "zh-CN"] as const;
+type SourceLanguage = typeof ALLOWED_SOURCE_LANGUAGES[number];
+
+const SOURCE_LANGUAGE_NAMES: Record<SourceLanguage, string> = {
+    "ko-KR": "Korean",
+    "en-US": "English",
+    "zh-CN": "Simplified Chinese",
+};
+
+// Only used when the request's sourceLanguage is missing/invalid — mirrors
+// VoiceHelpPlaceholder.jsx's per-locale default speech language, so a
+// malformed request still gets the same default the UI itself would have used.
+const USER_LANGUAGE_TO_SOURCE: Record<string, SourceLanguage> = {
+    ko: "ko-KR",
+    en: "en-US",
+    "zh-CN": "zh-CN",
+};
+
+function normalizeSourceLanguage(raw: unknown, userLanguage: string): SourceLanguage {
+    if (typeof raw === "string" && (ALLOWED_SOURCE_LANGUAGES as readonly string[]).includes(raw)) {
+        return raw as SourceLanguage;
+    }
+    return USER_LANGUAGE_TO_SOURCE[userLanguage] ?? "ko-KR";
+}
+
+/** The short app-locale code (ko/en/zh-CN — see src/shared/i18n/localeFallback.js's
+ *  SUPPORTED_LOCALES) that "meaning" and "suggestedReply" must be written in:
+ *  - source is Korean → the user's own app language (translating FOR them)
+ *  - source is the user's own app language → Korean (translating FOR the Korean worker)
+ *  This is the one piece of "which language goes where" logic the LLM is not
+ *  trusted to decide — it's computed here and only ever handed to the prompt
+ *  as a concrete instruction. */
+function resolveTargetLanguageCode(sourceLanguage: SourceLanguage, userLanguage: string): string {
+    return sourceLanguage === "ko-KR" ? userLanguage : "ko";
+}
+
 function jsonResponse(body: unknown, status = 200) {
     return new Response(JSON.stringify(body), {
         status,
@@ -41,18 +81,38 @@ function getErrorMessage(error: unknown): string {
 interface AnalyzeInput {
     transcript: string;
     userLanguage: string;
+    // Already normalized to one of ALLOWED_SOURCE_LANGUAGES by the time this
+    // is built (see the request handler) — nothing downstream needs to
+    // re-validate it.
+    sourceLanguage: SourceLanguage;
     context: string;
 }
 
+// General, direction-agnostic response shape — replaces the old
+// suggestedReplyKo/suggestedReplyRomanization fields, which assumed the
+// suggested reply was always Korean and so couldn't represent "reply in
+// Chinese/English to a Korean worker" at all.
 interface AnalyzeResult {
     originalPhrase: string;
-    detectedLanguage: string;
+    sourceLanguage: string;
     meaning: string;
-    suggestedReplyKo: string;
-    suggestedReplyRomanization: string;
-    // Short gloss of suggestedReplyKo's meaning in the user's language. Additive
-    // field (not in REQUIRED_STRING_FIELDS) — older clients that don't read it
-    // are unaffected, and a provider response missing it doesn't fail validation.
+    meaningLanguage: string;
+    suggestedReply: string;
+    suggestedReplyLanguage: string;
+    suggestedReplyPronunciation: string;
+    suggestedReplyMeaning: string;
+    note: string;
+}
+
+// What's actually trusted from the LLM — just the four text fields. Every
+// language-label field on AnalyzeResult (originalPhrase, sourceLanguage,
+// meaningLanguage, suggestedReplyLanguage) is computed server-side instead
+// (see analyzeVoiceHelp) so the model can't translate/rewrite the original
+// phrase or mislabel which language something is in.
+interface AnalyzeContent {
+    meaning: string;
+    suggestedReply: string;
+    suggestedReplyPronunciation: string;
     suggestedReplyMeaning: string;
     note: string;
 }
@@ -96,8 +156,18 @@ function logProviderOutcome(
     console.log(`[mg-voice-help] ${parts.join(" ")}`);
 }
 
-function buildPrompt(input: AnalyzeInput): string {
-    const languageName = resolveLanguageName(input.userLanguage);
+/** Same prompt rules for Solar and OpenAI (both call this). `sourceLanguage`/
+ *  `targetLanguageCode` are already resolved (see analyzeVoiceHelp) — the
+ *  model is never asked to detect or choose either one, only to write the
+ *  actual text content in the languages it's told to use. originalPhrase and
+ *  the language-label fields are deliberately NOT part of the JSON schema
+ *  requested here — the model has no way to "rewrite" a field it's never
+ *  asked to produce (see analyzeVoiceHelp for how the full result is assembled). */
+function buildPrompt(input: AnalyzeInput, sourceLanguage: SourceLanguage, targetLanguageCode: string): string {
+    const sourceLanguageName = SOURCE_LANGUAGE_NAMES[sourceLanguage];
+    const userLanguageName = resolveLanguageName(input.userLanguage);
+    const targetLanguageName = resolveLanguageName(targetLanguageCode);
+    const replyIsKorean = targetLanguageCode === "ko";
 
     return `You are a helpful assistant for foreign tourists visiting Korean restaurants.
 
@@ -105,28 +175,31 @@ The user heard or wants to say the following text in a Korean restaurant.
 Analyze the input and return a JSON object.
 
 Input: "${input.transcript}"
-User's language: ${languageName}
+The selected source language is ${sourceLanguageName}.
+The conversation is between a Korean restaurant worker and a user whose selected app language is ${userLanguageName}.
 Context: ${input.context}
 
 Rules:
-- Detect if the input is Korean (ko) or another language.
-- If the input is Korean, explain the meaning in ${languageName}. Write the "meaning" field entirely in ${languageName} — never leave it in English if the user's language is something else.
-- If the input is in another language (e.g. English), provide the natural Korean equivalent as the meaning.
-- Provide a short, natural Korean reply (suggestedReplyKo) that the user can say in the restaurant.
-- Provide romanization of the Korean reply (suggestedReplyRomanization).
-- Provide a short gloss of what suggestedReplyKo means, written entirely in ${languageName} (suggestedReplyMeaning).
+- Do not transliterate Chinese into Hangul.
+- Do not transliterate English into Hangul.
+- Do not transliterate Korean into Latin letters as the original phrase.
+- Do not rewrite originalPhrase.
+- If the source language is Korean, translate meaning into the user's app language and write the suggested reply in the user's app language.
+- If the source language is the user's app language, translate meaning into Korean and write the suggested reply in Korean.
+- Write the "meaning" field entirely in ${targetLanguageName}.
+- Write the "suggestedReply" field entirely in ${targetLanguageName}.
+- suggestedReplyMeaning must be written in the original speaker's language (${sourceLanguageName}).
+- suggestedReplyPronunciation is only required for a Korean suggested reply. Otherwise return an empty string.${replyIsKorean ? " Provide romanization of the Korean suggested reply." : ""}
 - Keep all text concise. No long explanations.
-- If the input is unrelated to a restaurant situation, set meaning to a polite message (in ${languageName}) asking to try again, and set suggestedReplyKo to an empty string.
-- Return ONLY valid JSON. No markdown, no code fences, no extra text outside the JSON.
+- If the input is unrelated to a restaurant situation, set meaning to a polite message (in ${targetLanguageName}) asking to try again, and set suggestedReply to an empty string.
+- Return only valid JSON. No markdown, no code fences, no extra text outside the JSON.
 
 Return this exact JSON structure:
 {
-  "originalPhrase": "<the input text, unchanged>",
-  "detectedLanguage": "<language code, e.g. ko or en>",
-  "meaning": "<meaning or translation, written in ${languageName}>",
-  "suggestedReplyKo": "<short natural Korean reply>",
-  "suggestedReplyRomanization": "<romanization of the Korean reply>",
-  "suggestedReplyMeaning": "<gloss of suggestedReplyKo, written in ${languageName}>",
+  "meaning": "<meaning or translation, written in ${targetLanguageName}>",
+  "suggestedReply": "<short natural reply, written in ${targetLanguageName}>",
+  "suggestedReplyPronunciation": "<romanization if the suggested reply is Korean, otherwise an empty string>",
+  "suggestedReplyMeaning": "<gloss of suggestedReply, written in ${sourceLanguageName}>",
   "note": "<brief optional note, or empty string>"
 }`;
 }
@@ -208,16 +281,12 @@ function extractJsonText(raw: string): string {
     return text;
 }
 
-const REQUIRED_STRING_FIELDS = [
-    "originalPhrase",
-    "detectedLanguage",
-    "meaning",
-    "suggestedReplyKo",
-    "suggestedReplyRomanization",
-] as const;
+const REQUIRED_STRING_FIELDS = ["meaning", "suggestedReply", "suggestedReplyMeaning"] as const;
 
-/** Shared normalizer: parses + validates a provider's raw text into the existing response contract. */
-function normalizeAnalyzeResult(provider: Provider, raw: string): AnalyzeResult {
+/** Shared normalizer: parses + validates a provider's raw text into its content-only shape.
+ *  suggestedReplyPronunciation/note stay optional (default "") — a reply in a
+ *  non-Korean language legitimately has no pronunciation to give. */
+function normalizeAnalyzeContent(provider: Provider, raw: string): AnalyzeContent {
     const jsonText = extractJsonText(raw);
 
     let parsed: unknown;
@@ -240,17 +309,19 @@ function normalizeAnalyzeResult(provider: Provider, raw: string): AnalyzeResult 
     }
 
     return {
-        originalPhrase: record.originalPhrase as string,
-        detectedLanguage: record.detectedLanguage as string,
         meaning: record.meaning as string,
-        suggestedReplyKo: record.suggestedReplyKo as string,
-        suggestedReplyRomanization: record.suggestedReplyRomanization as string,
-        suggestedReplyMeaning: typeof record.suggestedReplyMeaning === "string" ? record.suggestedReplyMeaning : "",
+        suggestedReply: record.suggestedReply as string,
+        suggestedReplyPronunciation: typeof record.suggestedReplyPronunciation === "string" ? record.suggestedReplyPronunciation : "",
+        suggestedReplyMeaning: record.suggestedReplyMeaning as string,
         note: typeof record.note === "string" ? record.note : "",
     };
 }
 
-async function analyzeWithSolar(input: AnalyzeInput): Promise<AnalyzeResult> {
+async function analyzeWithSolar(
+    input: AnalyzeInput,
+    sourceLanguage: SourceLanguage,
+    targetLanguageCode: string,
+): Promise<AnalyzeContent> {
     const apiKey = Deno.env.get("SOLAR_API_KEY");
     if (!apiKey) {
         throw new ProviderError("solar", "config", "SOLAR_API_KEY is not configured.");
@@ -261,13 +332,17 @@ async function analyzeWithSolar(input: AnalyzeInput): Promise<AnalyzeResult> {
         "https://api.upstage.ai/v1/chat/completions",
         apiKey,
         "solar-pro",
-        buildPrompt(input),
+        buildPrompt(input, sourceLanguage, targetLanguageCode),
     );
 
-    return normalizeAnalyzeResult("solar", content);
+    return normalizeAnalyzeContent("solar", content);
 }
 
-async function analyzeWithOpenAI(input: AnalyzeInput): Promise<AnalyzeResult> {
+async function analyzeWithOpenAI(
+    input: AnalyzeInput,
+    sourceLanguage: SourceLanguage,
+    targetLanguageCode: string,
+): Promise<AnalyzeContent> {
     const apiKey = Deno.env.get("OPENAI_API_KEY");
     if (!apiKey) {
         throw new ProviderError("openai", "config", "OPENAI_API_KEY is not configured.");
@@ -278,28 +353,30 @@ async function analyzeWithOpenAI(input: AnalyzeInput): Promise<AnalyzeResult> {
         "https://api.openai.com/v1/chat/completions",
         apiKey,
         "gpt-4o-mini",
-        buildPrompt(input),
+        buildPrompt(input, sourceLanguage, targetLanguageCode),
     );
 
-    return normalizeAnalyzeResult("openai", content);
+    return normalizeAnalyzeContent("openai", content);
 }
 
 // Solar 1st (max 1 call) → OpenAI fallback only on Solar failure (max 1 call). Total ≤ 2 LLM calls.
 // Solar success (parsed + validated) short-circuits — OpenAI is never called in that case.
 async function analyzeVoiceHelp(input: AnalyzeInput): Promise<AnalyzeResult> {
+    const sourceLanguage = input.sourceLanguage;
+    const targetLanguageCode = resolveTargetLanguageCode(sourceLanguage, input.userLanguage);
+
+    let contentResult: AnalyzeContent;
     try {
-        const result = await analyzeWithSolar(input);
+        contentResult = await analyzeWithSolar(input, sourceLanguage, targetLanguageCode);
         logProviderOutcome("solar", "success");
-        return result;
     } catch (solarError) {
         const kind = solarError instanceof ProviderError ? solarError.kind : "unknown";
         const status = solarError instanceof ProviderError ? solarError.status : undefined;
         logProviderOutcome("solar", "failure", { kind, status });
 
         try {
-            const result = await analyzeWithOpenAI(input);
+            contentResult = await analyzeWithOpenAI(input, sourceLanguage, targetLanguageCode);
             logProviderOutcome("openai", "success");
-            return result;
         } catch (openaiError) {
             const openaiKind = openaiError instanceof ProviderError ? openaiError.kind : "unknown";
             const openaiStatus = openaiError instanceof ProviderError ? openaiError.status : undefined;
@@ -308,6 +385,23 @@ async function analyzeVoiceHelp(input: AnalyzeInput): Promise<AnalyzeResult> {
             throw new Error("Voice help analysis is temporarily unavailable. Please try again.");
         }
     }
+
+    // originalPhrase/sourceLanguage/meaningLanguage/suggestedReplyLanguage are
+    // always these server-computed values, never anything the LLM returned —
+    // the model isn't even asked to produce them (see buildPrompt). This is
+    // what stops Chinese/English input from being transliterated into Hangul
+    // (or Korean input from being romanized) as the "original phrase".
+    return {
+        originalPhrase: input.transcript,
+        sourceLanguage,
+        meaning: contentResult.meaning,
+        meaningLanguage: targetLanguageCode,
+        suggestedReply: contentResult.suggestedReply,
+        suggestedReplyLanguage: targetLanguageCode,
+        suggestedReplyPronunciation: contentResult.suggestedReplyPronunciation,
+        suggestedReplyMeaning: contentResult.suggestedReplyMeaning,
+        note: contentResult.note,
+    };
 }
 
 serve(async (req: Request) => {
@@ -331,9 +425,11 @@ serve(async (req: Request) => {
             return jsonResponse({ error: `'transcript' must be ${MAX_TRANSCRIPT_LENGTH} characters or fewer.` }, 400);
         }
 
+        const userLanguage = typeof body.userLanguage === "string" ? body.userLanguage : "en";
         const input: AnalyzeInput = {
             transcript,
-            userLanguage: typeof body.userLanguage === "string" ? body.userLanguage : "en",
+            userLanguage,
+            sourceLanguage: normalizeSourceLanguage(body.sourceLanguage, userLanguage),
             context: typeof body.context === "string" ? body.context : "Korean restaurant",
         };
 

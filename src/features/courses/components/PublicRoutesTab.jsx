@@ -168,20 +168,28 @@ export default function PublicRoutesTab({ sort }) {
     }
   }
 
-  // Same router-state channel SavedCourseDetailPage's "View on map" and
-  // SavedPlacesTab's card-open already use — NearbySheet re-localizes via
-  // localizeSnapshotForDisplay() on arrival, so passing the already-merged
-  // (current-locale) stops here just makes that first paint accurate instead
-  // of relying solely on that re-localization pass.
-  function handleViewOnMap(row, localizedStops) {
+  // Opens the public course's own full-screen detail page (PublicCourseDetailPage)
+  // instead of jumping straight to the Map tab — that "View on map" behavior now
+  // lives on the detail page's own View map button (see PublicCourseDetailPage's
+  // handleViewOnMap, which uses the exact same ROUTES.home/{state:{savedCourse}}
+  // channel SavedCourseDetailPage's "View on map" already used, just one step
+  // later). `state.publicCourse` carries the current-locale-merged row so the
+  // detail page can render immediately without its own fetch — see
+  // PublicCourseDetailPage's fallback fetch (fetchPublicCourseByKey) for the
+  // direct-URL/refresh case where this state isn't available. `sort` is passed
+  // through so the detail page's back button can hand it back to ExplorePage
+  // (see ExplorePage's location.state?.sort) instead of always resetting to
+  // 'popular'.
+  function handleViewDetail(row, localizedStops) {
     const snapshot = row.course_snapshot ?? {};
-    navigate(ROUTES.home, {
+    navigate(ROUTES.publicCourseDetail(row.public_route_key), {
       state: {
-        savedCourse: {
-          ...snapshot,
+        publicCourse: {
+          ...row,
+          course_snapshot: { ...snapshot, stops: localizedStops },
           stops: localizedStops,
-          anchor_label: snapshot.anchor_label ?? '',
         },
+        sort,
       },
     });
   }
@@ -269,7 +277,7 @@ export default function PublicRoutesTab({ sort }) {
             isSaved={!!row.is_saved}
             busy={busyKeys.has(row.public_route_key)}
             onToggleHeart={() => handleToggleHeart(row)}
-            onViewDetail={() => handleViewOnMap(row, localizedStops)}
+            onViewDetail={() => handleViewDetail(row, localizedStops)}
           />
         );
       })}

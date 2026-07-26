@@ -8,7 +8,6 @@ import { getPlacesByIds } from '../../../api/placeApi.js';
 import { calcDistanceKm, DEFAULT_LOCATION } from '../../explore/data/locations.js';
 import { fetchPlaceReviewStatsBatch } from '../../places/services/placeReviewService.js';
 import { fetchPublicPlaceFeed } from '../services/publicFeedService.js';
-import { setLastPlaceView } from '../../explore/data/lastPlaceView.js';
 import PublicPlaceCard from './PublicPlaceCard.jsx';
 import EmptyState from '../../../shared/components/EmptyState.jsx';
 import Spinner from '../../../shared/components/Spinner.jsx';
@@ -115,15 +114,26 @@ export default function PublicPlacesTab({ sort }) {
     }
   }
 
-  function handleOpen(place) {
-    setLastPlaceView({ placeId: place.id });
-    const singleStopCourse = {
-      title: place.name || '',
-      anchor_label: '',
-      stops: [{ ...place, tint: '#FFE3D4' }],
-      accent: '#F8481F',
-    };
-    navigate(ROUTES.home, { state: { savedCourse: singleStopCourse } });
+  // Opens the full-screen PlaceDetailPage (`/places/:placeId`) instead of the
+  // old Map-tab detour (navigate(ROUTES.home, {state:{savedCourse: <fake
+  // single-stop course>}}), which relied on lastPlaceView.js's one-shot store
+  // to also auto-open PlaceDetailSheet inside NearbySheet — no longer needed
+  // here since we're not routing through the Map tab at all anymore).
+  // `place` is already the current-locale-merged object from mergeFeedRows()
+  // (a real getPlacesByIds() result plus saveCount/isSaved/distanceKm), so
+  // it's passed as `state.place` for PlaceDetailPage's existing "instant
+  // first paint from router state, always re-verified by its own
+  // getPlaceById() fetch" logic — unchanged, see PlaceDetailPage.jsx.
+  // `returnTo` lets PlaceDetailPage's back button return here with the
+  // Places tab (not Routes) and this `sort` restored — see its handleBack().
+  function handleViewDetail(place) {
+    navigate(ROUTES.placeDetail(place.id), {
+      state: {
+        place,
+        fromPublicFeed: true,
+        returnTo: { pathname: ROUTES.explore, tab: 'places', sort },
+      },
+    });
   }
 
   if (loading) {
@@ -170,7 +180,7 @@ export default function PublicPlacesTab({ sort }) {
           place={place}
           rank={sort === 'popular' ? index + 1 : null}
           reviewStats={statsById.get(place.id)}
-          onOpen={handleOpen}
+          onOpen={handleViewDetail}
         />
       ))}
 

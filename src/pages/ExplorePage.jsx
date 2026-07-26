@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useLocation } from 'react-router-dom';
 import PublicRoutesTab from '../features/courses/components/PublicRoutesTab.jsx';
 import PublicPlacesTab from '../features/courses/components/PublicPlacesTab.jsx';
 import PageShell from '../shared/components/PageShell.jsx';
@@ -54,8 +55,14 @@ function SortControl({ value, onChange, t }) {
  *  (SavedRoutesTab/SavedPlacesTab) are unrelated to this page. */
 export default function ExplorePage() {
   const { t } = useLocale();
-  const [tab, setTab] = useState('routes');
-  const [sort, setSort] = useState('popular');
+  const location = useLocation();
+  // Restores the tab/sort PublicCourseDetailPage's back button hands back via
+  // router state (see its handleBack()) — undefined for every other way this
+  // page is reached (bottom nav, direct URL), so those keep the plain
+  // defaults below. Only read once at mount; not re-synced on later state
+  // changes, same as every other lazy-initial-state usage in this codebase.
+  const [tab, setTab] = useState(location.state?.tab ?? 'routes');
+  const [sort, setSort] = useState(location.state?.sort ?? 'popular');
 
   return (
     <PageShell>

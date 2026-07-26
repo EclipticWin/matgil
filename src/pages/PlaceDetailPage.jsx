@@ -6,9 +6,11 @@ import Spinner from '../shared/components/Spinner.jsx';
 import { ROUTES } from '../shared/constants/routes.js';
 import { useLocale } from '../shared/i18n/LocaleProvider.jsx';
 
-/** Full-screen place detail (`/places/:placeId`) — used from Saved Courses, where a
- *  stop card opens the place's own page instead of a bottom sheet (unlike Map, which
- *  keeps the existing PlaceDetailSheet bottom sheet — see docs/42/43).
+/** Full-screen place detail (`/places/:placeId`) — used from Saved Courses (a stop
+ *  card opens the place's own page instead of a bottom sheet — see docs/42/43) and
+ *  from the Explore tab's public "Places" feed (PublicPlacesTab's cards — see its
+ *  handleViewDetail); Map tab keeps its own PlaceDetailSheet bottom sheet either way,
+ *  unaffected by either of these full-screen entry points.
  *
  *  Reuses PlaceDetailSheet as-is (menu/reviews/location/visit-info tabs, bookmark
  *  heart, review composer — all unchanged) rather than re-building a second detail
@@ -70,7 +72,19 @@ export default function PlaceDetailPage() {
     return () => { cancelled = true; };
   }, [numericPlaceId, locale, isValidId]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // `state.returnTo` (set only by PublicPlacesTab's Traveler Picks "Places"
+  // cards — see its handleViewDetail) means this page was reached from a
+  // specific ExplorePage tab/sort that a plain navigate(-1)
+  // can't restore (going back doesn't hand a NEW state to the old history
+  // entry, so ExplorePage would remount with its plain 'routes'/'popular'
+  // defaults instead). Every other entry point (Saved Courses stop, a
+  // community post's place link, a shared URL, ...) never sets this and keeps
+  // the exact previous behavior below unchanged.
   function handleBack() {
+    if (state?.returnTo?.pathname) {
+      navigate(state.returnTo.pathname, { state: { tab: state.returnTo.tab, sort: state.returnTo.sort } });
+      return;
+    }
     if (window.history.length > 1) navigate(-1);
     else navigate(ROUTES.explore);
   }
