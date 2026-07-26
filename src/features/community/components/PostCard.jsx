@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import Card from '../../../shared/components/Card.jsx';
 import Thumbnail from '../../../shared/components/Thumbnail.jsx';
-import { HeartIcon, CommentIcon, PinIcon, PencilIcon, CloseIcon } from '../../../shared/components/Icon.jsx';
+import { CommentIcon, PinIcon, PencilIcon, CloseIcon } from '../../../shared/components/Icon.jsx';
+import FavoriteHeartIcon from '../../../shared/components/FavoriteHeartIcon.jsx';
 import { useLocale } from '../../../shared/i18n/LocaleProvider.jsx';
 import { avatarGradient } from '../../../shared/utils/avatarColor.js';
 import ImageViewerModal from './ImageViewerModal.jsx';
@@ -52,7 +53,7 @@ export default function PostCard({
           <div className="min-w-0 flex-1">
             <p className="text-[0.9rem] font-bold text-ink">{authorName}</p>
             <p className="mt-px text-xs text-ink-faint">
-              {post.from} · {post.ago}
+              {post.from ? `${post.from} · ${post.ago}` : post.ago}
             </p>
           </div>
           {isOwn && (
@@ -141,8 +142,10 @@ export default function PostCard({
           </div>
         )}
 
-        {/* footer: like + comment */}
-        <div className="mt-3.5 flex items-center gap-[1.125rem] border-t border-ink/5 pt-3 text-[0.8125rem] font-semibold text-ink-soft">
+        {/* footer: like + comment — each button's own icon↔count gap stays
+            gap-1.5 (unchanged); only the gap between the two buttons
+            (count↔comment icon) uses this parent's gap-3. */}
+        <div className="mt-3.5 flex items-center gap-3 border-t border-ink/5 pt-3 text-[0.8125rem] font-semibold text-ink-soft">
           <button
             type="button"
             disabled={!canLike}
@@ -152,16 +155,19 @@ export default function PostCard({
             }`}
             title={isOwn ? t('community.ownPostNoLike') : undefined}
           >
-            <HeartIcon size={17} active={likedByMe} />
-            {post.likes}
+            {/* FontAwesome's heart glyph fills more of its box than CommentIcon's
+                hand-drawn bubble does, so a visually-matched size sits a couple
+                px below CommentIcon's own size rather than at the same number. */}
+            <FavoriteHeartIcon active={likedByMe} size={15} className="shrink-0" />
+            <span className="leading-none">{post.likes}</span>
           </button>
           <button
             type="button"
             onClick={() => onToggleComments?.(post)}
             className="inline-flex items-center gap-1.5"
           >
-            <CommentIcon size={17} />
-            {post.comments}
+            <CommentIcon size={17} className="shrink-0" />
+            <span className="leading-none">{post.comments}</span>
           </button>
         </div>
       </Card>

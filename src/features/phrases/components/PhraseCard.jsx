@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { speakKorean } from '../services/ttsService.js';
-import { SpeakerIcon, HeartIcon } from '../../../shared/components/Icon.jsx';
+import { SpeakerIcon } from '../../../shared/components/Icon.jsx';
+import FavoriteHeartIcon from '../../../shared/components/FavoriteHeartIcon.jsx';
 import { cn } from '../../../shared/utils/classNames.js';
 
 /** One phrase row: intent · Korean · romanization · note, with TTS and bookmark buttons. */
@@ -52,7 +53,7 @@ export default function PhraseCard({ phrase, onBookmark }) {
               bookmarking && 'opacity-50',
             )}
           >
-            <HeartIcon active={phrase.isBookmarked} size={20} />
+            <FavoriteHeartIcon active={phrase.isBookmarked} size={18} />
           </button>
         )}
         <button
@@ -60,11 +61,11 @@ export default function PhraseCard({ phrase, onBookmark }) {
           aria-label="Play in Korean"
           onClick={play}
           className={cn(
-            'flex h-11 w-11 items-center justify-center rounded-2xl bg-coral text-white transition-transform active:scale-90',
+            'flex h-10 w-10 items-center justify-center rounded-2xl bg-coral text-white transition-transform active:scale-90',
             spoke && 'scale-90',
           )}
         >
-          <SpeakerIcon size={32} />
+          <SpeakerIcon size={28} />
         </button>
       </div>
     </div>

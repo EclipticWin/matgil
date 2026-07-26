@@ -93,20 +93,6 @@ export function PinIcon(p) {
   );
 }
 
-export function HeartIcon({ active, ...p }) {
-  return (
-    <Svg vb="0 0 22 22" {...p}>
-      <path
-        d="M11 19s-7-4.6-7-9.7A4.3 4.3 0 0111 6.5 4.3 4.3 0 0118 9.3c0 5.1-7 9.7-7 9.7z"
-        fill={active ? 'currentColor' : 'none'}
-        stroke="currentColor"
-        strokeWidth="1.9"
-        strokeLinejoin="round"
-      />
-    </Svg>
-  );
-}
-
 /** Node-graph "share" icon (3 circles + 2 connecting lines) — standard
  *  share-2 style. Currently only used by PlaceDetailSheet's detail-screen
  *  action row, but defined here alongside the rest of the shared icon set

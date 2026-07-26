@@ -1,7 +1,7 @@
 import { useBookmarks } from '../shared/hooks/useBookmarks.jsx';
 import PopularPlaceCard from '../features/popular/components/PopularPlaceCard.jsx';
 import EmptyState from '../shared/components/EmptyState.jsx';
-import { HeartIcon } from '../shared/components/Icon.jsx';
+import FavoriteHeartIcon from '../shared/components/FavoriteHeartIcon.jsx';
 import { useLocale } from '../shared/i18n/LocaleProvider.jsx';
 
 /** Bookmark tab: places the user has saved. */
@@ -16,7 +16,7 @@ export default function BookmarkPage() {
       {items.length === 0 ? (
         <EmptyState
           className="mt-20"
-          icon={<HeartIcon size={26} />}
+          icon={<FavoriteHeartIcon size={26} />}
           title={t('bookmark.empty')}
           description={t('bookmark.emptyHint')}
         />

@@ -9,7 +9,7 @@ import SavedPlaceCard from '../../places/components/SavedPlaceCard.jsx';
 import EmptyState from '../../../shared/components/EmptyState.jsx';
 import Spinner from '../../../shared/components/Spinner.jsx';
 import Button from '../../../shared/components/Button.jsx';
-import { HeartIcon } from '../../../shared/components/Icon.jsx';
+import FavoriteHeartIcon from '../../../shared/components/FavoriteHeartIcon.jsx';
 import { ROUTES } from '../../../shared/constants/routes.js';
 
 /** Courses page's "Saved Places" tab — the user's individually bookmarked places
@@ -107,7 +107,7 @@ export default function SavedPlacesTab() {
     return (
       <EmptyState
         className="mt-12"
-        icon={<HeartIcon active size={22} />}
+        icon={<FavoriteHeartIcon active size={22} />}
         title={t('savedPlaces.empty')}
         description={t('savedPlaces.emptyHint')}
         action={

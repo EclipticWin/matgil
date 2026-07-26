@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
-import { CloseIcon, HeartIcon } from '../../../shared/components/Icon.jsx';
+import { CloseIcon } from '../../../shared/components/Icon.jsx';
+import FavoriteHeartIcon from '../../../shared/components/FavoriteHeartIcon.jsx';
 import { useLocale } from '../../../shared/i18n/LocaleProvider.jsx';
 import { avatarGradient } from '../../../shared/utils/avatarColor.js';
 import { formatRelativeOrAbsolute } from '../../../shared/utils/formatTime.js';
@@ -164,8 +165,8 @@ export default function CommentBottomSheet({ post, user, onClose, onCommentAdded
                 liked ? 'text-coral' : canLike ? 'text-ink-soft' : 'cursor-default text-ink/30'
               }`}
             >
-              <HeartIcon size={13} active={liked} />
-              {comment.like_count ?? 0}
+              <FavoriteHeartIcon active={liked} size={11} className="shrink-0" />
+              <span className="leading-none">{comment.like_count ?? 0}</span>
             </button>
             {!isReply && user && (
               <button

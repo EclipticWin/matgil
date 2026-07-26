@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useLocale } from '../../../shared/i18n/LocaleProvider.jsx';
 import { formatRelativeOrAbsolute } from '../../../shared/utils/formatTime.js';
 import { avatarGradient } from '../../../shared/utils/avatarColor.js';
+import FavoriteHeartIcon from '../../../shared/components/FavoriteHeartIcon.jsx';
 import { fetchMyLikedPosts, normalizeCommunityImageUrls } from '../../community/services/communityService.js';
 
 function BackIcon() {
@@ -29,7 +30,10 @@ function LikedPostCard({ post }) {
         <p className="mt-0.5 line-clamp-2 text-[0.875rem] leading-relaxed text-ink">{post.content}</p>
         <div className="mt-1.5 flex items-center gap-2.5 text-xs text-ink-faint">
           <span>{formatRelativeOrAbsolute(post.created_at)}</span>
-          <span>♥ {post.like_count ?? 0}</span>
+          <span className="inline-flex items-center gap-1">
+            <FavoriteHeartIcon active size={11} className="shrink-0" />
+            <span className="leading-none">{post.like_count ?? 0}</span>
+          </span>
           <span>· {post.comment_count ?? 0}</span>
         </div>
       </div>

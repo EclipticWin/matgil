@@ -1,8 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faHeart as faHeartSolid } from '@fortawesome/free-solid-svg-icons';
-import { faHeart as faHeartRegular } from '@fortawesome/free-regular-svg-icons';
 import {
   BackIcon,
   ClockIcon,
@@ -12,6 +9,7 @@ import {
   StarIcon,
   WalkIcon,
 } from '../../../shared/components/Icon.jsx';
+import FavoriteHeartIcon from '../../../shared/components/FavoriteHeartIcon.jsx';
 import Thumbnail from '../../../shared/components/Thumbnail.jsx';
 import Spinner from '../../../shared/components/Spinner.jsx';
 import { cn } from '../../../shared/utils/classNames.js';
@@ -508,11 +506,11 @@ export default function PlaceDetailSheet({ place, selectedLocation, onBack }) {
                 <span className="text-ink-faint" aria-hidden="true">·</span>
               )}
               {/* 저장 수 — 저장한 사용자 수만(개인정보 비노출), 0도 표시.
-                  통계용 작은 하트는 액션용 FontAwesome 하트와 별개(모양 변경 없음). */}
+                  통계용 하트도 액션용 하트와 같은 실루엣의 작은 버전을 사용. */}
               {!saveCountLoading && (
                 <span className="inline-flex items-center gap-[5px]">
-                  <span aria-hidden="true">♥</span>
-                  <span>{saveCount}</span>
+                  <FavoriteHeartIcon active size={13} className="shrink-0" aria-hidden="true" />
+                  <span className="leading-none">{saveCount}</span>
                 </span>
               )}
             </div>
@@ -528,7 +526,7 @@ export default function PlaceDetailSheet({ place, selectedLocation, onBack }) {
                   isBookmarked ? 'text-coral' : 'text-ink-faint',
                 )}
               >
-                <FontAwesomeIcon icon={isBookmarked ? faHeartSolid : faHeartRegular} className="h-[18px] w-[18px]" />
+                <FavoriteHeartIcon active={isBookmarked} size={18} />
               </button>
               <button
                 type="button"

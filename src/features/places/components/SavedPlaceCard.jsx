@@ -1,6 +1,7 @@
 import Card from '../../../shared/components/Card.jsx';
 import Thumbnail from '../../../shared/components/Thumbnail.jsx';
-import { HeartIcon, StarIcon } from '../../../shared/components/Icon.jsx';
+import { StarIcon } from '../../../shared/components/Icon.jsx';
+import FavoriteHeartIcon from '../../../shared/components/FavoriteHeartIcon.jsx';
 import { formatStopDistance } from '../../courses/utils/courseDisplay.js';
 import { useLocale } from '../../../shared/i18n/LocaleProvider.jsx';
 
@@ -47,7 +48,7 @@ export default function SavedPlaceCard({ place, reviewStats, removing = false, o
         aria-label={t('savedPlaces.remove')}
         className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-coral-tint text-coral disabled:opacity-50"
       >
-        <HeartIcon active size={18} />
+        <FavoriteHeartIcon active size={18} />
       </button>
     </Card>
   );

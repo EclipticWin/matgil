@@ -1,6 +1,6 @@
 import Card from '../../../shared/components/Card.jsx';
 import Thumbnail from '../../../shared/components/Thumbnail.jsx';
-import { HeartIcon } from '../../../shared/components/Icon.jsx';
+import FavoriteHeartIcon from '../../../shared/components/FavoriteHeartIcon.jsx';
 import { useBookmarks } from '../../../shared/hooks/useBookmarks.jsx';
 import { cn } from '../../../shared/utils/classNames.js';
 
@@ -38,7 +38,7 @@ export default function RecommendationCard({ stop, index }) {
           saved ? 'bg-coral-tint text-coral' : 'border-[1.5px] border-ink/10 text-coral',
         )}
       >
-        <HeartIcon active={saved} size={18} />
+        <FavoriteHeartIcon active={saved} size={18} />
       </button>
     </Card>
   );
