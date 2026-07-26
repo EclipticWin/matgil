@@ -170,14 +170,15 @@ function getCoursePlaceIds(course) {
     .filter((id) => Number.isFinite(id) && id > 0);
 }
 
-// Ascending numeric sort (never lexicographic — "100" must not sort before "20").
-function sortedNumericIds(ids) {
-  return [...ids].sort((a, b) => a - b);
-}
-
-/** Same duplicate rule the DB's route_signature UNIQUE index now enforces (docs/42):
- *  same place set regardless of stop order counts as the same route. Compares sorted
- *  id sets rather than positional order, matching buildRouteSignature() above. */
+/** Duplicate rule now matches the DB's ordered_route_key trigger (not the older,
+ *  order-independent route_signature UNIQUE index — see docs/42 for that one,
+ *  which is still written below for its own existing purpose but no longer used
+ *  for this check): A→B→C and C→B→A are DIFFERENT routes, and the anchor/start
+ *  location is never part of the comparison. getCoursePlaceIds() already returns
+ *  ids in stop order (no sorting) — the `.contains()` pre-filter below still
+ *  matches regardless of order (Postgres array `@>` is a set operation), it's
+ *  only used to narrow the DB round-trip; the actual order-sensitive comparison
+ *  happens in JS afterward. */
 export async function checkCourseAlreadySaved({ userId, course }) {
   const placeIds = getCoursePlaceIds(course);
   if (placeIds.length === 0) return false;
@@ -188,24 +189,19 @@ export async function checkCourseAlreadySaved({ userId, course }) {
     .is('deleted_at', null)
     .contains('place_ids', placeIds);
   if (error) throw error;
-  const sortedCourseIds = sortedNumericIds(placeIds);
   return (data ?? []).some((row) => {
-    const savedIds = sortedNumericIds(
-      (row.place_ids ?? []).map(Number).filter((id) => Number.isFinite(id) && id > 0),
-    );
-    return savedIds.length === sortedCourseIds.length
-      && sortedCourseIds.every((id, index) => id === savedIds[index]);
+    const savedIds = (row.place_ids ?? []).map(Number).filter((id) => Number.isFinite(id) && id > 0);
+    return savedIds.length === placeIds.length
+      && placeIds.every((id, index) => id === savedIds[index]);
   });
 }
 
-/** Same order-independent rule as checkCourseAlreadySaved() (see its comment) —
+/** Same order-sensitive rule as checkCourseAlreadySaved() (see its comment) —
  *  used for the "Saved" badge on the course list rather than a DB round-trip. */
 export function isSameCourse(course, savedRow) {
   try {
-    const courseIds = sortedNumericIds(getCoursePlaceIds(course));
-    const savedIds = sortedNumericIds(
-      (savedRow.place_ids ?? []).map((id) => Number(id)).filter((id) => Number.isFinite(id) && id > 0),
-    );
+    const courseIds = getCoursePlaceIds(course);
+    const savedIds = (savedRow.place_ids ?? []).map((id) => Number(id)).filter((id) => Number.isFinite(id) && id > 0);
     if (courseIds.length > 0 && savedIds.length > 0 && courseIds.length === savedIds.length) {
       return courseIds.every((id, i) => id === savedIds[i]);
     }

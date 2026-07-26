@@ -6,7 +6,7 @@ import { useLocale } from '../../../shared/i18n/LocaleProvider.jsx';
 
 const TABS = [
   { to: ROUTES.home, labelKey: 'nav.map', Icon: HomeIcon, end: true },
-  { to: ROUTES.courses, labelKey: 'nav.courses', Icon: RouteIcon },
+  { to: ROUTES.explore, labelKey: 'nav.explore', Icon: RouteIcon },
   { to: ROUTES.phrases, labelKey: 'nav.phrases', Icon: ChatIcon },
   { to: ROUTES.community, labelKey: 'nav.community', Icon: UsersIcon },
   { to: ROUTES.my, labelKey: 'nav.you', Icon: UserIcon },

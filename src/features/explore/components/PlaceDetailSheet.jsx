@@ -99,7 +99,7 @@ function SectionHeader({ Icon, label }) {
   );
 }
 
-export default function PlaceDetailSheet({ place, selectedLocation, onBack }) {
+export default function PlaceDetailSheet({ place, selectedLocation, onBack, headerLabel = null }) {
   const { locale, t } = useLocale();
   const { user } = useAuth();
   const { openAuthPrompt } = useAuthPrompt();
@@ -455,16 +455,22 @@ export default function PlaceDetailSheet({ place, selectedLocation, onBack }) {
 
   return (
     <div className="relative flex h-full flex-col">
-      {/* 헤더: 뒤로가기 버튼 */}
+      {/* 헤더: 뒤로가기 버튼 (+ 페이지 레이블, 있는 경우에만 — NearbySheet의
+          지도 바텀시트 호출에는 headerLabel을 넘기지 않으므로 그쪽은 그대로다) */}
       <div className="shrink-0 px-5 pb-2.5 pt-4">
-        <button
-          type="button"
-          onClick={onBack}
-          aria-label="Back"
-          className="flex h-9 w-9 items-center justify-center rounded-full bg-ink/8 text-ink"
-        >
-          <BackIcon />
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={onBack}
+            aria-label="Back"
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-ink/8 text-ink"
+          >
+            <BackIcon />
+          </button>
+          {headerLabel && (
+            <span className="text-sm font-bold text-ink-soft">{headerLabel}</span>
+          )}
+        </div>
       </div>
 
       {/* 스크롤 본문 */}

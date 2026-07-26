@@ -30,7 +30,7 @@ export default function PlaceDetailPage() {
   const { placeId } = useParams();
   const { state } = useLocation();
   const navigate = useNavigate();
-  const { locale } = useLocale();
+  const { locale, t } = useLocale();
 
   const numericPlaceId = Number(placeId);
   const isValidId = Number.isInteger(numericPlaceId) && numericPlaceId > 0;
@@ -72,10 +72,10 @@ export default function PlaceDetailPage() {
 
   function handleBack() {
     if (window.history.length > 1) navigate(-1);
-    else navigate(ROUTES.courses);
+    else navigate(ROUTES.explore);
   }
 
-  if (notFound) return <Navigate to={ROUTES.courses} replace />;
+  if (notFound) return <Navigate to={ROUTES.explore} replace />;
 
   if (loading || !place) {
     return (
@@ -87,7 +87,12 @@ export default function PlaceDetailPage() {
 
   return (
     <div className="h-full bg-paper-soft">
-      <PlaceDetailSheet place={place} selectedLocation={null} onBack={handleBack} />
+      <PlaceDetailSheet
+        place={place}
+        selectedLocation={null}
+        onBack={handleBack}
+        headerLabel={t('placeDetail.pageHeaderLabel')}
+      />
     </div>
   );
 }

@@ -113,8 +113,8 @@ export default function SavedCourseDetailPage() {
     return () => { cancelled = true; };
   }, [stopIdsKey, locale]);
 
-  if (!authLoading && !user) return <Navigate to={ROUTES.courses} replace />;
-  if (!fetchLoading && notFound) return <Navigate to={ROUTES.courses} replace />;
+  if (!authLoading && !user) return <Navigate to={ROUTES.explore} replace />;
+  if (!fetchLoading && notFound) return <Navigate to={ROUTES.explore} replace />;
 
   if (fetchLoading || authLoading) {
     return (
@@ -165,7 +165,7 @@ export default function SavedCourseDetailPage() {
       setRemoveBusy(false);
       setRemoveConfirmOpen(false);
       setRemoveToast(true);
-      setTimeout(() => navigate(ROUTES.courses), 900);
+      setTimeout(() => navigate(ROUTES.explore), 900);
     } catch {
       setRemoveBusy(false);
       setRemoveFailed(true);
@@ -179,7 +179,7 @@ export default function SavedCourseDetailPage() {
         <div className="rounded-b-[1.625rem] bg-coral px-5 pb-[1.375rem] pt-[3.625rem] text-white">
           <button
             type="button"
-            onClick={() => navigate(ROUTES.courses)}
+            onClick={() => navigate(ROUTES.explore)}
             aria-label="Back"
             className="mb-[1.125rem] flex h-10 w-10 items-center justify-center rounded-full bg-white/20 text-white backdrop-blur"
           >
@@ -279,7 +279,7 @@ export default function SavedCourseDetailPage() {
       </div>
 
       {/* 삭제 성공 안내 — pointer-events-none 오버레이라 레이아웃을 밀지 않고,
-          navigate(ROUTES.courses)로 넘어가기 직전(약 0.9초) 잠깐 보인다. */}
+          navigate(ROUTES.explore)로 넘어가기 직전(약 0.9초) 잠깐 보인다. */}
       {removeToast && (
         <div className="pointer-events-none absolute inset-x-0 bottom-24 z-10 flex justify-center px-5">
           <div className="rounded-full bg-ink/85 px-4 py-2 text-xs font-semibold text-white shadow-lg">

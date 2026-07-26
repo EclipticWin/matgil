@@ -12,7 +12,7 @@ import AreaPage from '../pages/AreaPage.jsx';
 import PreferencePage from '../pages/PreferencePage.jsx';
 import LoadingPage from '../pages/LoadingPage.jsx';
 import ResultPage from '../pages/ResultPage.jsx';
-import CoursesPage from '../pages/CoursesPage.jsx';
+import ExplorePage from '../pages/ExplorePage.jsx';
 import CourseDetailPage from '../pages/CourseDetailPage.jsx';
 import SavedCourseDetailPage from '../pages/SavedCourseDetailPage.jsx';
 import PlaceDetailPage from '../pages/PlaceDetailPage.jsx';
@@ -22,6 +22,8 @@ import PhrasesPage from '../pages/PhrasesPage.jsx';
 import PopularPage from '../pages/PopularPage.jsx';
 import BookmarkPage from '../pages/BookmarkPage.jsx';
 import MyPage from '../pages/MyPage.jsx';
+import SavedRoutesPage from '../pages/SavedRoutesPage.jsx';
+import SavedPlacesPage from '../pages/SavedPlacesPage.jsx';
 
 /**
  * Two route groups:
@@ -56,15 +58,20 @@ export default function AppRouter() {
       <Route path={ROUTES.savedCourseDetail(':id')} element={<SavedCourseDetailPage />} />
       <Route path={ROUTES.placeDetail(':placeId')} element={<PlaceDetailPage />} />
       <Route path={ROUTES.placeReviews(':placeId')} element={<PlaceReviewsPage />} />
+      {/* Old public-tab URL — /courses/:id (an individual course) is a
+          separate, more specific route above and never hits this one. */}
+      <Route path={ROUTES.courses} element={<Navigate to={ROUTES.explore} replace />} />
 
       <Route element={<AppLayout />}>
         <Route path={ROUTES.home} element={<HomePage />} />
-        <Route path={ROUTES.courses} element={<CoursesPage />} />
+        <Route path={ROUTES.explore} element={<ExplorePage />} />
         <Route path={ROUTES.community} element={<CommunityPage />} />
         <Route path={ROUTES.popular} element={<PopularPage />} />
         <Route path={ROUTES.phrases} element={<PhrasesPage />} />
         <Route path={ROUTES.bookmark} element={<BookmarkPage />} />
         <Route path={ROUTES.my} element={<MyPage />} />
+        <Route path={ROUTES.mySavedRoutes} element={<SavedRoutesPage />} />
+        <Route path={ROUTES.mySavedPlaces} element={<SavedPlacesPage />} />
       </Route>
 
       <Route path="*" element={<Navigate to={ROUTES.home} replace />} />

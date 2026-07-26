@@ -550,6 +550,58 @@ export function getAnchorDisplayLocation(savedRow, locale, { t } = {}) {
   return null;
 }
 
+/** Public "popular routes" feed card's one-line "기준 위치" display —
+ *  deliberately ADDRESS-first (unlike getAnchorDisplayLocation()'s name-first
+ *  order for the Saved Courses detail header): a concrete street address reads
+ *  as a more useful trust signal on an anonymous public-feed card than a
+ *  business/building name would. Priority:
+ *   1. row.anchor_address_original (road/jibun address; attempts the same
+ *      Korean→English structural conversion getAnchorDisplayLocation() does
+ *      for 'en' before falling through)
+ *   2. row.course_snapshot?.anchor_address (the map-service address string
+ *      saveCourse() writes into the snapshot at save time)
+ *   3. row.anchor_name_original
+ *   4. a locale-correct fallback location name — a translated preset label
+ *      (never the raw key), or the reverse-geocoded district
+ *   5. row.anchor_label / row.course_snapshot?.anchor_label, only if
+ *      meaningful (never a raw "Selected area"/"Current location"-style
+ *      placeholder — see isMeaningfulAnchorLabel())
+ *   6. null — caller renders no line at all.
+ *  Never mixes a different locale's raw Korean text into an en/zh-CN screen
+ *  (same isDisplayable() gate getAnchorDisplayLocation() uses). */
+export function getPublicCourseAnchorDisplay(row, locale, { t } = {}) {
+  if (!row) return null;
+  const anchorType = row.anchor_type;
+  const isDisplayable = (value) => typeof value === 'string' && value.trim().length > 0
+    && (locale === 'ko' || !containsHangul(value));
+
+  const addressOriginal = row.anchor_address_original;
+  if (isDisplayable(addressOriginal)) return addressOriginal.trim();
+  if (addressOriginal && locale === 'en') {
+    const englishAddress = formatKoreanAddressToEnglish(addressOriginal);
+    if (englishAddress) return englishAddress;
+  }
+
+  const snapshotAddress = row.course_snapshot?.anchor_address;
+  if (isDisplayable(snapshotAddress)) return snapshotAddress.trim();
+
+  if (isDisplayable(row.anchor_name_original)) return row.anchor_name_original.trim();
+
+  if (anchorType === 'preset' && row.anchor_key) {
+    const preset = PRESET_LOCATIONS.find((p) => p.key === row.anchor_key);
+    if (preset) return pickTranslated({ ko: preset.labelKo, en: preset.label, 'zh-CN': preset.labelZh }, locale) ?? preset.label;
+  }
+  if (anchorType === 'search' || anchorType === 'map' || anchorType === 'gps') {
+    const area = getLocalizedDistrict(resolveAnchorAreaKo(row), locale);
+    if (area) return t ? t('courseTitle.areaSuffix', { area }) : area;
+  }
+
+  const rawLabel = row.anchor_label ?? row.course_snapshot?.anchor_label;
+  if (isMeaningfulAnchorLabel(rawLabel)) return rawLabel.trim();
+
+  return null;
+}
+
 /** course_theme_key → its display label (via the DB-backed food-category
  *  translations, same source FilterSheet uses), or a safe default when the key is
  *  missing/unknown — never displays a raw internal key to the user. */

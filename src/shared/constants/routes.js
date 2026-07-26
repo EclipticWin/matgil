@@ -7,6 +7,10 @@ export const ROUTES = {
   preference: '/preference',
   loading: '/loading',
   result: '/result',
+  // Public "explore" tab (routes/places saved by other travelers) — /courses is
+  // kept only as the old URL that redirects here (see router.jsx); no code
+  // should navigate to ROUTES.courses anymore, use ROUTES.explore instead.
+  explore: '/explore',
   courses: '/courses',
   courseDetail: (id) => `/courses/${id}`,
   savedCourseDetail: (id) => `/saved-courses/${id}`,
@@ -17,4 +21,6 @@ export const ROUTES = {
   popular: '/popular',
   bookmark: '/bookmark',
   my: '/my',
+  mySavedRoutes: '/my/saved-routes',
+  mySavedPlaces: '/my/saved-places',
 };

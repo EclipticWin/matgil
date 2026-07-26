@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Navigate } from 'react-router-dom';
+import { Navigate, useNavigate } from 'react-router-dom';
 import { useAuth } from '../features/auth/hooks/useAuth.jsx';
 import { fetchMyActivityCounts } from '../features/community/services/communityService.js';
+import { fetchMySavedCounts } from '../features/courses/services/publicFeedService.js';
 import LanguageModal from '../features/explore/components/LanguageModal.jsx';
 import LocaleInfoNotice from '../features/explore/components/LocaleInfoNotice.jsx';
 import Modal from '../features/explore/components/Modal.jsx';
@@ -22,9 +23,11 @@ import { avatarGradient } from '../shared/utils/avatarColor.js';
 export default function MyPage() {
   const { user, logout, loading, updateDisplayName, updatePassword } = useAuth();
   const { locale, t } = useLocale();
+  const navigate = useNavigate();
 
   const [view, setView] = useState('home'); // 'home' | 'myPosts' | 'likedPosts'
   const [counts, setCounts] = useState(null);
+  const [savedCounts, setSavedCounts] = useState(null);
   const [editingProfile, setEditingProfile] = useState(false);
   const [langOpen, setLangOpen] = useState(false);
   const [toast, setToast] = useState('');
@@ -49,7 +52,21 @@ export default function MyPage() {
       .catch(() => setCounts({ myPosts: 0, likedPosts: 0, likedComments: 0 }));
   }, [user]);
 
+  // Independent of loadCounts()/fetchMyActivityCounts() above — a failure in
+  // one must never zero out the other's already-loaded numbers. Re-runs on
+  // every mount, which is exactly what happens when the user navigates back
+  // here from /my/saved-routes or /my/saved-places (separate routes, not an
+  // in-page view — see SavedRoutesPage/SavedPlacesPage), so a delete there is
+  // reflected here without any extra cross-page state.
+  const loadSavedCounts = useCallback(() => {
+    if (!user) return;
+    fetchMySavedCounts()
+      .then(setSavedCounts)
+      .catch(() => setSavedCounts({ savedCourseCount: 0, savedPlaceCount: 0 }));
+  }, [user]);
+
   useEffect(() => { loadCounts(); }, [loadCounts]);
+  useEffect(() => { loadSavedCounts(); }, [loadSavedCounts]);
 
   const goHome = useCallback(() => {
     setView('home');
@@ -128,6 +145,22 @@ export default function MyPage() {
         />
       </div>
 
+      {/* Saved lists — moved here from the now-public Courses tab (see
+          CoursesPage.jsx); each card links to its own route (SavedRoutesPage/
+          SavedPlacesPage) rather than an in-page view. */}
+      <div className="mt-2 flex gap-2">
+        <StatCard
+          value={savedCounts?.savedCourseCount ?? null}
+          label={t('savedCourses.title')}
+          onClick={() => navigate(ROUTES.mySavedRoutes)}
+        />
+        <StatCard
+          value={savedCounts?.savedPlaceCount ?? null}
+          label={t('savedPlaces.title')}
+          onClick={() => navigate(ROUTES.mySavedPlaces)}
+        />
+      </div>
+
       <button
         type="button"
         onClick={logout}
@@ -142,6 +175,17 @@ export default function MyPage() {
         <p className="text-xs leading-relaxed text-stone-400">{t('my.footerLine3')}</p>
         <p className="mt-2 text-xs leading-relaxed text-stone-400">{t('my.footerContact')}</p>
         <p className="text-xs leading-relaxed text-stone-400">{t('my.footerAddress')}</p>
+        <p className="mt-2">
+          <a
+            href="https://www.flaticon.com/kr/free-icons/"
+            title={t('my.medalAttribution')}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-[0.65rem] text-ink-faint underline underline-offset-2"
+          >
+            {t('my.medalAttribution')}
+          </a>
+        </p>
         <p className="mt-3 text-[0.65rem] text-stone-300">{t('my.footerCopy')}</p>
       </div>
 

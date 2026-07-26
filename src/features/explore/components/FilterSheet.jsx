@@ -5,6 +5,7 @@ import { cn } from '../../../shared/utils/classNames.js';
 import { useFoodCategories } from '../context/FoodCategoryProvider.jsx';
 import { EMPTY_FILTERS } from '../data/exploreOptions.js';
 import CategoryIcon from './CategoryIcon.jsx';
+import FoodTypeLimitModal from './FoodTypeLimitModal.jsx';
 
 const RATING_STEPS = [1, 2, 3, 4, 5];
 const RATING_STAR_SIZE = 36;
@@ -179,34 +180,18 @@ export default function FilterSheet({ value, onApply, onClose, ratingFilterAvail
   const [draft, setDraft] = useState(() => (
     ratingFilterAvailable ? value : { ...value, minimumRating: 0 }
   ));
-  const [catLimitHit, setCatLimitHit] = useState(false);
-  const limitTimerRef = useRef(null);
-  useEffect(() => () => { if (limitTimerRef.current) clearTimeout(limitTimerRef.current); }, []);
-
-  const showLimitToast = () => {
-    setCatLimitHit(true);
-    if (limitTimerRef.current) clearTimeout(limitTimerRef.current);
-    limitTimerRef.current = setTimeout(() => setCatLimitHit(false), 2000);
-  };
-  const clearLimitToast = () => {
-    setCatLimitHit(false);
-    if (limitTimerRef.current) { clearTimeout(limitTimerRef.current); limitTimerRef.current = null; }
-  };
+  // Central modal (not an inline auto-dismissing toast — see FoodTypeLimitModal's
+  // own doc comment) shown when the user tries to pick a 4th food type while 3
+  // are already selected. limitTriggerRef remembers which pill button was
+  // clicked so focus can return to it once the modal closes.
+  const [limitModalOpen, setLimitModalOpen] = useState(false);
+  const limitTriggerRef = useRef(null);
 
   return (
     <>
       <div className="shrink-0 px-5 pb-1 pt-2.5">
         <div className="mx-auto mb-3 h-[5px] w-10 rounded-full bg-ink/15" />
         <h2 className="font-display text-[1.375rem] font-bold tracking-tight text-ink">{t('filter.title')}</h2>
-        {catLimitHit && (
-          <div
-            role="status"
-            aria-live="polite"
-            className="mt-2.5 rounded-xl bg-coral/10 px-3.5 py-2 text-[0.8rem] font-semibold text-coral"
-          >
-            {t('filter.catLimit')}
-          </div>
-        )}
       </div>
 
       {/* pb-10 mirrors the RATING label's mt-10 above it, so the gap below the
@@ -223,22 +208,21 @@ export default function FilterSheet({ value, onApply, onClose, ratingFilterAvail
               <Pill
                 key={c.key}
                 active={active}
-                onClick={() => {
+                onClick={(e) => {
+                  const trigger = e.currentTarget;
                   if (isAll) {
-                    clearLimitToast();
                     setDraft((d) => ({ ...d, cat: [] }));
                   } else {
                     setDraft((d) => {
                       const prev = Array.isArray(d.cat) ? d.cat : [];
                       if (prev.includes(c.key)) {
-                        clearLimitToast();
                         return { ...d, cat: prev.filter((x) => x !== c.key) };
                       }
                       if (prev.length >= 3) {
-                        showLimitToast();
+                        limitTriggerRef.current = trigger;
+                        setLimitModalOpen(true);
                         return d;
                       }
-                      clearLimitToast();
                       return { ...d, cat: [...prev, c.key] };
                     });
                   }
@@ -271,7 +255,7 @@ export default function FilterSheet({ value, onApply, onClose, ratingFilterAvail
         <div className="flex gap-3">
           <button
             type="button"
-            onClick={() => { setDraft(EMPTY_FILTERS); clearLimitToast(); }}
+            onClick={() => setDraft(EMPTY_FILTERS)}
             className="h-[3.25rem] flex-1 rounded-[0.9375rem] border border-ink/10 bg-white text-base font-bold text-ink/80 transition-colors duration-100 active:bg-ink/[0.03]"
           >
             {t('filter.reset')}
@@ -288,6 +272,14 @@ export default function FilterSheet({ value, onApply, onClose, ratingFilterAvail
           </button>
         </div>
       </div>
+
+      <FoodTypeLimitModal
+        open={limitModalOpen}
+        onClose={() => {
+          setLimitModalOpen(false);
+          limitTriggerRef.current?.focus();
+        }}
+      />
     </>
   );
 }

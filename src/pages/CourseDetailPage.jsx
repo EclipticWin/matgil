@@ -13,7 +13,7 @@ export default function CourseDetailPage() {
   const { t } = useLocale();
   const course = getCourse(id);
 
-  if (!course) return <Navigate to={ROUTES.courses} replace />;
+  if (!course) return <Navigate to={ROUTES.explore} replace />;
 
   return (
     <div className="flex h-full flex-col bg-paper-soft">
@@ -25,7 +25,7 @@ export default function CourseDetailPage() {
         >
           <button
             type="button"
-            onClick={() => navigate(ROUTES.courses)}
+            onClick={() => navigate(ROUTES.explore)}
             aria-label="Back"
             className="mb-[1.125rem] flex h-10 w-10 items-center justify-center rounded-full bg-white/20 text-white backdrop-blur"
           >
