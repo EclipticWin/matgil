@@ -278,11 +278,18 @@ function formatLiveCourseTitle(location, themeLabels, locale) {
 }
 
 /** Live Map-tab recommendation title — the ONLY title function that knows about
- *  selectedFoodTypes. Priority:
- *   1. selectedFoodTypes (the user's actual filter picks) via getCategoryLabel,
- *      max 2, deduped, 'all'/empty excluded — never a raw key.
- *   2. No preference selected: per-stop candidates (firstMenu → treatMenu →
- *      category), max 2, deduped.
+ *  selectedFoodTypes. Priority (stop data first, filter picks as a fallback —
+ *  see docs on the bug this order fixes: every course generated under the same
+ *  filter selection used to get the identical filter-label title regardless of
+ *  which stops it actually contained, e.g. three different "Cafe & Dessert &
+ *  Chinese" courses that shared nothing but the filter):
+ *   1. Per-stop candidates (firstMenu → treatMenu → category), max 2, deduped,
+ *      preferring different stops over the same stop's own two menu fields —
+ *      this is what actually varies between courses built from the same
+ *      filter, so it has to win whenever any stop has something usable.
+ *   2. Only when the stops have nothing usable at all: selectedFoodTypes (the
+ *      user's actual filter picks) via getCategoryLabel, max 2, deduped,
+ *      'all'/empty excluded — never a raw key.
  *   3. Neither available: the plain "맛집"/"Food"/"美食" default.
  *  Location logic is untouched — getLocationDisplayName()/getLocalizedLocationLabel()
  *  above, unchanged.
@@ -293,39 +300,34 @@ function formatLiveCourseTitle(location, themeLabels, locale) {
 export function getLiveRecommendedCourseTitle(stops, selectedLocation, locale, { selectedFoodTypes = [], getCategoryLabel } = {}) {
   const location = getLocationDisplayName(selectedLocation, locale) ?? getLocalizedLocationLabel(null, locale);
 
-  const cleanPreferenceKeys = Array.isArray(selectedFoodTypes)
-    ? [...new Set(selectedFoodTypes.filter((key) => key && key !== 'all'))]
-    : [];
-
-  let themeLabels = [];
-  let source = 'fallback';
-  let categoryKeys = [];
-  let candidateLabels = [];
-
-  if (cleanPreferenceKeys.length > 0 && getCategoryLabel) {
-    const labels = [];
-    const usedKeys = [];
-    for (const key of cleanPreferenceKeys) {
-      const label = getCategoryLabel(key, locale);
-      if (label && label !== key && !labels.includes(label)) {
-        labels.push(label);
-        usedKeys.push(key);
-      }
-      if (labels.length >= 2) break;
-    }
-    if (labels.length > 0) {
-      themeLabels = labels;
-      source = 'preference';
-      categoryKeys = usedKeys;
-    }
-  }
+  const built = buildThemeCandidatesFromStops(stops, locale, getCategoryLabel);
+  let themeLabels = built.labels;
+  let candidateLabels = built.candidateLabels;
+  let source = built.source;
+  let categoryKeys = built.categoryKeys;
 
   if (themeLabels.length === 0) {
-    const built = buildThemeCandidatesFromStops(stops, locale, getCategoryLabel);
-    themeLabels = built.labels;
-    candidateLabels = built.candidateLabels;
-    source = built.source;
-    categoryKeys = built.categoryKeys;
+    const cleanPreferenceKeys = Array.isArray(selectedFoodTypes)
+      ? [...new Set(selectedFoodTypes.filter((key) => key && key !== 'all'))]
+      : [];
+
+    if (cleanPreferenceKeys.length > 0 && getCategoryLabel) {
+      const labels = [];
+      const usedKeys = [];
+      for (const key of cleanPreferenceKeys) {
+        const label = getCategoryLabel(key, locale);
+        if (label && label !== key && !labels.includes(label)) {
+          labels.push(label);
+          usedKeys.push(key);
+        }
+        if (labels.length >= 2) break;
+      }
+      if (labels.length > 0) {
+        themeLabels = labels;
+        source = 'preference';
+        categoryKeys = usedKeys;
+      }
+    }
   }
 
   const title = formatLiveCourseTitle(location, themeLabels, locale);
@@ -347,10 +349,12 @@ export function getLiveRecommendedCourseTitle(stops, selectedLocation, locale, {
  *   (a) swap in another of this course's own unused theme candidates
  *       (titleTheme.candidateLabels — menu/category labels that lost out to the
  *       2-label cap in getLiveRecommendedCourseTitle);
- *   (b) a short "{title} — {first stop name}" auxiliary suffix, using the course's
- *       own first stop's current-locale name;
- *   (c) otherwise leave the title as-is — never a fabricated adjective, never a
- *       bare sequence number.
+ *   (b) otherwise leave the title as-is. A duplicate title across two
+ *       recommendation cards is preferred over ever appending a stop/place
+ *       name, a sequence number, or any fabricated adjective — every live
+ *       title must always end in "동선"/"Route"/"路线" with nothing after it
+ *       (a stop-name suffix here used to break that, e.g. "... Route —
+ *       Gwanghwamun Gukbap").
  *  Deterministic (same courses/locale in → same titles out) and never mutates the
  *  input array. */
 export function resolveLiveCourseTitleCollisions(courses, selectedLocation, locale) {
@@ -386,15 +390,6 @@ export function resolveLiveCourseTitleCollisions(courses, selectedLocation, loca
             labelsByLocale: { ...(theme.labelsByLocale ?? {}), [locale]: dedupedLabels },
           },
         };
-      }
-    }
-
-    const stopName = getLocalizedStopName(course.stops?.[0], locale);
-    if (stopName) {
-      const auxTitle = `${course.title} — ${stopName}`;
-      if (!finalTitles.has(auxTitle)) {
-        finalTitles.add(auxTitle);
-        return { ...course, title: auxTitle };
       }
     }
 

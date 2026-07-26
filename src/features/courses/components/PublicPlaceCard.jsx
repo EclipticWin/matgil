@@ -58,7 +58,11 @@ export default function PublicPlaceCard({ place, rank = null, reviewStats, onOpe
         <Thumbnail src={place.imageUrl} className="h-[4.5rem] w-[4.5rem] shrink-0" />
 
         <div className="min-w-0 flex-1">
-          <p className="line-clamp-2 text-[0.95rem] font-bold leading-snug text-ink">{place.name}</p>
+          {/* Same text-ink/90 the route card's title uses in its own default
+              (non-ranked) state — this name never sits inside a rank color
+              band, so it should read the same as that baseline, not the
+              fully-opaque text-ink this used to be. */}
+          <p className="line-clamp-2 text-[0.95rem] font-bold leading-snug text-ink/90">{place.name}</p>
           {subtitle && <p className="mt-0.5 truncate text-xs text-ink-soft">{subtitle}</p>}
           {place.address && (
             <p className="mt-1 flex items-center gap-1 text-xs text-ink-faint">

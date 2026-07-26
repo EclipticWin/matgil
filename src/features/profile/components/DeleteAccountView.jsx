@@ -87,7 +87,7 @@ export default function DeleteAccountView({ onBack, onBusyChange }) {
 
       <p className="mt-3 text-[0.8rem] leading-relaxed text-ink-faint">{t('my.deleteSocialBody')}</p>
 
-      <p className="mt-4 rounded-xl bg-red-50 px-3.5 py-3 text-[0.8rem] leading-relaxed text-red-600">
+      <p className="mt-4 rounded-xl bg-coral-tint px-3.5 py-3 text-[0.8rem] leading-relaxed text-coral-deep">
         {t('my.deleteWarning')}
       </p>
 

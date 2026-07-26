@@ -11,14 +11,58 @@ import { useLocaleNotice } from '../features/explore/hooks/useLocaleNotice.js';
 import EditProfileSheet from '../features/profile/components/EditProfileSheet.jsx';
 import LikedPostsView from '../features/profile/components/LikedPostsView.jsx';
 import MyPostsView from '../features/profile/components/MyPostsView.jsx';
-import StatCard from '../features/profile/components/StatCard.jsx';
 import Card from '../shared/components/Card.jsx';
 import PageHeader from '../shared/components/PageHeader.jsx';
 import PageShell from '../shared/components/PageShell.jsx';
+import { ChevronRightIcon } from '../shared/components/Icon.jsx';
 import { ROUTES } from '../shared/constants/routes.js';
 import { useEscapeToClose } from '../shared/hooks/useEscapeToClose.js';
 import { useLocale } from '../shared/i18n/LocaleProvider.jsx';
 import { avatarGradient } from '../shared/utils/avatarColor.js';
+
+// Carrot-market "나의 당근"-style section: a title label over a set of
+// one-line rows sharing one big card, instead of MyPage's old scattered
+// small StatCard squares. Purely presentational — every row's onClick still
+// goes through whatever existing navigate()/setView() call the caller
+// already used with StatCard, so no destination/data-fetch logic changes.
+function MySection({ title, children }) {
+  return (
+    <Card rounded="rounded-2xl" className="mt-3.5 overflow-hidden">
+      <p className="px-4 pb-1 pt-4 text-[0.9rem] font-bold uppercase text-ink-soft">
+        {title}
+      </p>
+      {/* Title→first-row gap = title's own pb-1 (4px) + this pt + the first
+          row's own py-2 top (8px). Was 22px (pt-2.5, 10px); pt-[0.42rem]
+          (~6.7px) brings the total to ~18.7px, ~85% of that 22px, without
+          touching the row-to-row gap (each row's own py-2, unaffected) or the
+          trailing space below the last row (pb-1.5 below, unaffected). */}
+      <div className="pb-1.5 pt-[0.42rem]">{children}</div>
+    </Card>
+  );
+}
+
+// `value` is optional and rendered only when passed (the language row is the
+// only caller that still shows one — every count-based row below omits it
+// entirely so no count number reaches the screen, even though the counts are
+// still fetched/held in state upstream). Same light gray as the title
+// (text-ink-soft) — this used to be the count number's own color, now reused
+// for both the section title and every row label so nothing in this card
+// reads as heavier/darker than that.
+function MyRow({ label, value, onClick }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="flex w-full items-center justify-between gap-3 px-4 py-2 text-left transition-colors active:bg-ink/[0.03]"
+    >
+      <span className="text-[0.95rem] font-medium text-ink-soft">{label}</span>
+      <span className="flex shrink-0 items-center gap-1 text-sm font-bold text-ink-soft">
+        {value != null && value}
+        <ChevronRightIcon size={13} className="shrink-0 text-ink-faint" aria-hidden="true" />
+      </span>
+    </button>
+  );
+}
 
 export default function MyPage() {
   const { user, logout, loading, updateDisplayName, updatePassword } = useAuth();
@@ -102,7 +146,7 @@ export default function MyPage() {
       <PageHeader title={t('my.title')} titleClassName="mb-5" />
 
       {/* Profile card */}
-      <Card className="flex items-center gap-3.5 p-4">
+      <Card rounded="rounded-2xl" className="flex items-center gap-3.5 p-4">
         <div
           className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-gradient-to-br ${avatarGradient(user.id)} font-display text-2xl font-bold text-white`}
         >
@@ -125,46 +169,48 @@ export default function MyPage() {
         <p className="mt-2 text-center text-xs font-semibold text-green-600">{toast}</p>
       )}
 
-      {/* Activity + Language cards */}
-      <div className="mt-3.5 flex gap-2">
-        <StatCard
-          value={counts?.myPosts ?? null}
-          label={t('my.myPosts')}
-          onClick={() => setView('myPosts')}
-        />
-        <StatCard
-          value={counts?.likedPosts ?? null}
-          label={t('my.likedPosts')}
-          onClick={() => setView('likedPosts')}
-        />
-        <StatCard
-          value={currentLang.short}
-          label={t('my.language')}
-          onClick={() => setLangOpen(true)}
-          valueClassName="text-xl"
-        />
-      </div>
-
-      {/* Saved lists — moved here from the now-public Courses tab (see
-          CoursesPage.jsx); each card links to its own route (SavedRoutesPage/
-          SavedPlacesPage) rather than an in-page view. */}
-      <div className="mt-2 flex gap-2">
-        <StatCard
-          value={savedCounts?.savedCourseCount ?? null}
+      {/* 나의 여행 — saved routes/places, moved here from the now-public
+          Explore tab (see ExplorePage.jsx); each row goes to its own route
+          (SavedRoutesPage/SavedPlacesPage) rather than an in-page view. */}
+      <MySection title={t('my.travelSection')}>
+        <MyRow
           label={t('savedCourses.title')}
           onClick={() => navigate(ROUTES.mySavedRoutes)}
         />
-        <StatCard
-          value={savedCounts?.savedPlaceCount ?? null}
+        <MyRow
           label={t('savedPlaces.title')}
           onClick={() => navigate(ROUTES.mySavedPlaces)}
         />
-      </div>
+      </MySection>
 
+      {/* 나의 커뮤니티 활동 */}
+      <MySection title={t('my.communitySection')}>
+        <MyRow
+          label={t('my.myPosts')}
+          onClick={() => setView('myPosts')}
+        />
+        <MyRow
+          label={t('my.likedPosts')}
+          onClick={() => setView('likedPosts')}
+        />
+      </MySection>
+
+      {/* 설정 */}
+      <MySection title={t('my.settingsSection')}>
+        <MyRow
+          label={t('my.language')}
+          value={currentLang.short}
+          onClick={() => setLangOpen(true)}
+        />
+      </MySection>
+
+      {/* Low-emphasis: logout is a routine, reversible action (unlike account
+          deletion), so it deliberately does not use the coral accent color —
+          a quiet neutral button rather than a call to action. */}
       <button
         type="button"
         onClick={logout}
-        className="mt-6 w-full rounded-2xl border border-coral/70 bg-coral/10 py-3 text-sm font-bold text-coral shadow-[0_2px_6px_rgba(248,72,31,0.10)] active:opacity-75"
+        className="mt-3.5 w-full rounded-2xl border-[1.5px] border-ink/12 bg-white py-3 text-sm font-bold text-ink-soft active:bg-ink/[0.03]"
       >
         {t('my.logout')}
       </button>
@@ -173,7 +219,7 @@ export default function MyPage() {
         <p className="text-xs leading-relaxed text-stone-400">{t('my.footerLine1')}</p>
         <p className="text-xs leading-relaxed text-stone-400">{t('my.footerLine2')}</p>
         <p className="text-xs leading-relaxed text-stone-400">{t('my.footerLine3')}</p>
-        <p className="mt-2 text-xs leading-relaxed text-stone-400">{t('my.footerContact')}</p>
+        <p className="mt-2 break-all text-xs leading-relaxed text-stone-400">{t('my.footerContact')}</p>
         <p className="text-xs leading-relaxed text-stone-400">{t('my.footerAddress')}</p>
         <p className="mt-2">
           <a
