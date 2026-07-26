@@ -129,6 +129,9 @@ export default function LoginForm({ onDone, returnTo }) {
         <h1 className="text-center font-display text-2xl font-bold tracking-tight text-ink">
           {t('login.welcome')}
         </h1>
+        <p className="mt-1.5 max-w-xs text-center text-xs leading-normal text-ink-soft/85">
+          {t('login.serviceDescription')}
+        </p>
       </div>
 
       {/* email form */}

@@ -209,7 +209,10 @@ export default function FilterSheet({ value, onApply, onClose, ratingFilterAvail
         )}
       </div>
 
-      <div className="no-scrollbar flex-1 overflow-y-auto px-5 pb-2">
+      {/* pb-10 mirrors the RATING label's mt-10 above it, so the gap below the
+          rating slider (down to the fixed button bar) reads as the same
+          breathing room as the gap above "MINIMUM RATING". */}
+      <div className="no-scrollbar flex-1 overflow-y-auto px-5 pb-10">
         <SectionLabel>{t('filter.foodType')}</SectionLabel>
         <div className="flex flex-wrap gap-2">
           {categories.map((c) => {

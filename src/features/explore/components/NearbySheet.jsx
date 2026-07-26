@@ -469,6 +469,11 @@ export default function NearbySheet({
                       <div className="flex flex-col gap-3">
                         {visibleCourses.map((course) => {
                           const isActive = course.id === activeCourse?.id;
+                          // Full-list first course, not visibleCourses[0] — stays
+                          // pinned to the true top pick as infinite scroll reveals
+                          // more cards, and is independent of isActive (which
+                          // tracks "same as the map's current course", not rank).
+                          const isTodayPick = course.id === courses[0]?.id;
                           const alreadySaved = savedRows.some((row) => isSameCourse(course, row));
                           return (
                             <div
@@ -479,6 +484,7 @@ export default function NearbySheet({
                                 course={course}
                                 disableLink
                                 isActive={isActive}
+                                isTodayPick={isTodayPick}
                                 onClick={() => {
                                   onSelectCourse?.(course);
                                   openDetail(course, { live: true });

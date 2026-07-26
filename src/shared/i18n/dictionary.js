@@ -28,6 +28,11 @@ export const DICTIONARY = {
       preferencesLine: 'Preferences: {value}',
       preferencesNone: 'None selected',
     },
+    courseCard: {
+      restaurantCount: 'Restaurants {n}',
+      cafeCount: 'Cafes {n}',
+      viewDetails: 'View course',
+    },
     courseTitle: {
       withLocation: '{location} {theme} Walk',
       themeOnly: 'Recommended {theme} Walk',
@@ -230,6 +235,7 @@ export const DICTIONARY = {
     },
     login: {
       welcome: 'Welcome to Matgil',
+      serviceDescription: 'A food route recommendation app for international visitors to Seoul.',
       socialComingSoon: 'Coming soon! Social login is not yet available.',
       googleLoginFailed: 'Google sign-in failed. Please try again.',
       facebookLoginFailed: 'Facebook sign-in failed. Please try again.',
@@ -382,6 +388,11 @@ export const DICTIONARY = {
       startingPointLine: '기준 위치: {value}',
       preferencesLine: '선택 취향: {value}',
       preferencesNone: '선택 안 함',
+    },
+    courseCard: {
+      restaurantCount: '식당 {n}',
+      cafeCount: '카페 {n}',
+      viewDetails: '코스 상세 보기',
     },
     courseTitle: {
       withLocation: '{location} {theme} 동선',
@@ -585,6 +596,7 @@ export const DICTIONARY = {
     },
     login: {
       welcome: '맛길에 오신 것을 환영합니다',
+      serviceDescription: '서울 방문 외국인 관광객을 위한 맛집 동선 추천 앱',
       socialComingSoon: '준비 중입니다. 소셜 로그인은 아직 사용할 수 없습니다.',
       googleLoginFailed: '구글 로그인에 실패했어요. 다시 시도해 주세요.',
       facebookLoginFailed: '페이스북 로그인에 실패했어요. 다시 시도해 주세요.',
@@ -737,6 +749,11 @@ export const DICTIONARY = {
       startingPointLine: '出发地点：{value}',
       preferencesLine: '偏好：{value}',
       preferencesNone: '未选择',
+    },
+    courseCard: {
+      restaurantCount: '餐厅{n}家',
+      cafeCount: '咖啡馆{n}家',
+      viewDetails: '查看路线',
     },
     courseTitle: {
       withLocation: '{location} {theme}漫步',
@@ -940,6 +957,7 @@ export const DICTIONARY = {
     },
     login: {
       welcome: '欢迎来到Matgil',
+      serviceDescription: '面向首尔外国游客的美食路线推荐应用',
       socialComingSoon: '敬请期待！社交账号登录暂未开放。',
       googleLoginFailed: 'Google登录失败，请重试。',
       facebookLoginFailed: 'Facebook登录失败，请重试。',
