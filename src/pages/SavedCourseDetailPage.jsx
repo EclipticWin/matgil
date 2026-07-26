@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams, Navigate, Link } from 'react-router-dom';
 import { useAuth } from '../features/auth/hooks/useAuth.jsx';
-import { fetchSavedCourseById } from '../features/courses/services/savedCourseService.js';
+import { fetchSavedCourseById, softDeleteSavedCourse } from '../features/courses/services/savedCourseService.js';
 import { fetchPlaceReviewStatsBatch } from '../features/places/services/placeReviewService.js';
 import { fetchPlaceBookmarkStatsBatch } from '../features/places/services/placeBookmarkService.js';
 import { getPlacesByIds } from '../api/placeApi.js';
@@ -14,9 +14,9 @@ import {
   mergeSavedStopWithLocalizedPlace,
 } from '../features/courses/utils/courseDisplay.js';
 import { useFoodCategories } from '../features/explore/context/FoodCategoryProvider.jsx';
+import RemoveSavedCourseConfirmModal from '../features/courses/components/RemoveSavedCourseConfirmModal.jsx';
 import { ROUTES } from '../shared/constants/routes.js';
 import Thumbnail from '../shared/components/Thumbnail.jsx';
-import Button from '../shared/components/Button.jsx';
 import Spinner from '../shared/components/Spinner.jsx';
 import {
   BackIcon,
@@ -24,6 +24,7 @@ import {
   WalkIcon,
   ClockIcon,
   RouteIcon,
+  TrashIcon,
   ChevronRightIcon,
 } from '../shared/components/Icon.jsx';
 import { useLocale } from '../shared/i18n/LocaleProvider.jsx';
@@ -40,6 +41,10 @@ export default function SavedCourseDetailPage() {
   const [reviewStatsById, setReviewStatsById] = useState(new Map());
   const [saveCountById, setSaveCountById] = useState(new Map());
   const [localizedPlacesById, setLocalizedPlacesById] = useState(new Map());
+  const [removeConfirmOpen, setRemoveConfirmOpen] = useState(false);
+  const [removeBusy, setRemoveBusy] = useState(false);
+  const [removeFailed, setRemoveFailed] = useState(false);
+  const [removeToast, setRemoveToast] = useState(false);
 
   useEffect(() => {
     if (authLoading) return;
@@ -119,14 +124,16 @@ export default function SavedCourseDetailPage() {
     );
   }
 
-  const displayHelpers = { getCategoryLabel, t };
-  const display = normalizeSavedCourseForDisplay(savedCourse, locale, displayHelpers);
-  const snapshot = display.course_snapshot ?? {};
   // Current-locale place text merged over the saved snapshot (docs/44) — NOT
   // display.stops, which only ever re-localizes `name` (via getLocalizedStopName)
   // and leaves every other text field (menu, address, description, ...) frozen at
-  // whatever locale the course was saved in.
+  // whatever locale the course was saved in. Computed before `display` so it can
+  // be passed into getSavedCourseDisplayTitle() (via displayHelpers.localizedStops)
+  // for a more accurate menu-based title regeneration — see courseDisplay.js.
   const stops = rawStops.map((stop) => mergeSavedStopWithLocalizedPlace(stop, localizedPlacesById.get(stop.id)));
+  const displayHelpers = { getCategoryLabel, t, localizedStops: stops };
+  const display = normalizeSavedCourseForDisplay(savedCourse, locale, displayHelpers);
+  const snapshot = display.course_snapshot ?? {};
   const stopCount = display.stop_count ?? stops.length;
   const anchorLine = getSavedCourseAnchorLine(savedCourse, locale, displayHelpers);
   const preferenceLine = getSavedCoursePreferenceLine(savedCourse, locale, displayHelpers);
@@ -144,8 +151,29 @@ export default function SavedCourseDetailPage() {
     });
   }
 
+  // Soft-deletes this saved course via the existing service (no new query/schema).
+  // On success, briefly shows a toast then navigates to Courses — CoursesPage's
+  // own `tab` state already defaults to 'routes', and SavedRoutesTab's
+  // useSavedCourses() re-fetches on that fresh mount, so the just-removed row is
+  // already gone (deleted_at set) with no extra cross-page state needed.
+  async function handleConfirmRemove() {
+    if (removeBusy) return;
+    setRemoveBusy(true);
+    setRemoveFailed(false);
+    try {
+      await softDeleteSavedCourse({ userId: user.id, courseId: savedCourse.id });
+      setRemoveBusy(false);
+      setRemoveConfirmOpen(false);
+      setRemoveToast(true);
+      setTimeout(() => navigate(ROUTES.courses), 900);
+    } catch {
+      setRemoveBusy(false);
+      setRemoveFailed(true);
+    }
+  }
+
   return (
-    <div className="flex h-full flex-col bg-paper-soft">
+    <div className="relative flex h-full flex-col bg-paper-soft">
       <div className="no-scrollbar flex-1 overflow-y-auto">
         {/* tinted header */}
         <div className="rounded-b-[1.625rem] bg-coral px-5 pb-[1.375rem] pt-[3.625rem] text-white">
@@ -250,12 +278,48 @@ export default function SavedCourseDetailPage() {
         </div>
       </div>
 
-      {/* sticky CTA */}
-      <div className="shrink-0 border-t border-ink/5 bg-paper-soft px-5 pb-7 pt-3">
-        <Button full onClick={handleViewOnMap}>
-          <RouteIcon size={18} /> {t('savedCourses.viewOnMap')}
-        </Button>
+      {/* 삭제 성공 안내 — pointer-events-none 오버레이라 레이아웃을 밀지 않고,
+          navigate(ROUTES.courses)로 넘어가기 직전(약 0.9초) 잠깐 보인다. */}
+      {removeToast && (
+        <div className="pointer-events-none absolute inset-x-0 bottom-24 z-10 flex justify-center px-5">
+          <div className="rounded-full bg-ink/85 px-4 py-2 text-xs font-semibold text-white shadow-lg">
+            {t('savedCourses.removed')}
+          </div>
+        </div>
+      )}
+
+      {/* sticky CTA — Remove(왼쪽, 중립) / View map(오른쪽, 코랄 주요 액션) 두
+          버튼. FilterSheet 하단의 Reset/Show results 버튼과 동일한 스타일
+          (h-[3.25rem], rounded-[0.9375rem], gap-3, flex-1 1:1)을 그대로 사용해
+          두 CTA의 위계가 앱 전체에서 일관되게 보이도록 한다. */}
+      <div className="shrink-0 border-t border-ink/5 bg-paper-soft px-5 pb-3 pt-3">
+        <div className="flex gap-3">
+          <button
+            type="button"
+            onClick={() => setRemoveConfirmOpen(true)}
+            className="flex h-[3.25rem] flex-1 items-center justify-center gap-2 rounded-[0.9375rem] border border-ink/10 bg-white text-base font-bold text-ink/80 transition-colors duration-100 active:bg-ink/[0.03]"
+          >
+            <TrashIcon size={18} />
+            {t('savedCourses.remove')}
+          </button>
+          <button
+            type="button"
+            onClick={handleViewOnMap}
+            className="flex h-[3.25rem] flex-1 items-center justify-center gap-2 rounded-[0.9375rem] bg-coral text-base font-bold text-white shadow-[0_2px_6px_rgba(248,72,31,0.18)] transition-colors duration-100 active:bg-[#E83D19]"
+          >
+            <RouteIcon size={18} />
+            {t('savedCourses.viewMap')}
+          </button>
+        </div>
       </div>
+
+      <RemoveSavedCourseConfirmModal
+        open={removeConfirmOpen}
+        onCancel={() => { if (!removeBusy) setRemoveConfirmOpen(false); }}
+        onConfirm={handleConfirmRemove}
+        busy={removeBusy}
+        failed={removeFailed}
+      />
     </div>
   );
 }

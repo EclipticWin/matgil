@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { ROUTES } from '../../../shared/constants/routes.js';
-import { WalkIcon, ClockIcon, ChevronRightIcon } from '../../../shared/components/Icon.jsx';
+import { WalkIcon, ClockIcon, ChevronRightIcon, BookmarkIcon } from '../../../shared/components/Icon.jsx';
 import { cn } from '../../../shared/utils/classNames.js';
 import { useLocale } from '../../../shared/i18n/LocaleProvider.jsx';
 import { useFoodCategories } from '../../explore/context/FoodCategoryProvider.jsx';
@@ -18,12 +18,30 @@ function getStopSummaryLabel(stop, locale, getCategoryLabel, t) {
   return stop.firstMenu || t('courseDetail.restaurantFallback');
 }
 
-function CourseCardInner({ course, isTodayPick = false, isActive = true }) {
+/** `topLeftLabel`/`bottomLeftSlot`/`onViewDetail` only exist for SavedRoutesTab's
+ *  `actionMode` (see CourseCard below) — every other caller leaves them unset and
+ *  gets the exact same rendering as before (TODAY'S PICK/isSaved indicator, plain
+ *  "View course" text with no button of its own). */
+function CourseCardInner({
+  course,
+  isTodayPick = false,
+  isActive = true,
+  isSaved = false,
+  topLeftLabel = null,
+  bottomLeftSlot = null,
+  onViewDetail = null,
+}) {
   const { locale, t } = useLocale();
   const { getCategoryLabel } = useFoodCategories();
   const { displayDistance, displayDuration } = getDisplayMetrics(course, locale);
   const stops = course.stops ?? [];
   const pathStops = stops.slice(0, 3);
+  // Odd tracks are stops (1fr each, share leftover width equally); even tracks
+  // are the connecting chevrons (auto-width) — 2 stops need 3 tracks, 3 stops
+  // need 5, one fewer arrow than stop.
+  const pathGridTemplateColumns = pathStops
+    .map((_, i) => (i < pathStops.length - 1 ? '1fr auto' : '1fr'))
+    .join(' ');
 
   // Same 'cafe' membership check courseBuilder's calcCafeBonus() already uses —
   // Math.max(0, ...) only guards against an unexpected data shape, never expected
@@ -31,18 +49,40 @@ function CourseCardInner({ course, isTodayPick = false, isActive = true }) {
   const cafeCount = stops.filter((s) => (s.matgilCategoryKeys ?? []).includes('cafe')).length;
   const restaurantCount = Math.max(0, stops.length - cafeCount);
 
-  return (
-    <div className="p-[0.9375rem]">
+  // isTodayPick and topLeftLabel (SavedRoutesTab's saved-date, via `actionMode`
+  // below) never co-occur in practice, but isTodayPick still wins if they ever
+  // did — a live "today's pick" badge is never itself a saved-list card.
+  // min-w-0/flex-1/truncate keep a long date from pushing the stops badge
+  // (already shrink-0) out of the row instead of wrapping under it.
+  const topLeftContent = isTodayPick ? (
+    <span className="font-display text-[0.625rem] font-extrabold uppercase tracking-wide text-coral">
+      {t('courseDetail.label')}
+    </span>
+  ) : topLeftLabel ? (
+    <span className="min-w-0 flex-1 truncate text-[0.68rem] font-semibold text-ink-faint">
+      {topLeftLabel}
+    </span>
+  ) : <span />;
+
+  const viewDetailContent = (
+    <>
+      {t('courseCard.viewDetails')}
+      <ChevronRightIcon size={11} aria-hidden="true" />
+    </>
+  );
+
+  // Everything above the bottom action row — pulled into its own fragment so
+  // `actionMode` (see CourseCard below) can wrap just this part in its own
+  // button, leaving the action row's delete/view-detail buttons as siblings
+  // rather than nested inside another button.
+  const upperContent = (
+    <>
       {/* badge row — TODAY'S PICK (first course only) on the left, stop count on
           the right. Reuses courseDetail.label ("★ Today's pick"/"★ 오늘의 추천"/
           "★ 今日推荐"), the same copy TodayCourseDetail's header already shows,
           instead of adding a near-duplicate key. */}
       <div className="flex min-h-[1.0625rem] items-center justify-between gap-2">
-        {isTodayPick ? (
-          <span className="font-display text-[0.625rem] font-extrabold uppercase tracking-wide text-coral">
-            {t('courseDetail.label')}
-          </span>
-        ) : <span />}
+        {topLeftContent}
         <span
           className={cn(
             'inline-block shrink-0 rounded-md px-2 py-[0.1875rem] font-display text-[0.625rem] font-extrabold uppercase tracking-wide',
@@ -74,43 +114,97 @@ function CourseCardInner({ course, isTodayPick = false, isActive = true }) {
           above from the route path below. */}
       <div className="mt-3.5 border-t border-ink/5" />
 
-      {/* Compact 1→2→3 path — replaces the old 3-thumbnail row. Each stop's own
-          box is min-w-0 flex-1 so long names truncate instead of overflowing;
-          the connecting chevron sits between boxes (never after the last one),
-          which naturally yields 0/1/2 arrows for 1/2/3 stops with no special-casing.
-          No min-height on the name paragraph (a previous version had one, to keep
-          every stop's height equal) — that reserved a 2nd line's worth of space
-          even for a short single-line name, reading as an oversized gap before the
-          category text below it. Letting the name hug its own content and keeping
-          the category margin small instead makes name+category read as one group,
-          at the cost of neighboring stops occasionally differing in height when
-          one name wraps and another doesn't. */}
-      <div className="mt-3.5 flex items-start gap-1">
-        {pathStops.map((stop, i) => (
-          <div key={stop.id ?? i} className="flex min-w-0 flex-1 items-start">
-            <div className="min-w-0 flex-1 text-center">
-              <span className="mx-auto flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-coral font-display text-[0.65rem] font-bold text-white">
+      {/* Compact 1→2→3 path — replaces the old 3-thumbnail row. A shared CSS Grid
+          (not independent per-stop flex columns) so the name row's height is one
+          value shared by every stop: if ANY stop's name wraps to 2 lines, that
+          row grows for all stops at once and every category label still starts
+          on the same horizontal line; when every name fits on 1 line, the row
+          shrinks back down instead of always reserving a fixed 2-line height (no
+          JS text-length guessing, no DOM-measuring effect — the grid track sizes
+          itself from actual rendered content). Each stop is a `contents` wrapper
+          (adds no box of its own) so its badge/name/category cells sit directly
+          in the grid at column `i*2+1`, rows 1/2/3; the connecting chevrons live
+          in their own `auto`-width wrapper columns (even tracks) so they line up
+          with the badge row without needing the icon component itself to accept
+          a style prop. Long names still truncate (min-w-0 lets the 1fr track
+          shrink them) and stay capped at 2 lines (line-clamp-2). */}
+      <div className="mt-3.5 grid items-start gap-x-1" style={{ gridTemplateColumns: pathGridTemplateColumns }}>
+        {pathStops.map((stop, i) => {
+          const col = i * 2 + 1;
+          return (
+            <div key={stop.id ?? i} className="contents">
+              <span
+                style={{ gridColumn: col, gridRow: 1 }}
+                className="mx-auto flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-coral font-display text-[0.65rem] font-bold text-white"
+              >
                 {i + 1}
               </span>
-              <p className="mt-2 line-clamp-2 text-[0.75rem] font-bold leading-snug text-ink/75">
+              <p
+                style={{ gridColumn: col, gridRow: 2 }}
+                className="mt-2 line-clamp-2 min-w-0 text-center text-[0.75rem] font-bold leading-snug text-ink/75"
+              >
                 {getLocalizedStopName(stop, locale)}
               </p>
-              <p className="mt-1 truncate text-[0.68rem] text-ink-faint">
+              <p
+                style={{ gridColumn: col, gridRow: 3 }}
+                className="mt-1 min-w-0 truncate text-center text-[0.68rem] text-ink-faint"
+              >
                 {getStopSummaryLabel(stop, locale, getCategoryLabel, t)}
               </p>
             </div>
-            {i < pathStops.length - 1 && (
-              <ChevronRightIcon size={9} className="mt-2 shrink-0 text-ink-faint" aria-hidden="true" />
-            )}
+          );
+        })}
+        {pathStops.slice(0, -1).map((stop, i) => (
+          <div
+            key={`arrow-${stop.id ?? i}`}
+            style={{ gridColumn: i * 2 + 2, gridRow: 1 }}
+            className="flex justify-center"
+          >
+            <ChevronRightIcon size={9} className="mt-2 shrink-0 text-ink-faint" aria-hidden="true" />
           </div>
         ))}
       </div>
+    </>
+  );
 
-      <div className="mt-3 flex justify-end">
-        <span className="inline-flex items-center gap-0.5 text-[0.75rem] font-bold text-coral">
-          {t('courseCard.viewDetails')}
-          <ChevronRightIcon size={11} aria-hidden="true" />
-        </span>
+  return (
+    <div className="p-[0.9375rem]">
+      {onViewDetail ? (
+        <button type="button" onClick={onViewDetail} className="block w-full text-left">
+          {upperContent}
+        </button>
+      ) : upperContent}
+
+      {/* Left slot is either a status indicator (isSaved — never its own button,
+          since the whole card above is already the click target) or, in
+          `actionMode`, a fully independent delete button/confirm UI
+          (bottomLeftSlot) that sits as a SIBLING of the button above, never
+          nested inside it. A fixed min-height keeps "View course"/코스 상세
+          보기 pinned to the same spot regardless of which of these — or
+          neither — is present. */}
+      <div className="mt-3 flex min-h-[1.125rem] items-center justify-between gap-2">
+        {bottomLeftSlot ?? (isSaved ? (
+          // Only the icon carries an explicit coral color — the wrapper/text stay
+          // plain ink-faint (a neutral gray, not a translucent coral) so "저장됨"
+          // reads as secondary info, never competing with the title/metrics above it.
+          <span className="inline-flex items-center gap-1 text-[0.72rem] font-bold text-ink-faint">
+            <BookmarkIcon active size={13} className="text-coral" />
+            {t('savedCourses.saved')}
+          </span>
+        ) : <span />)}
+        {onViewDetail ? (
+          <button
+            type="button"
+            onClick={onViewDetail}
+            className="inline-flex shrink-0 items-center gap-0.5 text-[0.75rem] font-bold text-ink-soft transition-colors hover:text-ink active:text-ink"
+          >
+            {viewDetailContent}
+          </button>
+        ) : (
+          <span className="inline-flex shrink-0 items-center gap-0.5 text-[0.75rem] font-bold text-ink-soft transition-colors hover:text-ink active:text-ink">
+            {viewDetailContent}
+          </span>
+        )}
       </div>
     </div>
   );
@@ -126,8 +220,44 @@ function CourseCardInner({ course, isTodayPick = false, isActive = true }) {
  *  Pass `isActive={false}` to show a neutral (muted) stops badge.
  *  Pass `isTodayPick` to show the "★ Today's pick" badge — independent of
  *  `isActive` (which tracks "same as the map's currently-active course", not
- *  "first in the list"). */
-export default function CourseCard({ course, disableLink = false, onClick, isActive = true, isTodayPick = false }) {
+ *  "first in the list").
+ *  Pass `isSaved` to show a "Saved" indicator next to "View course" — only
+ *  meaningful for NearbySheet's live recommendation list (which knows whether
+ *  each course is already saved); SavedRoutesTab's own list never passes it,
+ *  since every card there is saved by definition.
+ *  Pass `actionMode` (SavedRoutesTab only) to get an independent bottom action
+ *  row instead of one card-wide button/Link: `onClick` still opens the course
+ *  detail, but now only the content above the action row (and the "코스 상세
+ *  보기" button within it) triggers it — `deleteSlot` renders its own
+ *  completely separate delete button/confirm UI as a sibling, so a delete click
+ *  can never accidentally navigate and no button ends up nested inside another.
+ *  `savedDateLabel` replaces the TODAY'S PICK slot with a saved-date string. */
+export default function CourseCard({
+  course,
+  disableLink = false,
+  onClick,
+  isActive = true,
+  isTodayPick = false,
+  isSaved = false,
+  actionMode = false,
+  savedDateLabel = null,
+  deleteSlot = null,
+}) {
+  if (actionMode) {
+    return (
+      <div className="overflow-hidden rounded-3xl bg-white shadow-[0_4px_14px_rgba(38,26,17,0.06),0_12px_30px_rgba(38,26,17,0.048)]">
+        <CourseCardInner
+          course={course}
+          isActive={isActive}
+          isTodayPick={isTodayPick}
+          topLeftLabel={savedDateLabel}
+          bottomLeftSlot={deleteSlot}
+          onViewDetail={onClick}
+        />
+      </div>
+    );
+  }
+
   if (disableLink) {
     if (onClick) {
       return (
@@ -137,13 +267,13 @@ export default function CourseCard({ course, disableLink = false, onClick, isAct
           onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') onClick(); }}
           className="block w-full overflow-hidden rounded-3xl bg-white shadow-[0_4px_14px_rgba(38,26,17,0.06),0_12px_30px_rgba(38,26,17,0.048)] text-left"
         >
-          <CourseCardInner course={course} isActive={isActive} isTodayPick={isTodayPick} />
+          <CourseCardInner course={course} isActive={isActive} isTodayPick={isTodayPick} isSaved={isSaved} />
         </button>
       );
     }
     return (
       <div className="block overflow-hidden rounded-3xl bg-white shadow-[0_4px_14px_rgba(38,26,17,0.06),0_12px_30px_rgba(38,26,17,0.048)]">
-        <CourseCardInner course={course} isActive={isActive} isTodayPick={isTodayPick} />
+        <CourseCardInner course={course} isActive={isActive} isTodayPick={isTodayPick} isSaved={isSaved} />
       </div>
     );
   }
@@ -153,7 +283,7 @@ export default function CourseCard({ course, disableLink = false, onClick, isAct
       to={ROUTES.courseDetail(course.id)}
       className="block overflow-hidden rounded-3xl bg-white shadow-[0_4px_14px_rgba(38,26,17,0.06),0_12px_30px_rgba(38,26,17,0.048)]"
     >
-      <CourseCardInner course={course} isActive={isActive} isTodayPick={isTodayPick} />
+      <CourseCardInner course={course} isActive={isActive} isTodayPick={isTodayPick} isSaved={isSaved} />
     </Link>
   );
 }

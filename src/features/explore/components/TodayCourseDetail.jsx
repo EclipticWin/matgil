@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Thumbnail from '../../../shared/components/Thumbnail.jsx';
 import {
   BackIcon,
@@ -7,7 +7,6 @@ import {
   ClockIcon,
   ChevronRightIcon,
   BookmarkIcon,
-  CheckIcon,
 } from '../../../shared/components/Icon.jsx';
 import { useLocale } from '../../../shared/i18n/LocaleProvider.jsx';
 import { pickTranslated } from '../../../shared/i18n/localeFallback.js';
@@ -18,9 +17,11 @@ import { fetchPlaceBookmarkStatsBatch } from '../../places/services/placeBookmar
 import Spinner from '../../../shared/components/Spinner.jsx';
 
 /** Map Bottom Sheet 내부 코스 상세 콘텐츠.
- *  onSave: () => void — save button callback (omit to hide button)
- *  saveState: 'idle' | 'checking' | 'saving' | 'saved' | 'failed' | 'duplicate' */
-export default function TodayCourseDetail({ course, selectedLocation, onBack, onSelectPlace, onSave, saveState = 'idle' }) {
+ *  onToggleSave: () => void — save/remove button callback (omit to hide button).
+ *  Fires on every click regardless of saveState — the caller (NearbySheet) decides
+ *  whether that means "save" or "remove" based on the saveState it's holding.
+ *  saveState: 'idle' | 'checking' | 'saving' | 'saved' | 'failed' | 'duplicate' | 'removing' */
+export default function TodayCourseDetail({ course, selectedLocation, onBack, onSelectPlace, onToggleSave, saveState = 'idle' }) {
   const { locale, t } = useLocale();
   const stopCount = course.stopCount ?? course.stops.length;
   const locationLabel = pickTranslated(
@@ -66,11 +67,29 @@ export default function TodayCourseDetail({ course, selectedLocation, onBack, on
     return () => { cancelled = true; };
   }, [stopIdsKey]);
 
-  const isBusy = saveState === 'checking' || saveState === 'saving';
+  const isRemoving = saveState === 'removing';
+  const isBusy = saveState === 'checking' || saveState === 'saving' || isRemoving;
   const isSaved = saveState === 'saved';
 
+  // Transient "removed"/"remove failed" feedback — fires only on the genuine
+  // 'removing' -> 'idle' (success) or 'removing' -> 'saved' (failure, per
+  // NearbySheet's handleRemove restoring saveState on error) edge, never on
+  // mount, since prevSaveStateRef starts equal to the current saveState.
+  const prevSaveStateRef = useRef(saveState);
+  const [removeFeedback, setRemoveFeedback] = useState(null); // 'removed' | 'failed' | null
+
+  useEffect(() => {
+    const prev = prevSaveStateRef.current;
+    prevSaveStateRef.current = saveState;
+    if (prev !== 'removing') return;
+    if (saveState !== 'idle' && saveState !== 'saved') return;
+    setRemoveFeedback(saveState === 'idle' ? 'removed' : 'failed');
+    const timer = setTimeout(() => setRemoveFeedback(null), 2500);
+    return () => clearTimeout(timer);
+  }, [saveState]);
+
   return (
-    <div className="flex h-full flex-col">
+    <div className="relative flex h-full flex-col">
       {/* 헤더 */}
       <div className="shrink-0 px-5 pb-3 pt-4">
         <button
@@ -165,30 +184,60 @@ export default function TodayCourseDetail({ course, selectedLocation, onBack, on
         </div>
       </div>
 
-      {/* Save 버튼 — onSave가 있을 때만 표시 */}
-      {onSave && (
-        <div className="shrink-0 border-t border-ink/5 bg-paper-soft px-5 pb-5 pt-3">
+      {/* 저장 취소 완료/실패 안내 — pointer-events-none absolute 오버레이라 CTA
+          위쪽 여백을 밀지 않고, 2.5초 후 스스로 사라진다(약 pt-3/pb-3 CTA 높이
+          바로 위, bottom-20). */}
+      {removeFeedback && (
+        <div className="pointer-events-none absolute inset-x-0 bottom-20 z-10 flex justify-center px-5">
+          <div
+            className={[
+              'rounded-full px-4 py-2 text-xs font-semibold text-white shadow-lg',
+              removeFeedback === 'removed' ? 'bg-ink/85' : 'bg-coral/90',
+            ].join(' ')}
+          >
+            {removeFeedback === 'removed' ? t('savedCourses.removed') : t('savedCourses.removeFailed')}
+          </div>
+        </div>
+      )}
+
+      {/* Save/Saved 토글 버튼 — onToggleSave가 있을 때만 표시. isSaved여도 더 이상
+          disabled으로 잠그지 않는다(이전에는 disabled={isBusy || isSaved}라서 저장
+          취소가 불가능했다) — 클릭 시 어떤 동작인지는 NearbySheet의 handleToggleSave
+          가 saveState를 보고 판단한다. */}
+      {onToggleSave && (
+        <div className="shrink-0 border-t border-ink/5 bg-paper-soft px-5 pb-3 pt-3">
           <button
             type="button"
-            disabled={isBusy || isSaved}
-            onClick={onSave}
+            disabled={isBusy}
+            aria-busy={isBusy}
+            onClick={onToggleSave}
+            aria-label={
+              isRemoving
+                ? t('savedCourses.removing')
+                : isSaved
+                ? t('savedCourses.savedAriaLabel')
+                : isBusy
+                ? t('savedCourses.saving')
+                : t('savedCourses.save')
+            }
+            title={isSaved ? t('savedCourses.savedAriaLabel') : undefined}
             className={[
               'inline-flex h-[3.25rem] w-full items-center justify-center gap-2 rounded-2xl px-5 text-base font-bold transition-colors disabled:cursor-default',
-              isSaved
-                ? 'bg-stone-100 text-stone-500'
+              isSaved || isRemoving
+                ? 'cursor-pointer bg-stone-100 text-stone-500 hover:bg-stone-200 active:bg-stone-300'
                 : saveState === 'failed' || saveState === 'duplicate'
                 ? 'bg-stone-100 text-stone-400'
                 : 'bg-coral text-white shadow-[0_2px_6px_rgba(248,72,31,0.16)] active:bg-coral-deep disabled:bg-coral/40 disabled:shadow-none',
             ].join(' ')}
           >
             {isBusy ? (
-              <Spinner className="h-5 w-5 border-white/30 border-t-white" />
-            ) : isSaved ? (
-              <CheckIcon size={18} />
+              <Spinner className={isSaved || isRemoving ? 'h-5 w-5 border-stone-300 border-t-stone-500' : 'h-5 w-5 border-white/30 border-t-white'} />
             ) : (
-              <BookmarkIcon size={18} />
+              <BookmarkIcon active={isSaved} size={18} />
             )}
-            {isBusy
+            {isRemoving
+              ? t('savedCourses.removing')
+              : saveState === 'saving' || saveState === 'checking'
               ? t('savedCourses.saving')
               : isSaved
               ? t('savedCourses.saved')

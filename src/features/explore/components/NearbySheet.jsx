@@ -3,12 +3,13 @@ import { useLocation } from 'react-router-dom';
 import CourseCard from '../../courses/components/CourseCard.jsx';
 import TodayCourseDetail from './TodayCourseDetail.jsx';
 import PlaceDetailSheet from './PlaceDetailSheet.jsx';
-import { CheckIcon, ChevronRightIcon, CloseIcon, LocateIcon } from '../../../shared/components/Icon.jsx';
+import { ChevronRightIcon, CloseIcon, LocateIcon } from '../../../shared/components/Icon.jsx';
 import { cn } from '../../../shared/utils/classNames.js';
 import { useLocale } from '../../../shared/i18n/LocaleProvider.jsx';
 import { useAuth } from '../../auth/hooks/useAuth.jsx';
 import { useAuthPrompt } from '../../auth/hooks/useAuthPrompt.jsx';
-import { saveCourse, checkCourseAlreadySaved, fetchSavedCourses, isSameCourse, DuplicateCourseError } from '../../courses/services/savedCourseService.js';
+import { useFoodCategories } from '../context/FoodCategoryProvider.jsx';
+import { saveCourse, softDeleteSavedCourse, checkCourseAlreadySaved, fetchSavedCourses, isSameCourse, DuplicateCourseError } from '../../courses/services/savedCourseService.js';
 import { getLocalizedLocationLabel, getLocationDisplayName, localizeSnapshotForDisplay } from '../../courses/utils/courseDisplay.js';
 import { normalizeCourseMetrics } from '../../courses/utils/courseMetrics.js';
 import { buildReturnTo } from '../../../shared/utils/authRedirect.js';
@@ -40,6 +41,7 @@ export default function NearbySheet({
   const { locale, t } = useLocale();
   const { user } = useAuth();
   const { openAuthPrompt } = useAuthPrompt();
+  const { getCategoryLabel } = useFoodCategories();
   const location = useLocation();
 
   const peek = vh ? Math.round(vh * 0.44) : 300;
@@ -67,7 +69,7 @@ export default function NearbySheet({
   const sentinelRef = useRef(null);
   const initialPlaceConsumedRef = useRef(false);
 
-  // 'idle' | 'checking' | 'saving' | 'saved' | 'failed' | 'duplicate'
+  // 'idle' | 'checking' | 'saving' | 'saved' | 'failed' | 'duplicate' | 'removing'
   const [saveState, setSaveState] = useState('idle');
   const [savedRows, setSavedRows] = useState([]);
 
@@ -102,7 +104,7 @@ export default function NearbySheet({
   // straight to that place's detail sheet instead of stopping at the course detail view.
   useEffect(() => {
     if (!initialCourse || initialPlaceId) return;
-    const localized = localizeSnapshotForDisplay(initialCourse, locale) ?? initialCourse;
+    const localized = localizeSnapshotForDisplay(initialCourse, locale, { getCategoryLabel }) ?? initialCourse;
     openDetail(localized);
   }, [initialCourse]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -324,6 +326,42 @@ export default function NearbySheet({
     }
   }
 
+  // Un-saves the currently-open course — finds its saved row by place-set match
+  // (isSameCourse, same rule the "already saved" check/badge already use) and soft-
+  // deletes that row's id. No new Supabase query beyond the existing
+  // softDeleteSavedCourse(); route_signature/duplicate-detection are untouched.
+  async function handleRemove() {
+    if (saveState === 'removing') return;
+    if (!user) {
+      openAuthPrompt({ messageKey: 'savedCourses.loginToSave', returnTo: buildReturnTo(location) });
+      return;
+    }
+    const savedRow = savedRows.find((row) => isSameCourse(selectedCourse, row));
+    if (!savedRow) { setSaveState('idle'); return; }
+
+    setSaveState('removing');
+    try {
+      await softDeleteSavedCourse({ userId: user.id, courseId: savedRow.id });
+      setSavedRows((prev) => prev.filter((row) => row.id !== savedRow.id));
+      setSaveState('idle');
+    } catch {
+      // Restore to 'saved' (not 'failed') — the row is still genuinely saved;
+      // TodayCourseDetail shows the remove-failed toast off this same transition
+      // (see its 'removing' -> 'saved' edge) without needing a separate error state.
+      setSaveState('saved');
+    }
+  }
+
+  // Single callback for TodayCourseDetail's toggle button — which of the two
+  // actions a click means depends entirely on the saveState already held here.
+  function handleToggleSave() {
+    if (saveState === 'saved') {
+      handleRemove();
+    } else {
+      handleSave();
+    }
+  }
+
   return (
     <>
       {/* GPS error modal */}
@@ -432,7 +470,7 @@ export default function NearbySheet({
                 selectedLocation={selectedLocation}
                 onBack={closeDetail}
                 onSelectPlace={openPlace}
-                onSave={handleSave}
+                onToggleSave={handleToggleSave}
                 saveState={saveState}
               />
             </div>
@@ -485,17 +523,12 @@ export default function NearbySheet({
                                 disableLink
                                 isActive={isActive}
                                 isTodayPick={isTodayPick}
+                                isSaved={alreadySaved}
                                 onClick={() => {
                                   onSelectCourse?.(course);
                                   openDetail(course, { live: true });
                                 }}
                               />
-                              {alreadySaved && (
-                                <div className="pointer-events-none absolute right-3 top-3 flex items-center gap-1 rounded-full bg-coral px-2 py-0.5 text-[0.6rem] font-bold text-white shadow-sm">
-                                  <CheckIcon size={9} />
-                                  {t('savedCourses.saved')}
-                                </div>
-                              )}
                             </div>
                           );
                         })}

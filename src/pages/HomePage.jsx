@@ -8,6 +8,7 @@ import {
 } from '../features/explore/data/exploreOptions.js';
 import { DEFAULT_LOCATION, sortPlacesByDistance } from '../features/explore/data/locations.js';
 import { buildRecommendedCourses } from '../features/explore/data/courseBuilder.js';
+import { useFoodCategories } from '../features/explore/context/FoodCategoryProvider.jsx';
 import { findAnchorPlace } from '../features/explore/services/anchorMatchService.js';
 import { reverseGeocodeCoords } from '../features/explore/services/reverseGeocodeService.js';
 import { consumeLastPlaceView } from '../features/explore/data/lastPlaceView.js';
@@ -26,6 +27,7 @@ import { PinIcon, FunnelIcon, FlameIcon, GlobeIcon } from '../shared/components/
 /** Map tab — full-bleed map with floating controls and a draggable "Eat near here" sheet. */
 export default function HomePage() {
   const { locale, t } = useLocale();
+  const { getCategoryLabel } = useFoodCategories();
   const { state: routeState } = useLocation();
   const navigate = useNavigate();
   const [filters, setFilters] = useState(EMPTY_FILTERS);
@@ -113,8 +115,8 @@ export default function HomePage() {
   );
 
   const recommendedCourses = useMemo(
-    () => buildRecommendedCourses({ places: nearby, selectedLocation, selectedFoodTypes: filters.cat, maxCourses: 9, anchorPlace, locale }),
-    [nearby, selectedLocation, filters.cat, anchorPlace, locale],
+    () => buildRecommendedCourses({ places: nearby, selectedLocation, selectedFoodTypes: filters.cat, maxCourses: 9, anchorPlace, locale, getCategoryLabel }),
+    [nearby, selectedLocation, filters.cat, anchorPlace, locale, getCategoryLabel],
   );
 
   // Reset to first course whenever location, food-type, or minimum-rating filter changes.

@@ -1,5 +1,5 @@
 import { calcDistanceKm } from './locations.js';
-import { getLocalizedCourseTitle, appendCourseSequenceNumber, getLocationDisplayName } from '../../courses/utils/courseDisplay.js';
+import { getLiveRecommendedCourseTitle, resolveLiveCourseTitleCollisions } from '../../courses/utils/courseDisplay.js';
 
 const DEFAULT_STOP_COUNT = 3;
 const COURSE_CANDIDATE_LIMIT = 20;
@@ -148,7 +148,7 @@ function selectCandidates(validPlaces, selectedLocation) {
 
 // ─── private: build one course from a given candidate array ──────────────────
 
-function buildOneCourse(candidates, selectedLocation, foodTypes, courseId, accent, anchorPlace = null, locale = 'en') {
+function buildOneCourse(candidates, selectedLocation, foodTypes, courseId, accent, anchorPlace = null, locale = 'en', getCategoryLabel = null) {
   if (candidates.length === 0) return null;
 
   const stopCount = Math.min(DEFAULT_STOP_COUNT, candidates.length);
@@ -201,15 +201,19 @@ function buildOneCourse(candidates, selectedLocation, foodTypes, courseId, accen
   }
 
   const { stops, score, dist } = chosen;
-  // getLocationDisplayName() prefers the reverse-geocoded district over the generic
-  // "Selected area" label once one is available (map-center anchors only — see its
-  // doc comment in courseDisplay.js) so the title reflects the actual place instead
-  // of staying generic forever.
-  const title = getLocalizedCourseTitle(stops, getLocationDisplayName(selectedLocation, locale), locale);
+  // getLiveRecommendedCourseTitle() handles location display internally (still via
+  // the unchanged getLocationDisplayName()/getLocalizedLocationLabel() — only the
+  // theme part of the title is new here) and returns titleTheme metadata that
+  // saveCourse() preserves into course_snapshot for later re-localization.
+  const { title, titleTheme } = getLiveRecommendedCourseTitle(stops, selectedLocation, locale, {
+    selectedFoodTypes: foodTypes,
+    getCategoryLabel,
+  });
 
   return {
     id: courseId,
     title,
+    titleTheme,
     stops: stops.map((stop, i) => ({ ...stop, tint: TINTS[i % TINTS.length] })),
     km: `${dist.toFixed(1)} km`,
     hr: ESTIMATED_TIME[stops.length] ?? '~1.5 hr',
@@ -250,6 +254,7 @@ export function buildRecommendedCourses({
   maxCourses = 3,
   anchorPlace = null,
   locale = 'en',
+  getCategoryLabel = null,
 }) {
   const foodTypes = Array.isArray(selectedFoodTypes) ? selectedFoodTypes : [];
   const validPlaces = places.filter((p) => p && p.latitude != null && p.longitude != null);
@@ -282,6 +287,7 @@ export function buildRecommendedCourses({
       COURSE_ACCENTS[i % COURSE_ACCENTS.length],
       useAnchor ? anchorPlace : null,
       locale,
+      getCategoryLabel,
     );
     if (!course) break;
 
@@ -290,26 +296,10 @@ export function buildRecommendedCourses({
   }
 
   // Multiple courses for the same anchor CAN end up with the exact same title
-  // (detectTitleType() inside getLocalizedCourseTitle buckets by stops' categories,
-  // and several courses easily land in the same bucket — e.g. three "Itaewon Food
-  // Walk" cards with no way to tell them apart) — but usually don't, since distinct
-  // stop combinations often land in distinct buckets. Numbering EVERY card whenever
-  // there's more than one (the previous behavior) reads as nonsense once titles are
-  // already distinct — "... Cafe & Bites 1", "... Noodle Walk 2", "... Food Walk 3"
-  // all have a meaningless trailing number. Only the courses that share the exact
-  // same generated title get numbered, 1-based within that shared-title group, in
-  // stable array order (the courses array is already fixed by scoring above).
-  const titleCounts = new Map();
-  for (const course of courses) {
-    titleCounts.set(course.title, (titleCounts.get(course.title) ?? 0) + 1);
-  }
-  const seenPerTitle = new Map();
-  for (const course of courses) {
-    if ((titleCounts.get(course.title) ?? 0) <= 1) continue;
-    const sequenceNumber = (seenPerTitle.get(course.title) ?? 0) + 1;
-    seenPerTitle.set(course.title, sequenceNumber);
-    course.title = appendCourseSequenceNumber(course.title, sequenceNumber);
-  }
-
-  return courses;
+  // (several courses easily land on the same theme candidates) — but usually
+  // don't, since distinct stop combinations often surface distinct menu/category
+  // signals. resolveLiveCourseTitleCollisions() disambiguates any that do collide
+  // using each course's own real data (an unused theme candidate, then a first-stop
+  // name suffix) instead of a meaningless trailing sequence number.
+  return resolveLiveCourseTitleCollisions(courses, selectedLocation, locale);
 }
