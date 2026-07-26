@@ -24,6 +24,7 @@ import BookmarkPage from '../pages/BookmarkPage.jsx';
 import MyPage from '../pages/MyPage.jsx';
 import SavedRoutesPage from '../pages/SavedRoutesPage.jsx';
 import SavedPlacesPage from '../pages/SavedPlacesPage.jsx';
+import SavedPhrasesPage from '../pages/SavedPhrasesPage.jsx';
 
 /**
  * Two route groups:
@@ -72,6 +73,7 @@ export default function AppRouter() {
         <Route path={ROUTES.my} element={<MyPage />} />
         <Route path={ROUTES.mySavedRoutes} element={<SavedRoutesPage />} />
         <Route path={ROUTES.mySavedPlaces} element={<SavedPlacesPage />} />
+        <Route path={ROUTES.mySavedPhrases} element={<SavedPhrasesPage />} />
       </Route>
 
       <Route path="*" element={<Navigate to={ROUTES.home} replace />} />

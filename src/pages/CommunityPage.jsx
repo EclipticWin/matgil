@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useAuth } from '../features/auth/hooks/useAuth.jsx';
 import { useAuthPrompt } from '../features/auth/hooks/useAuthPrompt.jsx';
@@ -13,6 +13,7 @@ import {
   unlikePost,
   normalizeDbPost,
 } from '../features/community/services/communityService.js';
+import { getPlacesByIds } from '../api/placeApi.js';
 import CommunityTabs from '../features/community/components/CommunityTabs.jsx';
 import PostCard from '../features/community/components/PostCard.jsx';
 import PostComposer from '../features/community/components/PostComposer.jsx';
@@ -30,10 +31,12 @@ export default function CommunityPage() {
 
   const [filter, setFilter] = useState('all');
   const [dbPosts, setDbPosts] = useState(null);
+  const [placesById, setPlacesById] = useState(new Map());
   const [likedPostIds, setLikedPostIds] = useState(new Set());
   const [composing, setComposing] = useState(false);
   const [editingPost, setEditingPost] = useState(null);
   const [commentPost, setCommentPost] = useState(null); // post object for CommentBottomSheet
+  const placesRequestSeqRef = useRef(0);
 
   const isPopular = filter === 'popular';
 
@@ -45,6 +48,32 @@ export default function CommunityPage() {
       setDbPosts([]);
     }
   }, [isPopular]);
+
+  // Batch-fetch every post's linked place in ONE call (never per-post), keyed
+  // by locale so ko/en/zh-CN switches re-fetch with locale-correct name/address.
+  // A stale response (locale/post list changed again before this resolves) is
+  // discarded via placesRequestSeqRef so it can never clobber a newer result.
+  // A failed fetch clears placesById (post.place becomes null for all posts)
+  // but never touches dbPosts — the posts themselves stay visible, only their
+  // place area disappears.
+  useEffect(() => {
+    if (!dbPosts) return;
+    const placeIds = [...new Set(dbPosts.map((p) => p.place_id).filter((id) => id != null))];
+    const mySeq = (placesRequestSeqRef.current += 1);
+    if (placeIds.length === 0) {
+      setPlacesById(new Map());
+      return;
+    }
+    getPlacesByIds(placeIds, locale)
+      .then((places) => {
+        if (placesRequestSeqRef.current !== mySeq) return;
+        setPlacesById(new Map(places.map((place) => [place.id, place])));
+      })
+      .catch(() => {
+        if (placesRequestSeqRef.current !== mySeq) return;
+        setPlacesById(new Map());
+      });
+  }, [dbPosts, locale]);
 
   const loadLikedIds = useCallback(async () => {
     if (!user) { setLikedPostIds(new Set()); return; }
@@ -59,10 +88,13 @@ export default function CommunityPage() {
   useEffect(() => { loadPosts(); }, [loadPosts]);
   useEffect(() => { loadLikedIds(); }, [loadLikedIds]);
 
-  const sourcePosts =
-    dbPosts && dbPosts.length > 0
-      ? dbPosts.map(normalizeDbPost)
-      : COMMUNITY_POSTS;
+  const sourcePosts = useMemo(
+    () =>
+      dbPosts && dbPosts.length > 0
+        ? dbPosts.map((p, i) => normalizeDbPost(p, i, placesById))
+        : COMMUNITY_POSTS,
+    [dbPosts, placesById],
+  );
   const posts = filterPosts(sourcePosts, filter);
 
   // — compose —
@@ -71,8 +103,8 @@ export default function CommunityPage() {
     setComposing(true);
   };
 
-  const handleSubmit = async ({ category, content, imageUrls = [] }) => {
-    await createPost({ userId: user.id, category, locale, content, authorName: user.name, imageUrls });
+  const handleSubmit = async ({ category, content, imageUrls = [], placeId = null }) => {
+    await createPost({ userId: user.id, category, locale, content, authorName: user.name, imageUrls, placeId });
     setComposing(false);
     loadPosts();
   };
@@ -80,8 +112,8 @@ export default function CommunityPage() {
   // — edit —
   const handleEdit = (post) => setEditingPost(post);
 
-  const handleEditSubmit = async ({ category, content, imageUrls }) => {
-    await updatePost(editingPost.id, { category, content, imageUrls });
+  const handleEditSubmit = async ({ category, content, imageUrls, placeId }) => {
+    await updatePost(editingPost.id, { category, content, imageUrls, placeId });
     setEditingPost(null);
     loadPosts();
   };
@@ -188,6 +220,8 @@ export default function CommunityPage() {
           initialContent={editingPost.text}
           initialCategory={editingPost.kind}
           initialImageUrls={editingPost.imageUrls}
+          initialPlaceId={editingPost.placeId}
+          initialPlace={editingPost.place}
           onSubmit={handleEditSubmit}
           onClose={() => setEditingPost(null)}
           userId={user?.id}

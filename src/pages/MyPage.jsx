@@ -183,6 +183,15 @@ export default function MyPage() {
         />
       </MySection>
 
+      {/* 나의 표현 — saved phrases, its own route (SavedPhrasesPage) like the
+          travel section above rather than an in-page view. */}
+      <MySection title={t('my.phrasesSection')}>
+        <MyRow
+          label={t('savedPhrases.title')}
+          onClick={() => navigate(ROUTES.mySavedPhrases)}
+        />
+      </MySection>
+
       {/* 나의 커뮤니티 활동 */}
       <MySection title={t('my.communitySection')}>
         <MyRow

@@ -1,11 +1,23 @@
 import { useState, useEffect, useRef } from 'react';
 import { cn } from '../../../shared/utils/classNames.js';
 import Button from '../../../shared/components/Button.jsx';
-import { CloseIcon } from '../../../shared/components/Icon.jsx';
+import { CloseIcon, PinIcon } from '../../../shared/components/Icon.jsx';
 import { useLocale } from '../../../shared/i18n/LocaleProvider.jsx';
 import { pickTranslated } from '../../../shared/i18n/localeFallback.js';
 import { uploadPostImages } from '../services/communityService.js';
 import { WRITE_CATEGORIES } from '../data/communityConstants.js';
+import CommunityPlacePicker from './CommunityPlacePicker.jsx';
+
+/** initialPlace (full {id, name, address, ...} object, from a batch place
+ *  fetch) wins when present. If only initialPlaceId is known — the post has a
+ *  place_id but that batch fetch failed or hasn't resolved it — a place-id-only
+ *  stub is kept instead of dropping the link, so saving the post without
+ *  touching location doesn't silently clear place_id. */
+function resolveInitialPlace(initialPlace, initialPlaceId) {
+  if (initialPlace) return initialPlace;
+  if (initialPlaceId != null) return { id: initialPlaceId, name: null, address: null };
+  return null;
+}
 
 export default function PostComposer({
   onSubmit,
@@ -14,6 +26,8 @@ export default function PostComposer({
   initialContent = '',
   initialCategory = 'general',
   initialImageUrls = [],
+  initialPlaceId = null,
+  initialPlace = null,
   userId,
 }) {
   const { locale, t } = useLocale();
@@ -24,6 +38,8 @@ export default function PostComposer({
   const [existingUrls, setExistingUrls] = useState(initialImageUrls ?? []);
   const [newFiles, setNewFiles] = useState([]);
   const [newPreviews, setNewPreviews] = useState([]);
+  const [selectedPlace, setSelectedPlace] = useState(() => resolveInitialPlace(initialPlace, initialPlaceId));
+  const [pickerOpen, setPickerOpen] = useState(false);
   const fileInputRef = useRef(null);
 
   useEffect(() => {
@@ -34,7 +50,9 @@ export default function PostComposer({
     setExistingUrls(initialImageUrls ?? []);
     setNewFiles([]);
     setNewPreviews([]);
-  }, [initialContent, initialCategory]);
+    setSelectedPlace(resolveInitialPlace(initialPlace, initialPlaceId));
+    setPickerOpen(false);
+  }, [initialContent, initialCategory, initialPlace, initialPlaceId]);
 
   useEffect(() => {
     const urls = newPreviews;
@@ -81,7 +99,7 @@ export default function PostComposer({
         uploadedUrls = await uploadPostImages(newFiles, userId);
       }
       const imageUrls = [...existingUrls, ...uploadedUrls];
-      await onSubmit({ category, content: content.trim(), imageUrls });
+      await onSubmit({ category, content: content.trim(), imageUrls, placeId: selectedPlace?.id ?? null });
     } catch (err) {
       const msg = err?.message || '';
       if (msg === 'tooMany' || msg.includes('many')) setError(t('community.tooManyImages'));
@@ -142,8 +160,47 @@ export default function PostComposer({
           value={content}
           onChange={(e) => setContent(e.target.value)}
           rows={5}
-          className="w-full resize-none rounded-2xl border-[1.5px] border-stone-200 bg-white p-4 text-[0.95rem] text-ink outline-none placeholder:text-ink-faint focus:border-stone-400 focus:ring-1 focus:ring-stone-200"
+          className="w-full resize-none rounded-2xl border border-stone-200/70 bg-white p-4 text-[0.95rem] text-ink outline-none placeholder:text-ink-faint focus:border-stone-300 focus:ring-1 focus:ring-stone-200/60"
         />
+
+        {/* place section: selected place chip, or "add place" button */}
+        {selectedPlace ? (
+          <div className="mt-3 flex items-center gap-2.5 rounded-2xl bg-coral-tint/40 px-3.5 py-3">
+            <button
+              type="button"
+              onClick={() => setPickerOpen(true)}
+              className="flex min-w-0 flex-1 items-center gap-2.5 text-left"
+            >
+              <PinIcon size={16} className="shrink-0 text-coral" />
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-[0.85rem] font-bold text-ink">
+                  {selectedPlace.name ?? t('community.placeInfoUnavailable')}
+                </span>
+                {selectedPlace.address && (
+                  <span className="block truncate text-[0.74rem] text-ink-faint">{selectedPlace.address}</span>
+                )}
+              </span>
+              <span className="shrink-0 text-[0.78rem] font-bold text-coral">{t('community.changePlace')}</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setSelectedPlace(null)}
+              aria-label={t('community.removePlace')}
+              className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-white text-ink-soft"
+            >
+              <CloseIcon size={12} />
+            </button>
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={() => setPickerOpen(true)}
+            className="mt-3 flex items-center gap-1.5 text-[0.82rem] font-semibold text-ink-soft"
+          >
+            <PinIcon size={15} className="text-ink-faint" />
+            {t('community.addPlace')}
+          </button>
+        )}
 
         {/* image section: thumbnails + add button */}
         {hasImages ? (
@@ -234,6 +291,15 @@ export default function PostComposer({
           </Button>
         </div>
       </div>
+
+      <CommunityPlacePicker
+        open={pickerOpen}
+        onClose={() => setPickerOpen(false)}
+        onSelect={(place) => {
+          setSelectedPlace(place);
+          setPickerOpen(false);
+        }}
+      />
     </div>
   );
 }

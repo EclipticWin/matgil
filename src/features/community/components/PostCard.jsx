@@ -1,10 +1,12 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import Card from '../../../shared/components/Card.jsx';
 import Thumbnail from '../../../shared/components/Thumbnail.jsx';
 import { CommentIcon, PinIcon, PencilIcon, CloseIcon } from '../../../shared/components/Icon.jsx';
 import FavoriteHeartIcon from '../../../shared/components/FavoriteHeartIcon.jsx';
 import { useLocale } from '../../../shared/i18n/LocaleProvider.jsx';
 import { avatarGradient } from '../../../shared/utils/avatarColor.js';
+import { ROUTES } from '../../../shared/constants/routes.js';
 import ImageViewerModal from './ImageViewerModal.jsx';
 
 export default function PostCard({
@@ -136,10 +138,28 @@ export default function PostCard({
           <Thumbnail tint={post.tint} className="mt-3 h-[9.875rem] w-full" />
         )}
 
-        {post.place && (
-          <div className="mt-3 inline-flex items-center gap-1.5 rounded-[0.625rem] bg-coral-tint px-2.5 py-1.5 text-[0.78rem] font-bold text-coral-deep">
+        {/* post.place is a plain string on mock posts (COMMUNITY_POSTS), or a
+            real {id, name, address} place object on DB posts (normalizeDbPost) —
+            only the object form is a clickable, navigable link. */}
+        {post.place && typeof post.place === 'string' && (
+          <div className="mt-3 inline-flex items-center gap-1.5 rounded-[0.625rem] bg-coral-tint/60 px-2.5 py-1.5 text-[0.78rem] font-bold text-coral-deep">
             <PinIcon size={13} className="text-coral" /> {post.place}
           </div>
+        )}
+        {post.place && typeof post.place === 'object' && (
+          <Link
+            to={ROUTES.placeDetail(post.place.id)}
+            state={{ place: post.place }}
+            className="mt-3 flex items-center gap-2.5 rounded-xl bg-coral-tint/60 px-3 py-2.5"
+          >
+            <PinIcon size={14} className="shrink-0 text-coral" />
+            <span className="min-w-0 flex-1">
+              <span className="block truncate text-[0.83rem] font-bold text-ink">{post.place.name}</span>
+              {post.place.address && (
+                <span className="block truncate text-[0.72rem] text-ink-faint">{post.place.address}</span>
+              )}
+            </span>
+          </Link>
         )}
 
         {/* footer: like + comment — each button's own icon↔count gap stays

@@ -27,6 +27,24 @@ export async function fetchPhrasesByCategory(category) {
   return data ?? [];
 }
 
+/** Batch lookup by id — the counterpart to fetchPhrasesByCategory() for the MyPage
+ *  "저장한 표현" list, which starts from a user's bookmarked phrase_ids rather than a
+ *  category. One query regardless of how many ids are passed (no per-phrase request).
+ *  Returned rows are in whatever order Postgres gives back, NOT the order of `ids` —
+ *  callers that need a specific order (e.g. most-recently-bookmarked first) should
+ *  re-sort using their own id list, the same way fetchMyLikedPosts() already does. */
+export async function fetchPhrasesByIds(ids) {
+  const uniqueIds = [...new Set((ids ?? []).filter((id) => Number.isFinite(id)))];
+  if (uniqueIds.length === 0) return [];
+  const { data, error } = await supabase
+    .from('mg_phrases')
+    .select('id, phrase_key, category, ko_text, romanization, en_text, zh_text, note, bookmark_count, sort_order')
+    .in('id', uniqueIds)
+    .eq('is_active', true);
+  if (error) throw error;
+  return data ?? [];
+}
+
 export async function fetchPopularPhrases({ category = 'all', limit = 10 } = {}) {
   let query = supabase
     .from('mg_phrases')

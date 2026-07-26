@@ -78,19 +78,20 @@ export function normalizeCommunityImageUrls(raw) {
     .filter(Boolean);
 }
 
-export async function createPost({ userId, category, locale, content, authorName, imageUrls = [] }) {
+export async function createPost({ userId, category, locale, content, authorName, imageUrls = [], placeId = null }) {
   const { data, error } = await supabase
     .from('mg_community_posts')
-    .insert({ user_id: userId, category, locale, content, author_name: authorName, image_urls: imageUrls })
+    .insert({ user_id: userId, category, locale, content, author_name: authorName, image_urls: imageUrls, place_id: placeId })
     .select()
     .single();
   if (error) throw error;
   return data;
 }
 
-export async function updatePost(id, { category, content, imageUrls }) {
+export async function updatePost(id, { category, content, imageUrls, placeId }) {
   const updates = { category, content, updated_at: new Date().toISOString() };
   if (imageUrls !== undefined) updates.image_urls = imageUrls;
+  if (placeId !== undefined) updates.place_id = placeId;
   const { data, error } = await supabase
     .from('mg_community_posts')
     .update(updates)
@@ -306,8 +307,12 @@ export async function softDeletePosts(ids, userId) {
  * Converts a raw DB post row into the normalized shape used by PostCard.
  * @param {object} p - raw row from mg_community_posts
  * @param {number} i - index (used for tint cycling)
+ * @param {Map<number, object>} [placeById] - place objects (from getPlacesByIds),
+ *   keyed by mg_places.id, for a batch of posts fetched together. Passing the
+ *   same map for a whole page's worth of posts avoids an N+1 place lookup.
  */
-export function normalizeDbPost(p, i) {
+export function normalizeDbPost(p, i, placeById = new Map()) {
+  const placeId = p.place_id ?? null;
   return {
     id: String(p.id),
     userId: String(p.user_id),
@@ -316,7 +321,11 @@ export function normalizeDbPost(p, i) {
     from: p.country || '',
     ago: formatRelativeOrAbsolute(p.created_at),
     text: p.content,
-    place: null,
+    placeId,
+    // Only ever null when there's genuinely no place_id, or the batch fetch
+    // didn't find/return that id (e.g. it failed) — placeId itself is kept
+    // either way, so editing this post never silently drops the link.
+    place: placeId != null ? (placeById.get(placeId) ?? null) : null,
     likes: p.like_count ?? 0,
     comments: p.comment_count ?? 0,
     photo: false,

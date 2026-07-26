@@ -23,4 +23,5 @@ export const ROUTES = {
   my: '/my',
   mySavedRoutes: '/my/saved-routes',
   mySavedPlaces: '/my/saved-places',
+  mySavedPhrases: '/my/saved-phrases',
 };

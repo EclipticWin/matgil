@@ -2,11 +2,13 @@ import { useState, useEffect, useCallback } from 'react';
 import { useLocale } from '../../../shared/i18n/LocaleProvider.jsx';
 import { formatRelativeOrAbsolute } from '../../../shared/utils/formatTime.js';
 import FavoriteHeartIcon from '../../../shared/components/FavoriteHeartIcon.jsx';
+import { CommentIcon } from '../../../shared/components/Icon.jsx';
 import {
   fetchMyPosts,
   softDeletePosts,
   normalizeCommunityImageUrls,
 } from '../../community/services/communityService.js';
+import { getWriteCategoryLabel } from '../../community/data/communityConstants.js';
 
 function BackIcon() {
   return (
@@ -24,9 +26,14 @@ function CheckMark() {
   );
 }
 
-function CompactPostCard({ post, selected, onToggle }) {
+function CompactPostCard({ post, selected, onToggle, locale }) {
   const images = normalizeCommunityImageUrls(post.image_urls);
   const thumb = images[0] ?? null;
+  // `post.category` is already on the row from fetchMyPosts()'s `select('*')` —
+  // no per-post lookup. Same label source PostComposer's own category picker
+  // uses, so this never shows the raw DB key; unrecognized/missing category
+  // just omits it from the meta row instead of guessing "General".
+  const categoryLabel = getWriteCategoryLabel(post.category, locale);
   return (
     <div
       className={`flex items-start gap-3 rounded-2xl bg-white p-3.5 shadow-soft transition-all ${
@@ -50,13 +57,22 @@ function CompactPostCard({ post, selected, onToggle }) {
 
       <div className="min-w-0 flex-1">
         <p className="line-clamp-2 text-[0.875rem] leading-relaxed text-ink">{post.content}</p>
-        <div className="mt-1.5 flex items-center gap-2.5 text-xs text-ink-faint">
+        {/* One neutral meta group — date, likes, comments (comment_count, not a
+            view count: this app has no view/hit tracking on posts), category —
+            all the same faint gray, category last with its own leading "·"
+            like the comment count already had. */}
+        <div className="mt-1.5 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-xs text-ink-faint">
           <span>{formatRelativeOrAbsolute(post.created_at)}</span>
           <span className="inline-flex items-center gap-1">
             <FavoriteHeartIcon active size={11} className="shrink-0" />
             <span className="leading-none">{post.like_count ?? 0}</span>
           </span>
-          <span>· {post.comment_count ?? 0}</span>
+          <span className="inline-flex items-center gap-1">
+            <span aria-hidden="true">·</span>
+            <CommentIcon size={11} className="shrink-0" aria-hidden="true" />
+            <span className="leading-none">{post.comment_count ?? 0}</span>
+          </span>
+          {categoryLabel && <span>· {categoryLabel}</span>}
         </div>
       </div>
 
@@ -74,7 +90,7 @@ function CompactPostCard({ post, selected, onToggle }) {
 }
 
 export default function MyPostsView({ user, onBack, onPostsChanged }) {
-  const { t } = useLocale();
+  const { t, locale } = useLocale();
   const [posts, setPosts] = useState(null);
   const [selected, setSelected] = useState(new Set());
   const [confirming, setConfirming] = useState(false);
@@ -203,6 +219,7 @@ export default function MyPostsView({ user, onBack, onPostsChanged }) {
               post={p}
               selected={selected.has(p.id)}
               onToggle={() => toggleOne(p.id)}
+              locale={locale}
             />
           ))}
         </div>
