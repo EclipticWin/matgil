@@ -1,5 +1,5 @@
-import { supabase } from '../../../lib/supabase.js';
 import { getPlacesByIds } from '../../../api/placeApi.js';
+import { supabase } from '../../../lib/supabase.js';
 import { calcDistanceKm, DEFAULT_LOCATION } from '../../explore/data/locations.js';
 
 export async function isPlaceBookmarked({ placeId, userId }) {
@@ -27,6 +27,18 @@ export async function removePlaceBookmark({ placeId, userId }) {
     .eq('place_id', placeId)
     .eq('user_id', userId);
   if (error) throw error;
+}
+
+export async function fetchPlaceBookmarkCount(placeId) {
+  const numericPlaceId = Number(placeId);
+  if (!Number.isFinite(numericPlaceId) || numericPlaceId <= 0) return 0;
+
+  const { data, error } = await supabase.rpc('get_place_bookmark_count', {
+    p_place_id: numericPlaceId,
+  });
+
+  if (error) throw error;
+  return Number(data) || 0;
 }
 
 /** Batched save-count lookup via mg_place_bookmark_stats (place_id, save_count only —

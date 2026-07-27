@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
+import FavoriteHeartIcon from '../../../shared/components/FavoriteHeartIcon.jsx';
 import {
   BackIcon,
   ClockIcon,
@@ -9,26 +10,30 @@ import {
   StarIcon,
   WalkIcon,
 } from '../../../shared/components/Icon.jsx';
-import FavoriteHeartIcon from '../../../shared/components/FavoriteHeartIcon.jsx';
-import Thumbnail from '../../../shared/components/Thumbnail.jsx';
 import Spinner from '../../../shared/components/Spinner.jsx';
-import { cn } from '../../../shared/utils/classNames.js';
+import Thumbnail from '../../../shared/components/Thumbnail.jsx';
+import { ROUTES } from '../../../shared/constants/routes.js';
 import { useLocale } from '../../../shared/i18n/LocaleProvider.jsx';
 import { pickTranslated } from '../../../shared/i18n/localeFallback.js';
+import { buildReturnTo } from '../../../shared/utils/authRedirect.js';
+import { cn } from '../../../shared/utils/classNames.js';
+import { buildPlaceShareUrl, copyToClipboard } from '../../../shared/utils/shareUtils.js';
 import { useAuth } from '../../auth/hooks/useAuth.jsx';
 import { useAuthPrompt } from '../../auth/hooks/useAuthPrompt.jsx';
-import { ROUTES } from '../../../shared/constants/routes.js';
-import { buildReturnTo } from '../../../shared/utils/authRedirect.js';
-import { useFoodCategories } from '../context/FoodCategoryProvider.jsx';
-import { usePlaceDetailSections } from '../../places/hooks/usePlaceDetailSections.js';
-import { isPlaceBookmarked, addPlaceBookmark, removePlaceBookmark, fetchPlaceBookmarkStatsBatch } from '../../places/services/placeBookmarkService.js';
-import { fetchPlaceReviewStats, fetchPlaceReviews, fetchMyPlaceReview, deletePlaceReview } from '../../places/services/placeReviewService.js';
+import DeleteReviewConfirmModal from '../../places/components/DeleteReviewConfirmModal.jsx';
 import PlaceLocationMap from '../../places/components/PlaceLocationMap.jsx';
 import ReviewCard from '../../places/components/ReviewCard.jsx';
 import ReviewComposer from '../../places/components/ReviewComposer.jsx';
-import DeleteReviewConfirmModal from '../../places/components/DeleteReviewConfirmModal.jsx';
+import { usePlaceDetailSections } from '../../places/hooks/usePlaceDetailSections.js';
+import {
+  addPlaceBookmark,
+  fetchPlaceBookmarkCount,
+  isPlaceBookmarked,
+  removePlaceBookmark,
+} from '../../places/services/placeBookmarkService.js';
+import { deletePlaceReview, fetchMyPlaceReview, fetchPlaceReviewStats, fetchPlaceReviews } from '../../places/services/placeReviewService.js';
+import { useFoodCategories } from '../context/FoodCategoryProvider.jsx';
 import { setLastPlaceView } from '../data/lastPlaceView.js';
-import { buildPlaceShareUrl, copyToClipboard } from '../../../shared/utils/shareUtils.js';
 
 // scrollend를 지원하지 않는 브라우저를 위한 디바운스 백업(ms). 실제 스크롤이
 // 끝난 뒤에도 억제 상태가 영원히 풀리지 않는 경우(예: 이미 목표 위치라 스크롤
@@ -128,7 +133,7 @@ export default function PlaceDetailSheet({ place, selectedLocation, onBack, head
   const [sharing, setSharing] = useState(false);
   const [shareToast, setShareToast] = useState('');
 
-  // ── 가게 저장 수 (mg_place_bookmark_stats — 저장한 사용자 수만, 목록/ID는 노출하지 않음) ──
+  // ── 가게 저장 수 (공개 집계 RPC — 저장한 사용자 수만, 목록/ID는 노출하지 않음) ──
   const [saveCount, setSaveCount] = useState(0);
   const [saveCountLoading, setSaveCountLoading] = useState(true);
 
@@ -178,17 +183,31 @@ export default function PlaceDetailSheet({ place, selectedLocation, onBack, head
     let cancelled = false;
     isPlaceBookmarked({ placeId: place.id, userId: user.id })
       .then((val) => { if (!cancelled) setIsBookmarked(val); })
-      .catch(() => {});
+      .catch(() => { });
     return () => { cancelled = true; };
   }, [place.id, user?.id]);
 
   useEffect(() => {
     let cancelled = false;
     setSaveCountLoading(true);
-    fetchPlaceBookmarkStatsBatch([place.id])
-      .then((countMap) => { if (!cancelled) { setSaveCount(countMap.get(place.id) ?? 0); setSaveCountLoading(false); } })
-      .catch(() => { if (!cancelled) { setSaveCount(0); setSaveCountLoading(false); } });
-    return () => { cancelled = true; };
+
+    fetchPlaceBookmarkCount(place.id)
+      .then((count) => {
+        if (!cancelled) {
+          setSaveCount(count);
+          setSaveCountLoading(false);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setSaveCount(0);
+          setSaveCountLoading(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
   }, [place.id]);
 
   useEffect(() => {
@@ -394,7 +413,7 @@ export default function PlaceDetailSheet({ place, selectedLocation, onBack, head
     setMyReview(updated);
     setEditingReviewId(null);
     if (meta?.photosFailed) setPhotoWarning(true);
-    fetchPlaceReviewStats(place.id).then(setReviewStats).catch(() => {});
+    fetchPlaceReviewStats(place.id).then(setReviewStats).catch(() => { });
   }
 
   async function handleConfirmDeleteReview() {
@@ -406,7 +425,7 @@ export default function PlaceDetailSheet({ place, selectedLocation, onBack, head
       setLatestReviews((prev) => prev.filter((r) => r.id !== deleteTarget.id));
       setMyReview((prev) => (prev?.id === deleteTarget.id ? null : prev));
       setDeleteTarget(null);
-      fetchPlaceReviewStats(place.id).then(setReviewStats).catch(() => {});
+      fetchPlaceReviewStats(place.id).then(setReviewStats).catch(() => { });
     } catch {
       setDeleteFailed(true); // 모달은 열어둔 채로 두어 사용자가 다시 시도할 수 있게 한다.
     } finally {
