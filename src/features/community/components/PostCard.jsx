@@ -7,6 +7,7 @@ import FavoriteHeartIcon from '../../../shared/components/FavoriteHeartIcon.jsx'
 import { useLocale } from '../../../shared/i18n/LocaleProvider.jsx';
 import { avatarGradient } from '../../../shared/utils/avatarColor.js';
 import { ROUTES } from '../../../shared/constants/routes.js';
+import { getWriteCategoryLabel } from '../data/communityConstants.js';
 import ImageViewerModal from './ImageViewerModal.jsx';
 
 export default function PostCard({
@@ -19,7 +20,7 @@ export default function PostCard({
   onLike,
   onToggleComments,
 }) {
-  const { t } = useLocale();
+  const { t, locale } = useLocale();
   const [imgIdx, setImgIdx] = useState(0);
   const [errorUrls, setErrorUrls] = useState(new Set());
   const [viewerOpen, setViewerOpen] = useState(false);
@@ -30,9 +31,22 @@ export default function PostCard({
   const authorName = post.author === 'Traveller' ? t('community.travellerFallback') : post.author;
   const isDbPost = post.userId !== undefined;
   const isOwn = isDbPost && user && user.id === post.userId;
-  const canLike = isDbPost && user && !isOwn;
+  // Liking is only ever blocked for a real reason — no backing DB post to like
+  // (mock/fallback post), or it's the viewer's own post. NOT blocked merely for
+  // being logged out: a logged-out click still needs to reach onLike(post), since
+  // CommunityPage's handleLike is what shows the shared "please log in" prompt —
+  // disabling the button here would silently swallow that click instead.
+  const likeDisabled = !isDbPost || isOwn;
   const images = (post.imageUrls ?? []).filter((u) => typeof u === 'string' && u.startsWith('http'));
   const safeIdx = Math.min(imgIdx, Math.max(0, images.length - 1));
+  // post.kind is normalizeDbPost()'s alias for the raw mg_community_posts.category
+  // column (see communityService.js) — same label source PostComposer's own
+  // category picker uses (communityConstants.js), so this never shows the raw DB
+  // key and never duplicates the category→label mapping. Returns null for a
+  // missing/unrecognized category (including mock posts, which have no real
+  // category key in WRITE_CATEGORIES) — the category area is hidden in that case
+  // rather than guessing a label.
+  const categoryLabel = getWriteCategoryLabel(post.kind, locale);
 
   return (
     <>
@@ -162,33 +176,43 @@ export default function PostCard({
           </Link>
         )}
 
-        {/* footer: like + comment — each button's own icon↔count gap stays
-            gap-1.5 (unchanged); only the gap between the two buttons
-            (count↔comment icon) uses this parent's gap-3. */}
-        <div className="mt-3.5 flex items-center gap-3 border-t border-ink/5 pt-3 text-[0.8125rem] font-semibold text-ink-soft">
-          <button
-            type="button"
-            disabled={!canLike}
-            onClick={() => canLike && onLike?.(post)}
-            className={`inline-flex items-center gap-1.5 transition-colors ${
-              likedByMe ? 'text-coral' : canLike ? 'active:text-coral' : 'cursor-default'
-            }`}
-            title={isOwn ? t('community.ownPostNoLike') : undefined}
-          >
-            {/* FontAwesome's heart glyph fills more of its box than CommentIcon's
-                hand-drawn bubble does, so a visually-matched size sits a couple
-                px below CommentIcon's own size rather than at the same number. */}
-            <FavoriteHeartIcon active={likedByMe} size={15} className="shrink-0" />
-            <span className="leading-none">{post.likes}</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => onToggleComments?.(post)}
-            className="inline-flex items-center gap-1.5"
-          >
-            <CommentIcon size={17} className="shrink-0" />
-            <span className="leading-none">{post.comments}</span>
-          </button>
+        {/* footer: like + comment group on the left, category on the right.
+            Each button's own icon↔count gap stays gap-1.5 (unchanged); the
+            gap between the two buttons (count↔comment icon) uses the left
+            group's own gap-3. justify-between keeps the left group flush
+            left and the category flush right with exactly one flex gap
+            between them, regardless of whether the category is present. */}
+        <div className="mt-3.5 flex items-center justify-between gap-3 border-t border-ink/5 pt-3 text-[0.8125rem] font-semibold text-ink-soft">
+          <div className="flex shrink-0 items-center gap-3">
+            <button
+              type="button"
+              disabled={likeDisabled}
+              onClick={() => !likeDisabled && onLike?.(post)}
+              className={`inline-flex items-center gap-1.5 transition-colors ${
+                likedByMe ? 'text-coral' : !likeDisabled ? 'active:text-coral' : 'cursor-default'
+              }`}
+              title={isOwn ? t('community.ownPostNoLike') : undefined}
+            >
+              {/* FontAwesome's heart glyph fills more of its box than CommentIcon's
+                  hand-drawn bubble does, so a visually-matched size sits a couple
+                  px below CommentIcon's own size rather than at the same number. */}
+              <FavoriteHeartIcon active={likedByMe} size={15} className="shrink-0" />
+              <span className="leading-none">{post.likes}</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => onToggleComments?.(post)}
+              className="inline-flex items-center gap-1.5"
+            >
+              <CommentIcon size={17} className="shrink-0" />
+              <span className="leading-none">{post.comments}</span>
+            </button>
+          </div>
+          {categoryLabel && (
+            <span className="min-w-0 truncate text-right font-normal text-ink-faint">
+              {categoryLabel}
+            </span>
+          )}
         </div>
       </Card>
     </>
