@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Matgil — Seoul Food Routes</title>
+    <script type="text/javascript">
+      // Single Page Apps for GitHub Pages
+      // https://github.com/rafgraph/spa-github-pages
+      // MIT License
+      //
+      // GitHub Pages serves this file whenever a request's path has no
+      // matching static file in the deployed dist/ output — which is every
+      // deep-link into this SPA (e.g. /matgil/phrases) on a hard refresh or
+      // direct address-bar visit, since only index.html is a real file.
+      // Below, the full path/query/hash is folded into a single query
+      // string on the ONE URL that IS a real file (the project's own
+      // /matgil/ root), then index.html's restoration script (see its
+      // <head>) unpacks it back into the original path via
+      // history.replaceState — no server-side rewriting involved anywhere.
+      //
+      // pathSegmentsToKeep = 1 because this is a GitHub Pages PROJECT site
+      // (https://eclipticwin.github.io/matgil/, not a custom domain or a
+      // user/org root site) — the first path segment ("matgil") is the
+      // project's own base path, not part of the app's route, and must be
+      // preserved as-is rather than folded into the encoded route.
+      var pathSegmentsToKeep = 1;
+
+      var l = window.location;
+      l.replace(
+        l.protocol + '//' + l.hostname + (l.port ? ':' + l.port : '') +
+        l.pathname.split('/').slice(0, 1 + pathSegmentsToKeep).join('/') + '/?/' +
+        l.pathname.slice(1).split('/').slice(pathSegmentsToKeep).join('/').replace(/&/g, '~and~') +
+        (l.search ? '&' + l.search.slice(1).replace(/&/g, '~and~') : '') +
+        l.hash
+      );
+    </script>
+  </head>
+  <body>
+  </body>
+</html>
