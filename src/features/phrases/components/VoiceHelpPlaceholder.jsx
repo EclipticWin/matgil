@@ -27,6 +27,16 @@ const SPEECH_LANGUAGE_OPTIONS = {
 };
 const DEFAULT_SPEECH_LANGUAGE = { ko: 'ko-KR', en: 'en-US', 'zh-CN': 'zh-CN' };
 
+// Web Speech API codes this screen treats as "microphone access denied"
+// (phrases.voiceDenied). Every other code — no-speech/no_speech/nomatch,
+// audio-capture, network, language-not-supported, start-failed, not_supported,
+// or anything unrecognized — shares the same generic phrases.voiceError copy.
+// 'aborted' isn't in either bucket: it's never a failure, see handleMicClick's
+// onError below (speechRecognitionService.js only ever reports it for a
+// stop the user themselves triggered, or one it couldn't attribute anywhere
+// else — neither is something to show an error message for).
+const VOICE_DENIED_ERROR_CODES = new Set(['not-allowed', 'service-not-allowed']);
+
 // Static example shown before the mic has ever been used — never calls the
 // LLM. Keyed by [uiLocale][speechLanguage] and shaped exactly like a real
 // analysis result (see AnalyzeResult in supabase/functions/mg-voice-help),
@@ -143,8 +153,17 @@ export default function VoiceHelpPlaceholder() {
         }
       },
       onError: (code) => {
-        if (code === 'aborted') return;
-        const msg = code === 'not-allowed' ? t('phrases.voiceDenied') : t('phrases.voiceError');
+        if (code === 'aborted') {
+          // A stop the user themselves triggered (or one speechRecognitionService.js
+          // couldn't otherwise attribute) — quietly back to idle, never an error
+          // message, and the next mic tap starts a fresh recording immediately
+          // (status is neither 'listening' nor 'processing', so handleMicClick's
+          // own guards don't block it).
+          setErrorMsg('');
+          setStatus('idle');
+          return;
+        }
+        const msg = VOICE_DENIED_ERROR_CODES.has(code) ? t('phrases.voiceDenied') : t('phrases.voiceError');
         setErrorMsg(msg);
         setStatus('error');
       },
