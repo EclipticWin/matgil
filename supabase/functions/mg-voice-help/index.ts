@@ -191,7 +191,8 @@ Rules:
 - suggestedReplyMeaning must be written in the original speaker's language (${sourceLanguageName}).
 - suggestedReplyPronunciation is only required for a Korean suggested reply. Otherwise return an empty string.${replyIsKorean ? " Provide romanization of the Korean suggested reply." : ""}
 - Keep all text concise. No long explanations.
-- If the input is unrelated to a restaurant situation, set meaning to a polite message (in ${targetLanguageName}) asking to try again, and set suggestedReply to an empty string.
+- If the input is unrelated to a restaurant situation, set meaning to a polite message (in ${targetLanguageName}) explaining that this isn't a restaurant phrase, and still set suggestedReply to a short natural message (in ${targetLanguageName}) asking the user to say something they'd use in a Korean restaurant instead.
+- suggestedReply must NEVER be an empty string or contain only whitespace, in every case — including when the input is unrelated to a restaurant situation. The same applies to meaning and suggestedReplyMeaning.
 - Return only valid JSON. No markdown, no code fences, no extra text outside the JSON.
 
 Return this exact JSON structure:
@@ -284,8 +285,22 @@ function extractJsonText(raw: string): string {
 const REQUIRED_STRING_FIELDS = ["meaning", "suggestedReply", "suggestedReplyMeaning"] as const;
 
 /** Shared normalizer: parses + validates a provider's raw text into its content-only shape.
- *  suggestedReplyPronunciation/note stay optional (default "") — a reply in a
- *  non-Korean language legitimately has no pronunciation to give. */
+ *
+ *  meaning/suggestedReply/suggestedReplyMeaning must be non-empty after
+ *  trimming — not just present and string-typed. The prompt (buildPrompt)
+ *  now always asks for a non-empty suggestedReply, even for restaurant-
+ *  irrelevant input (a short "please say a restaurant phrase" redirect
+ *  instead of an empty string), so a blank/whitespace-only value here means
+ *  the provider didn't follow that instruction — treated as invalid_shape,
+ *  same as a missing field, which is what makes it eligible for the
+ *  Solar → OpenAI fallback in analyzeVoiceHelp instead of silently reaching
+ *  the UI as a "successful" result with a blank suggested-reply area.
+ *
+ *  suggestedReplyPronunciation/note stay optional (default "") — a reply in
+ *  a non-Korean language legitimately has no pronunciation to give, and
+ *  requiring pronunciation only when the reply happens to be Korean would
+ *  add a second, harder-to-satisfy condition that risks tripping an
+ *  otherwise-good response into an unnecessary fallback. */
 function normalizeAnalyzeContent(provider: Provider, raw: string): AnalyzeContent {
     const jsonText = extractJsonText(raw);
 
@@ -303,16 +318,17 @@ function normalizeAnalyzeContent(provider: Provider, raw: string): AnalyzeConten
     const record = parsed as Record<string, unknown>;
 
     for (const field of REQUIRED_STRING_FIELDS) {
-        if (typeof record[field] !== "string") {
-            throw new ProviderError(provider, "invalid_shape", `${provider} response missing field: ${field}`);
+        const value = record[field];
+        if (typeof value !== "string" || !value.trim()) {
+            throw new ProviderError(provider, "invalid_shape", `${provider} response has an empty/invalid field: ${field}`);
         }
     }
 
     return {
-        meaning: record.meaning as string,
-        suggestedReply: record.suggestedReply as string,
+        meaning: (record.meaning as string).trim(),
+        suggestedReply: (record.suggestedReply as string).trim(),
         suggestedReplyPronunciation: typeof record.suggestedReplyPronunciation === "string" ? record.suggestedReplyPronunciation : "",
-        suggestedReplyMeaning: record.suggestedReplyMeaning as string,
+        suggestedReplyMeaning: (record.suggestedReplyMeaning as string).trim(),
         note: typeof record.note === "string" ? record.note : "",
     };
 }

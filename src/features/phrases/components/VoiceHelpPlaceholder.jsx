@@ -5,7 +5,8 @@ import { supabase } from '../../../lib/supabase.js';
 import {
   isSpeechRecognitionSupported,
   startListening,
-  stopListening,
+  finishListening,
+  cancelListening,
 } from '../services/speechRecognitionService.js';
 import { cn } from '../../../shared/utils/classNames.js';
 import { useLocale } from '../../../shared/i18n/LocaleProvider.jsx';
@@ -32,9 +33,10 @@ const DEFAULT_SPEECH_LANGUAGE = { ko: 'ko-KR', en: 'en-US', 'zh-CN': 'zh-CN' };
 // audio-capture, network, language-not-supported, start-failed, not_supported,
 // or anything unrecognized — shares the same generic phrases.voiceError copy.
 // 'aborted' isn't in either bucket: it's never a failure, see handleMicClick's
-// onError below (speechRecognitionService.js only ever reports it for a
-// stop the user themselves triggered, or one it couldn't attribute anywhere
-// else — neither is something to show an error message for).
+// onError below (speechRecognitionService.js only ever reports it for an
+// internally-cancelled session — never for a normal user-requested finish,
+// which calls stop() instead of abort() — so it's not something to show an
+// error message for).
 const VOICE_DENIED_ERROR_CODES = new Set(['not-allowed', 'service-not-allowed']);
 
 // Static example shown before the mic has ever been used — never calls the
@@ -96,7 +98,18 @@ const EXAMPLES = {
 export default function VoiceHelpPlaceholder() {
   const { locale, t } = useLocale();
   const [status, setStatus] = useState('idle');
-  // idle | listening | processing | done | error
+  // idle | listening | finishing | processing | done | error
+  //
+  // 'finishing' covers the gap between a user-requested finish (second mic
+  // tap while listening — see handleMicClick) and the transcript actually
+  // arriving: recognition.stop() was called but onresult/onend hasn't fired
+  // yet, so this is NOT the same moment as 'processing' (the Edge Function
+  // call hasn't started — there's no transcript to send it yet). The status
+  // text reuses phrases.analyzing's copy for both (see the status-text block
+  // below) since "분석 중" reads fine to the user either way, but the two
+  // are kept as distinct status values so the mic button can be disabled
+  // through the whole finish→result gap without conflating it with an
+  // actual in-flight Edge Function call.
   const [result, setResult] = useState(null);
   const [errorMsg, setErrorMsg] = useState('');
   const [speechLanguage, setSpeechLanguage] = useState(() => DEFAULT_SPEECH_LANGUAGE[locale] ?? 'ko-KR');
@@ -108,24 +121,38 @@ export default function VoiceHelpPlaceholder() {
     setSpeechLanguage(DEFAULT_SPEECH_LANGUAGE[locale] ?? 'ko-KR');
   }, [locale]);
 
+  // Discard (never finalize) any still-listening session if this screen goes
+  // away mid-recording — a real cancel, not a user-requested finish, so
+  // cancelListening() (abort), not finishListening() (stop), is correct here.
+  useEffect(() => {
+    return () => cancelListening();
+  }, []);
+
   const speechSupported = isSpeechRecognitionSupported();
   const isListening = status === 'listening';
+  const isFinishing = status === 'finishing';
   const isProcessing = status === 'processing';
   const isDone = status === 'done';
   const showCard = status === 'idle' || isDone;
-  const micDisabled = !speechSupported || isProcessing;
+  const micDisabled = !speechSupported || isFinishing || isProcessing;
   const speechLanguageOptions = SPEECH_LANGUAGE_OPTIONS[locale] ?? SPEECH_LANGUAGE_OPTIONS.ko;
   const showSpeechLanguagePicker = locale !== 'ko';
-  const speechLanguagePickerDisabled = isListening || isProcessing;
+  const speechLanguagePickerDisabled = isListening || isFinishing || isProcessing;
 
   function handleMicClick() {
     if (status === 'listening') {
-      stopListening();
-      setStatus('idle');
+      // Second tap while listening = "I'm done talking", not "cancel" —
+      // finishListening() asks the recognizer to finalize what it has (via
+      // stop()), it does not throw the transcript away (that's what the old
+      // abort()-based stopListening() used to do, which is exactly why a
+      // second tap used to make the transcript disappear). Stay off 'idle'
+      // until the result (or a real no-speech failure) actually arrives.
+      finishListening();
+      setStatus('finishing');
       return;
     }
 
-    if (status === 'processing') return;
+    if (status === 'processing' || status === 'finishing') return;
 
     setResult(null);
     setErrorMsg('');
@@ -154,11 +181,12 @@ export default function VoiceHelpPlaceholder() {
       },
       onError: (code) => {
         if (code === 'aborted') {
-          // A stop the user themselves triggered (or one speechRecognitionService.js
-          // couldn't otherwise attribute) — quietly back to idle, never an error
-          // message, and the next mic tap starts a fresh recording immediately
-          // (status is neither 'listening' nor 'processing', so handleMicClick's
-          // own guards don't block it).
+          // A user-requested finish (second mic tap) now calls stop(), not
+          // abort() — see finishListening() — so this only ever fires for a
+          // session speechRecognitionService.js cancelled internally (e.g.
+          // this screen unmounting mid-recording, or a new session replacing
+          // a stale one) and couldn't otherwise attribute. Quietly back to
+          // idle, never an error message.
           setErrorMsg('');
           setStatus('idle');
           return;
@@ -212,7 +240,7 @@ export default function VoiceHelpPlaceholder() {
         type="button"
         onClick={handleMicClick}
         disabled={micDisabled}
-        aria-label={isListening ? 'Stop listening' : 'Record speech'}
+        aria-label={isListening ? 'Finish speaking' : 'Record speech'}
         className={cn(
           'flex h-40 w-40 items-center justify-center rounded-full text-white transition-all',
           isListening ? 'bg-coral ring-8 ring-coral/25' : 'bg-coral',
@@ -228,9 +256,19 @@ export default function VoiceHelpPlaceholder() {
           ? t('phrases.voiceUnsupported')
           : status === 'idle'       ? t('phrases.tapSpeak')
           : status === 'listening'  ? t('phrases.listening')
+          /* 'finishing' reuses the analyzing copy — the user-facing text is
+             fine either way, even though no Edge Function call has started
+             yet at this point (that only happens once onResult fires). */
+          : status === 'finishing'  ? t('phrases.analyzing')
           : status === 'processing' ? t('phrases.analyzing')
           : status === 'done'       ? t('phrases.tapAgain')
           : errorMsg}
+      </p>
+
+      {/* 완료 방법 안내 — 상태 문구 바로 아래, AI 설명보다 작고 옅게 표시해
+          AI 설명과 시각적으로 경쟁하지 않도록 함 */}
+      <p className="mt-1.5 max-w-[15rem] text-center text-[0.7rem] leading-snug text-ink-faint">
+        {t('phrases.speechFinishGuide')}
       </p>
 
       {/* AI 기능 설명 — 마이크 버튼/상태 문구와 예시 결과 카드 사이에 가볍게 표시 */}
