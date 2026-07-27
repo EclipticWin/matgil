@@ -5,6 +5,7 @@ import { fetchMyActivityCounts } from '../features/community/services/communityS
 import { fetchMySavedCounts } from '../features/courses/services/publicFeedService.js';
 import LanguageModal from '../features/explore/components/LanguageModal.jsx';
 import LocaleInfoNotice from '../features/explore/components/LocaleInfoNotice.jsx';
+import JapaneseComingSoonModal from '../features/explore/components/JapaneseComingSoonModal.jsx';
 import Modal from '../features/explore/components/Modal.jsx';
 import { LANGUAGES } from '../features/explore/data/exploreOptions.js';
 import { useLocaleNotice } from '../features/explore/hooks/useLocaleNotice.js';
@@ -81,6 +82,9 @@ export default function MyPage() {
   // never from an effect watching `locale`, so a saved locale restored on
   // load never triggers a query or the modal on its own.
   const { notice: localeNotice, handleLanguageSelected: loadLocaleNotice, closeNotice: closeLocaleNotice } = useLocaleNotice();
+  // Fixed front-end notice for the 日本語 "coming soon" entry — no DB, no locale
+  // switch; see JapaneseComingSoonModal.
+  const [jaComingSoonOpen, setJaComingSoonOpen] = useState(false);
 
   useEscapeToClose(!!localeNotice, closeLocaleNotice);
 
@@ -253,12 +257,20 @@ export default function MyPage() {
       )}
 
       <Modal open={langOpen} onClose={() => setLangOpen(false)} variant="center" dismissOnBackdrop>
-        <LanguageModal onClose={() => setLangOpen(false)} onLanguageSelected={handleLanguageSelected} />
+        <LanguageModal
+          onClose={() => setLangOpen(false)}
+          onLanguageSelected={handleLanguageSelected}
+          onComingSoonSelect={() => setJaComingSoonOpen(true)}
+        />
       </Modal>
 
       <Modal open={!!localeNotice} onClose={closeLocaleNotice} variant="center" dismissOnBackdrop={localeNotice?.dismissOnBackdrop ?? false}>
         {localeNotice && <LocaleInfoNotice title={localeNotice.title} message={localeNotice.message} onClose={closeLocaleNotice} />}
       </Modal>
+
+      {/* 日本語 coming-soon notice — opens on top of the still-open language
+          modal above (never closes it), fixed copy, no locale change. */}
+      <JapaneseComingSoonModal open={jaComingSoonOpen} onClose={() => setJaComingSoonOpen(false)} />
     </PageShell>
   );
 }

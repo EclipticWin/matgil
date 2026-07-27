@@ -20,6 +20,7 @@ import SearchOverlay from '../features/explore/components/SearchOverlay.jsx';
 import NearbySheet from '../features/explore/components/NearbySheet.jsx';
 import KakaoMap from '../features/explore/components/KakaoMap.jsx';
 import LocaleInfoNotice from '../features/explore/components/LocaleInfoNotice.jsx';
+import JapaneseComingSoonModal from '../features/explore/components/JapaneseComingSoonModal.jsx';
 import { useLocaleNotice } from '../features/explore/hooks/useLocaleNotice.js';
 import { useEscapeToClose } from '../shared/hooks/useEscapeToClose.js';
 import { PinIcon, FunnelIcon, FlameIcon, GlobeIcon } from '../shared/components/Icon.jsx';
@@ -37,6 +38,9 @@ export default function HomePage() {
   // never from a useEffect watching `locale`, so a page load/refresh never
   // triggers a query or the modal on its own.
   const { notice: localeNotice, handleLanguageSelected: loadLocaleNotice, closeNotice: closeLocaleNotice } = useLocaleNotice();
+  // Fixed front-end notice for the 日本語 "coming soon" entry — no DB, no locale
+  // switch; see JapaneseComingSoonModal.
+  const [jaComingSoonOpen, setJaComingSoonOpen] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
   const [places, setPlaces] = useState([]);
   const [placesLoading, setPlacesLoading] = useState(true);
@@ -338,8 +342,16 @@ export default function HomePage() {
 
       {/* language modal */}
       <Modal open={sheet === 'language'} onClose={() => setSheet(null)} variant="center" dismissOnBackdrop>
-        <LanguageModal onClose={() => setSheet(null)} onLanguageSelected={handleLanguageSelected} />
+        <LanguageModal
+          onClose={() => setSheet(null)}
+          onLanguageSelected={handleLanguageSelected}
+          onComingSoonSelect={() => setJaComingSoonOpen(true)}
+        />
       </Modal>
+
+      {/* 日本語 coming-soon notice — opens on top of the still-open language
+          modal above (never closes it), fixed copy, no locale change. */}
+      <JapaneseComingSoonModal open={jaComingSoonOpen} onClose={() => setJaComingSoonOpen(false)} />
 
       {/* locale info notice — opens right after LanguageModal closes on a direct
           pick (handleLanguageSelected), only when mg_locale_notices has an

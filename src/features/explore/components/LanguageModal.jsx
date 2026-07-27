@@ -1,4 +1,4 @@
-import { LANGUAGES } from '../data/exploreOptions.js';
+import { LANGUAGES, COMING_SOON_LANGUAGES } from '../data/exploreOptions.js';
 import { CloseIcon, CheckIcon } from '../../../shared/components/Icon.jsx';
 import { cn } from '../../../shared/utils/classNames.js';
 import { useLocale } from '../../../shared/i18n/LocaleProvider.jsx';
@@ -7,8 +7,13 @@ import { useLocale } from '../../../shared/i18n/LocaleProvider.jsx';
  *  `onLanguageSelected(code)` is optional — called right before `onClose()` so a
  *  parent (HomePage) can react to the specific code the user just picked (e.g.
  *  showing the zh-CN info notice) without this component knowing anything about
- *  that follow-up UI itself. */
-export default function LanguageModal({ onClose, onLanguageSelected }) {
+ *  that follow-up UI itself.
+ *
+ *  COMING_SOON_LANGUAGES render with identical styling but never become
+ *  `active` and never call setLocale/onLanguageSelected/onClose — picking one
+ *  only calls `onComingSoonSelect(code)` so the parent can show a fixed notice
+ *  (see JapaneseComingSoonModal) while this picker stays open underneath it. */
+export default function LanguageModal({ onClose, onLanguageSelected, onComingSoonSelect }) {
   const { locale, setLocale, t } = useLocale();
   return (
     <>
@@ -55,6 +60,19 @@ export default function LanguageModal({ onClose, onLanguageSelected }) {
             </button>
           );
         })}
+        {COMING_SOON_LANGUAGES.map((l) => (
+          <button
+            key={l.code}
+            type="button"
+            onClick={() => onComingSoonSelect?.(l.code)}
+            className="mb-1 flex w-full items-center gap-3.5 rounded-2xl bg-transparent px-3 py-3.5 text-left transition-colors"
+          >
+            <span className="flex h-10 w-10 items-center justify-center rounded-full bg-white font-display text-base font-bold text-ink shadow-soft">
+              {l.short}
+            </span>
+            <span className="flex-1 text-base font-semibold text-ink">{l.name}</span>
+          </button>
+        ))}
       </div>
     </>
   );

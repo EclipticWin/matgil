@@ -17,6 +17,15 @@ export const LANGUAGES = [
   { code: 'zh-CN', short: '中', name: '简体中文' },
 ];
 
+// Shown in the language picker alongside LANGUAGES but never treated as a
+// supported locale — not read by useLocale/DICTIONARY, not matched against
+// `locale` anywhere. LanguageModal renders these without wiring them to
+// setLocale/onLanguageSelected; picking one only opens a fixed front-end
+// notice (JapaneseComingSoonModal) announcing the language is coming soon.
+export const COMING_SOON_LANGUAGES = [
+  { code: 'ja', short: '日', name: '日本語' },
+];
+
 export const EMPTY_FILTERS = { cat: [], price: [], features: [], minimumRating: 0 };
 
 export const filterCount = (f) =>
