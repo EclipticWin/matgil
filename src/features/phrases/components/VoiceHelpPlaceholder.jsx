@@ -133,11 +133,30 @@ export default function VoiceHelpPlaceholder() {
   const isFinishing = status === 'finishing';
   const isProcessing = status === 'processing';
   const isDone = status === 'done';
-  const showCard = status === 'idle' || isDone;
+  // Shown for idle (static example), done (real result), and error — an
+  // error (mic denied, no-speech, network, ...) still has an example to
+  // show; only listening/finishing/processing hide it, same as before this
+  // change. `display` below already falls back to EXAMPLES whenever isDone
+  // is false, so error naturally renders the example content/header, never
+  // a stale or half-formed "result".
+  const showCard = status === 'idle' || status === 'error' || isDone;
   const micDisabled = !speechSupported || isFinishing || isProcessing;
   const speechLanguageOptions = SPEECH_LANGUAGE_OPTIONS[locale] ?? SPEECH_LANGUAGE_OPTIONS.ko;
   const showSpeechLanguagePicker = locale !== 'ko';
   const speechLanguagePickerDisabled = isListening || isFinishing || isProcessing;
+  // 'done' hides the status line entirely — the result card is the focus at
+  // that point, and there's no live status left to report (see the status
+  // text block below for what shows in every other state). The unsupported
+  // notice is the one thing shown regardless of status (mic stays disabled
+  // the whole time in that case anyway, so status never actually reaches
+  // 'done' when !speechSupported — this `!speechSupported ||` is what keeps
+  // that notice visible defensively rather than relying on that).
+  const showStatusLine = !speechSupported || status !== 'done';
+  // The finish-guide line is only ever relevant before a recording has been
+  // handed off for finalizing — once finishing/processing starts there's
+  // nothing left for the user to "tap again" for, and 'done'/'error' have
+  // their own more specific copy.
+  const showFinishGuide = speechSupported && (status === 'idle' || status === 'listening');
 
   function handleMicClick() {
     if (status === 'listening') {
@@ -250,39 +269,47 @@ export default function VoiceHelpPlaceholder() {
         <MicIcon size={60} />
       </button>
 
-      {/* Status text */}
-      <p className="mt-8 text-sm font-semibold text-ink-soft">
-        {!speechSupported
-          ? t('phrases.voiceUnsupported')
-          : status === 'idle'       ? t('phrases.tapSpeak')
-          : status === 'listening'  ? t('phrases.listening')
-          /* 'finishing' reuses the analyzing copy — the user-facing text is
-             fine either way, even though no Edge Function call has started
-             yet at this point (that only happens once onResult fires). */
-          : status === 'finishing'  ? t('phrases.analyzing')
-          : status === 'processing' ? t('phrases.analyzing')
-          : status === 'done'       ? t('phrases.tapAgain')
-          : errorMsg}
-      </p>
+      {/* Status text — hidden entirely once done (see showStatusLine) since
+          the result card below becomes the focus and there's no live status
+          left to report. */}
+      {showStatusLine && (
+        <p className="mt-8 text-sm font-semibold text-ink-soft">
+          {!speechSupported
+            ? t('phrases.voiceUnsupported')
+            : status === 'idle'       ? t('phrases.tapSpeak')
+            : status === 'listening'  ? t('phrases.listening')
+            /* 'finishing' reuses the analyzing copy — the user-facing text is
+               fine either way, even though no Edge Function call has started
+               yet at this point (that only happens once onResult fires). */
+            : status === 'finishing'  ? t('phrases.analyzing')
+            : status === 'processing' ? t('phrases.analyzing')
+            : errorMsg}
+        </p>
+      )}
 
-      {/* 완료 방법 안내 — 상태 문구 바로 아래, AI 설명보다 작고 옅게 표시해
-          AI 설명과 시각적으로 경쟁하지 않도록 함 */}
-      <p className="mt-1.5 max-w-[15rem] text-center text-[0.7rem] leading-snug text-ink-faint">
-        {t('phrases.speechFinishGuide')}
-      </p>
+      {/* Finish-guide line — only while idle/listening (see showFinishGuide);
+          hidden once finishing/processing start (nothing left to "tap again"
+          for) and in 'done'/'error' (their own copy already covers it). */}
+      {showFinishGuide && (
+        <p className="mt-1.5 max-w-[15rem] text-center text-[0.7rem] leading-snug text-ink-faint">
+          {t('phrases.speechFinishGuide')}
+        </p>
+      )}
 
-      {/* AI 기능 설명 — 마이크 버튼/상태 문구와 예시 결과 카드 사이에 가볍게 표시 */}
-      <div className="mt-3 flex max-w-xs items-start justify-center gap-1 text-center text-xs text-ink-faint">
-        <AiSparklesIcon size={34} className="shrink-0 text-coral" />
-        <p className="text-left">{t('phrases.voiceAiDescription')}</p>
-      </div>
-
-      {/* Result card — shown in idle (example) and done (analysis result) */}
+      {/* Result card — shown in idle (example) and done (analysis result).
+          The sparkle mark that used to sit in its own explanatory block
+          between the mic and this card now lives here instead, at the start
+          of the card's own header — same position for both the idle example
+          and a real done result, since both branches share this exact JSX,
+          only the header text and the fields below it differ. */}
       {showCard && (
         <div className="mt-8 w-full rounded-2xl border border-ink/8 bg-white px-4 py-4 text-sm">
-          <p className="mb-3 text-[0.65rem] font-bold uppercase tracking-widest text-ink-faint">
-            {isDone ? t('phrases.analysisResult') : t('phrases.exampleResult')}
-          </p>
+          <div className="mb-3 flex items-center gap-1.5">
+            <AiSparklesIcon size={27} className="shrink-0 text-coral" aria-hidden="true" />
+            <p className="text-[0.65rem] font-bold uppercase tracking-widest text-ink-faint">
+              {isDone ? t('phrases.analysisResult') : t('phrases.exampleResult')}
+            </p>
+          </div>
 
           <p className="text-[0.7rem] font-bold uppercase tracking-widest text-ink-faint">
             {t('phrases.originalPhrase')}
