@@ -1,6 +1,6 @@
 import { Outlet } from 'react-router-dom';
-import TopBar from './TopBar.jsx';
 import BottomNavigation from '../../features/navigation/components/BottomNavigation.jsx';
+import TopBar from './TopBar.jsx';
 
 /**
  * Layout for the bottom-tab pages: a fixed brand bar, a scrollable content
@@ -10,7 +10,7 @@ export default function AppLayout() {
   return (
     <div className="relative flex h-full flex-col bg-paper">
       <TopBar />
-      <main className="no-scrollbar flex-1 overflow-y-auto">
+      <main className="no-scrollbar flex-1 overflow-x-hidden overflow-y-auto">
         <Outlet />
       </main>
       <BottomNavigation />
