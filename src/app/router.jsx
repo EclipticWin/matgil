@@ -26,6 +26,7 @@ import MyPage from '../pages/MyPage.jsx';
 import SavedRoutesPage from '../pages/SavedRoutesPage.jsx';
 import SavedPlacesPage from '../pages/SavedPlacesPage.jsx';
 import SavedPhrasesPage from '../pages/SavedPhrasesPage.jsx';
+import DataSourcesPage from '../pages/DataSourcesPage.jsx';
 
 /**
  * Two route groups:
@@ -52,6 +53,9 @@ export default function AppRouter() {
     <Routes>
       <Route path={ROUTES.login} element={<LoginPage />} />
       <Route path={ROUTES.signup} element={<SignUpPage />} />
+      {/* Public data/image source disclosure — no login required, reached from
+          both LoginPage and MyPage's Settings section (see DataSourcesPage.jsx). */}
+      <Route path={ROUTES.dataSources} element={<DataSourcesPage />} />
       <Route path={ROUTES.area} element={<AreaPage />} />
       <Route path={ROUTES.preference} element={<PreferencePage />} />
       <Route path={ROUTES.loading} element={<LoadingPage />} />

@@ -35,4 +35,7 @@ export const ROUTES = {
   mySavedRoutes: '/my/saved-routes',
   mySavedPlaces: '/my/saved-places',
   mySavedPhrases: '/my/saved-phrases',
+  // Public data & image source disclosure — no login required, reachable from
+  // LoginPage and MyPage's Settings section alike (see DataSourcesPage.jsx).
+  dataSources: '/data-sources',
 };

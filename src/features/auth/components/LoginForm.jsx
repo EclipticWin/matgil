@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { supabase } from '../../../lib/supabase.js';
 import Button from '../../../shared/components/Button.jsx';
 import { FacebookIcon, GoogleIcon, PinIcon } from '../../../shared/components/Icon.jsx';
@@ -199,6 +199,15 @@ export default function LoginForm({ onDone, returnTo }) {
           <FacebookIcon />
         </button>
       </div>
+
+      {/* Small, quiet link — not a coral CTA — kept clear of the SNS row above
+          and (via LoginPage's own bottom padding) the bottom navigation below. */}
+      <Link
+        to={ROUTES.dataSources}
+        className="mt-6 text-center text-[0.7rem] text-ink-faint underline underline-offset-2"
+      >
+        {t('dataSources.loginLink')}
+      </Link>
     </div>
   );
 }

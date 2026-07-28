@@ -1,20 +1,20 @@
 import { useEffect, useRef, useState } from 'react';
 import { useLocation } from 'react-router-dom';
-import CourseCard from '../../courses/components/CourseCard.jsx';
-import TodayCourseDetail from './TodayCourseDetail.jsx';
-import PlaceDetailSheet from './PlaceDetailSheet.jsx';
 import { ChevronRightIcon, CloseIcon, LocateIcon } from '../../../shared/components/Icon.jsx';
-import { cn } from '../../../shared/utils/classNames.js';
+import Spinner from '../../../shared/components/Spinner.jsx';
 import { useLocale } from '../../../shared/i18n/LocaleProvider.jsx';
+import { buildReturnTo } from '../../../shared/utils/authRedirect.js';
+import { cn } from '../../../shared/utils/classNames.js';
+import { findScrollParent } from '../../../shared/utils/dom.js';
 import { useAuth } from '../../auth/hooks/useAuth.jsx';
 import { useAuthPrompt } from '../../auth/hooks/useAuthPrompt.jsx';
-import { useFoodCategories } from '../context/FoodCategoryProvider.jsx';
-import { saveCourse, softDeleteSavedCourse, checkCourseAlreadySaved, fetchSavedCourses, isSameCourse, DuplicateCourseError } from '../../courses/services/savedCourseService.js';
+import CourseCard from '../../courses/components/CourseCard.jsx';
+import { checkCourseAlreadySaved, DuplicateCourseError, fetchSavedCourses, isSameCourse, saveCourse, softDeleteSavedCourse } from '../../courses/services/savedCourseService.js';
 import { getLocalizedLocationLabel, getLocationDisplayName, localizeSnapshotForDisplay } from '../../courses/utils/courseDisplay.js';
 import { normalizeCourseMetrics } from '../../courses/utils/courseMetrics.js';
-import { buildReturnTo } from '../../../shared/utils/authRedirect.js';
-import { findScrollParent } from '../../../shared/utils/dom.js';
-import Spinner from '../../../shared/components/Spinner.jsx';
+import { useFoodCategories } from '../context/FoodCategoryProvider.jsx';
+import PlaceDetailSheet from './PlaceDetailSheet.jsx';
+import TodayCourseDetail from './TodayCourseDetail.jsx';
 
 const INITIAL_VISIBLE = 3;
 const LOAD_BATCH = 3;
@@ -179,7 +179,7 @@ export default function NearbySheet({
     let cancelled = false;
     fetchSavedCourses({ userId: user.id })
       .then((rows) => { if (!cancelled) setSavedRows(rows); })
-      .catch(() => {});
+      .catch(() => { });
     return () => { cancelled = true; };
   }, [user?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -410,8 +410,8 @@ export default function NearbySheet({
             gpsStatus === 'active'
               ? 'text-blue-500'
               : gpsStatus === 'loading'
-              ? 'text-ink/20'
-              : 'text-ink-soft',
+                ? 'text-ink/20'
+                : 'text-ink-soft',
           )}
         >
           {gpsStatus === 'loading' ? (
@@ -489,6 +489,15 @@ export default function NearbySheet({
               <h2 className="select-none font-display text-[1.375rem] font-bold tracking-tight text-ink">
                 {t('nearby.header', { location: locationLabel })}
               </h2>
+              {/* 기준 위치 유무·추천 결과 유무·로딩 상태와 무관하게 항상 같은 자리에
+                  한 번만 렌더 — 이 div가 courses/isLoading 분기 바깥에 있어 아래
+                  스크롤 영역의 어떤 상태(목록/로딩/빈 결과)에서도 그대로 남는다.
+                  pb-3.5(이 div)+pt-1(스크롤 영역)로 이미 계산된 제목↔TODAY'S PICKS
+                  간격(18px, 위 주석 참고)은 그대로 유지된다 — padding은 내용 높이와
+                  무관하기 때문. */}
+              <p className="text-xs text-ink-faint">
+                {t('nearby.recommendationLocationHint')}
+              </p>
             </div>
 
             <div

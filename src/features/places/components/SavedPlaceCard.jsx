@@ -24,7 +24,7 @@ export default function SavedPlaceCard({ place, reviewStats, removing = false, o
       onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onOpen(place); } }}
       className="flex w-full items-center gap-3 p-3 text-left"
     >
-      <Thumbnail src={place.imageUrl} className="h-[4.5rem] w-[4.5rem] shrink-0" />
+      <Thumbnail src={place.imageUrl} rounded="" className="aspect-[4/3] w-[4.5rem] shrink-0 bg-white" />
 
       <div className="min-w-0 flex-1">
         <p className="line-clamp-2 text-[0.95rem] font-bold leading-snug text-ink">{place.name}</p>

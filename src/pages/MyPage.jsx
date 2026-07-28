@@ -215,6 +215,10 @@ export default function MyPage() {
           value={currentLang.short}
           onClick={() => setLangOpen(true)}
         />
+        <MyRow
+          label={t('dataSources.settingsLabel')}
+          onClick={() => navigate(ROUTES.dataSources)}
+        />
       </MySection>
 
       {/* Low-emphasis: logout is a routine, reversible action (unlike account

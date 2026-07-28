@@ -85,12 +85,13 @@ export default function ExplorePage() {
 
       {/* Both tabs stay mounted (hidden via CSS) so switching back and forth
           never re-triggers their feed fetch — same pattern the old saved-list
-          tabs used here. */}
+          tabs used here. `active` tells the hidden one to stop its infinite-scroll
+          IntersectionObserver rather than keep requesting pages in the background. */}
       <div className={tab === 'routes' ? 'mt-4' : 'hidden'}>
-        <PublicRoutesTab sort={sort} />
+        <PublicRoutesTab sort={sort} active={tab === 'routes'} />
       </div>
       <div className={tab === 'places' ? 'mt-4' : 'hidden'}>
-        <PublicPlacesTab sort={sort} />
+        <PublicPlacesTab sort={sort} active={tab === 'places'} />
       </div>
     </PageShell>
   );

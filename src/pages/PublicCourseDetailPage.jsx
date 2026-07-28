@@ -17,6 +17,7 @@ import {
 import { useFoodCategories } from '../features/explore/context/FoodCategoryProvider.jsx';
 import RemoveSavedCourseConfirmModal from '../features/courses/components/RemoveSavedCourseConfirmModal.jsx';
 import { ROUTES } from '../shared/constants/routes.js';
+import PublicDataAttribution from '../shared/components/PublicDataAttribution.jsx';
 import Thumbnail from '../shared/components/Thumbnail.jsx';
 import Spinner from '../shared/components/Spinner.jsx';
 import {
@@ -347,7 +348,8 @@ export default function PublicCourseDetailPage() {
                   <Thumbnail
                     src={stop.imageUrl}
                     tint={stop.tint}
-                    className="h-14 w-14 shrink-0"
+                    rounded=""
+                    className="aspect-[4/3] w-14 shrink-0 bg-paper-soft"
                   />
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-[0.95rem] font-bold text-ink">{stop.name}</p>
@@ -375,6 +377,8 @@ export default function PublicCourseDetailPage() {
               );
             })}
           </div>
+
+          <PublicDataAttribution className="mt-4" />
         </div>
       </div>
 

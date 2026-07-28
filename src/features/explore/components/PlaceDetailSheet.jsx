@@ -10,6 +10,7 @@ import {
   StarIcon,
   WalkIcon,
 } from '../../../shared/components/Icon.jsx';
+import PublicDataAttribution from '../../../shared/components/PublicDataAttribution.jsx';
 import Spinner from '../../../shared/components/Spinner.jsx';
 import Thumbnail from '../../../shared/components/Thumbnail.jsx';
 import { ROUTES } from '../../../shared/constants/routes.js';
@@ -565,12 +566,19 @@ export default function PlaceDetailSheet({ place, selectedLocation, onBack, head
           </div>
         </div>
 
-        {/* 히어로 이미지 */}
-        <div className="px-5 pb-4 pt-2.5">
+        {/* 히어로 이미지 — 공공데이터 원본 그대로 직각·전체 표시(크롭 없음), 실제
+            이미지·placeholder 모두 좌우 padding 없이 앱 프레임 폭 전체를 사용한다
+            (모서리 형태·가로폭을 이미지 유무와 무관하게 동일하게 유지). 출처 링크는
+            여기가 아니라 페이지 최하단, 푸드 타입 섹션 아래로 옮겼다(그 아래 참고).
+            pt-2.5(위 통계 줄과의 간격)와 pb-4는 위쪽 pb-1.5+pt-2.5(=1rem)와 정확히
+            같은 1rem 외부 여백을 아래(다음 subtitle 섹션)에도 주기 위한 것 — 이미지
+            자체의 높이·비율·배경·full-width 구조는 그대로다. */}
+        <div className="pt-2.5 pb-4">
           <Thumbnail
             src={place.imageUrl}
             tint={place.tint ?? '#FFE3D4'}
-            className="h-44 w-full"
+            rounded=""
+            className="aspect-[4/3] w-full bg-paper-soft"
           />
         </div>
 
@@ -769,7 +777,7 @@ export default function PlaceDetailSheet({ place, selectedLocation, onBack, head
           return null;
         })}
 
-        {/* 카테고리 태그 섹션 */}
+        {/* 카테고리 태그 섹션 — 위/아래 padding은 py-4로 대칭 유지 */}
         {uniqueChips.length > 0 && (
           <div className="border-t border-ink/5 px-5 py-4">
             <div className="flex flex-wrap gap-2">
@@ -785,7 +793,23 @@ export default function PlaceDetailSheet({ place, selectedLocation, onBack, head
           </div>
         )}
 
-        <div className="h-5" />
+        {/* 이미지 출처 링크 — 대표 이미지 바로 아래가 아니라 페이지 최하단, 위
+            카테고리 태그 섹션과 같은 톤의 구분선 아래에 배치. 공공데이터 이미지가
+            실제로 있는 가게에서만 표시(기존 조건 그대로 — 이미지 없는 placeholder만
+            있는 가게는 안내할 실제 출처가 없다). 다른 화면(동선 상세 등)은 모두
+            PublicDataAttribution의 기본 오른쪽 정렬 그대로 — 여기(가게 상세)만
+            !text-left로 왼쪽 정렬을 덮어쓴다(컴포넌트 자체의 text-right는 그대로
+            둔 채, 이 한 곳의 className에만 !important로 override). */}
+        {place.imageUrl && (
+          <div className="border-t border-ink/5 px-5 py-4">
+            <PublicDataAttribution className="!text-left" />
+          </div>
+        )}
+
+        {/* 위 두 섹션이 모두 렌더되지 않는 드문 경우(카테고리 태그도, 대표 이미지도
+            없는 가게)에만 기존 하단 여백을 대신 채운다 — 있을 때는 각 섹션 자신의
+            py-4가 페이지의 실제 마지막 여백이 된다. */}
+        {uniqueChips.length === 0 && !place.imageUrl && <div className="h-5" />}
       </div>
 
       <DeleteReviewConfirmModal

@@ -55,7 +55,7 @@ export default function PublicPlaceCard({ place, rank = null, reviewStats, onOpe
       )}
 
       <div className="flex w-full items-center gap-3 p-3">
-        <Thumbnail src={place.imageUrl} className="h-[4.5rem] w-[4.5rem] shrink-0" />
+        <Thumbnail src={place.imageUrl} rounded="" className="aspect-[4/3] w-[4.5rem] shrink-0 bg-white" />
 
         <div className="min-w-0 flex-1">
           {/* Same text-ink/90 the route card's title uses in its own default

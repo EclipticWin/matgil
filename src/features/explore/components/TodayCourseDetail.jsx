@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import PublicDataAttribution from '../../../shared/components/PublicDataAttribution.jsx';
 import Thumbnail from '../../../shared/components/Thumbnail.jsx';
 import {
   BackIcon,
@@ -161,7 +162,8 @@ export default function TodayCourseDetail({ course, selectedLocation, onBack, on
                   <Thumbnail
                     src={stop.imageUrl}
                     tint={stop.tint}
-                    className="h-14 w-14 shrink-0"
+                    rounded=""
+                    className="aspect-[4/3] w-14 shrink-0 bg-paper-soft"
                   />
 
                   <div className="min-w-0 flex-1">
@@ -182,6 +184,8 @@ export default function TodayCourseDetail({ course, selectedLocation, onBack, on
             );
           })}
         </div>
+
+        <PublicDataAttribution className="mt-4" />
       </div>
 
       {/* 저장 취소 완료/실패 안내 — pointer-events-none absolute 오버레이라 CTA

@@ -7,6 +7,7 @@ import { fetchPlaceReviewStatsBatch } from '../../places/services/placeReviewSer
 import { setLastPlaceView } from '../../explore/data/lastPlaceView.js';
 import SavedPlaceCard from '../../places/components/SavedPlaceCard.jsx';
 import EmptyState from '../../../shared/components/EmptyState.jsx';
+import PublicDataAttribution from '../../../shared/components/PublicDataAttribution.jsx';
 import Spinner from '../../../shared/components/Spinner.jsx';
 import Button from '../../../shared/components/Button.jsx';
 import FavoriteHeartIcon from '../../../shared/components/FavoriteHeartIcon.jsx';
@@ -136,6 +137,8 @@ export default function SavedPlacesTab() {
           onRemove={handleRemove}
         />
       ))}
+
+      <PublicDataAttribution className="mt-1" />
     </div>
   );
 }
