@@ -79,7 +79,7 @@ export default function CommunityPlacePicker({ open, onClose, onSelect }) {
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder={t('community.searchPlacePlaceholder')}
-              className="flex-1 bg-transparent text-[0.95rem] font-medium text-ink placeholder:text-ink-faint outline-none"
+              className="min-w-0 w-0 flex-1 bg-transparent text-[0.95rem] font-medium text-ink placeholder:text-ink-faint outline-none"
             />
           </div>
           <button

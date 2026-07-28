@@ -10,7 +10,7 @@ export default function AppLayout() {
   return (
     <div className="relative flex h-full flex-col bg-paper">
       <TopBar />
-      <main className="no-scrollbar flex-1 overflow-x-hidden overflow-y-auto">
+      <main className="no-scrollbar flex-1 overflow-y-auto">
         <Outlet />
       </main>
       <BottomNavigation />

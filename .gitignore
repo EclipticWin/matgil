@@ -3,6 +3,9 @@ dist
 dist-ssr
 *.local
 .DS_Store
+
+# Claude Code agent worktrees (per-session, never meant to be committed)
+.claude/worktrees/
 .vscode/*
 !.vscode/extensions.json
 

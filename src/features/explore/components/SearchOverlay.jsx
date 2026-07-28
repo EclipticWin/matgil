@@ -170,7 +170,7 @@ export default function SearchOverlay({ open, onSelect, onClose, onFilterClick, 
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder={t('nearby.searchPlaceholder')}
-              className="flex-1 bg-transparent text-[0.95rem] font-medium text-ink placeholder:text-ink-faint outline-none"
+              className="min-w-0 w-0 flex-1 bg-transparent text-[0.95rem] font-medium text-ink placeholder:text-ink-faint outline-none"
             />
           </div>
 
