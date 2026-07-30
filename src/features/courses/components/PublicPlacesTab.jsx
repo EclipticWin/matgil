@@ -1,14 +1,14 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../auth/hooks/useAuth.jsx';
-import { useAuthPrompt } from '../../auth/hooks/useAuthPrompt.jsx';
 import { useLocale } from '../../../shared/i18n/LocaleProvider.jsx';
-import { buildReturnTo } from '../../../shared/utils/authRedirect.js';
+import { navigateToLogin } from '../../../shared/utils/authRedirect.js';
 import { getPlacesByIds } from '../../../api/placeApi.js';
 import { calcDistanceKm, DEFAULT_LOCATION } from '../../explore/data/locations.js';
 import { fetchPlaceReviewStatsBatch } from '../../places/services/placeReviewService.js';
 import { fetchPublicPlaceFeed } from '../services/publicFeedService.js';
 import PublicPlaceCard from './PublicPlaceCard.jsx';
+import PublicPlaceTeaserCard from './PublicPlaceTeaserCard.jsx';
 import EmptyState from '../../../shared/components/EmptyState.jsx';
 import PublicDataAttribution from '../../../shared/components/PublicDataAttribution.jsx';
 import Spinner from '../../../shared/components/Spinner.jsx';
@@ -30,8 +30,6 @@ import { MAX_PUBLIC_FEED_ITEMS, PUBLIC_FEED_PAGE_SIZE } from '../constants/publi
 export default function PublicPlacesTab({ sort, active = true }) {
   const { t, locale } = useLocale();
   const { user } = useAuth();
-  const { openAuthPrompt } = useAuthPrompt();
-  const location = useLocation();
   const navigate = useNavigate();
 
   const [places, setPlaces] = useState([]); // merged: place + saveCount/latestSavedAt/isSaved/distanceKm
@@ -120,10 +118,7 @@ export default function PublicPlacesTab({ sort, active = true }) {
   }, [sort, user?.id, mergeFeedRows, reloadTick]);
 
   async function handleLoadMore() {
-    if (!user) {
-      openAuthPrompt({ messageKey: 'publicFeed.loginToLoadMorePlaces', returnTo: buildReturnTo(location) });
-      return;
-    }
+    if (!user) return;
     if (fetchingRef.current) return;
     // Never request past the 150-item cap — the last page before it may need
     // fewer than a full PUBLIC_FEED_PAGE_SIZE rows (see MAX_PUBLIC_FEED_ITEMS).
@@ -152,6 +147,15 @@ export default function PublicPlacesTab({ sort, active = true }) {
       fetchingRef.current = false;
       setLoadingMore(false);
     }
+  }
+
+  // This one control skips the shared AuthRequiredModal — the teaser card
+  // overlay itself already explains why signing in is needed, so a second
+  // confirmation modal on top of it would be redundant. Still reuses the
+  // existing login route/returnTo pipeline (navigateToLogin), just without
+  // the modal step in between.
+  function handleGuestCtaClick() {
+    navigateToLogin(navigate, `${ROUTES.explore}?tab=places&sort=${sort}`);
   }
   handleLoadMoreRef.current = handleLoadMore;
 
@@ -254,11 +258,13 @@ export default function PublicPlacesTab({ sort, active = true }) {
           />
         ))}
 
-        {hasMore && (
+        {hasMore && (user ? (
           <div ref={setSentinelNode} className="mt-1 flex justify-center py-1">
             {loadingMore && <Spinner className="h-4 w-4 border-ink/20 border-t-ink/50" />}
           </div>
-        )}
+        ) : (
+          <PublicPlaceTeaserCard sort={sort} onSignInClick={handleGuestCtaClick} />
+        ))}
         {loadMoreError && (
           <p className="text-center text-xs text-red-500">{t('publicFeed.loadError')}</p>
         )}

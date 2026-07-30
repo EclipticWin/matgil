@@ -4,7 +4,7 @@ import { useAuth } from '../../auth/hooks/useAuth.jsx';
 import { useAuthPrompt } from '../../auth/hooks/useAuthPrompt.jsx';
 import { useFoodCategories } from '../../explore/context/FoodCategoryProvider.jsx';
 import { useLocale } from '../../../shared/i18n/LocaleProvider.jsx';
-import { buildReturnTo } from '../../../shared/utils/authRedirect.js';
+import { buildReturnTo, navigateToLogin } from '../../../shared/utils/authRedirect.js';
 import { getPlacesByIds } from '../../../api/placeApi.js';
 import {
   getSavedCourseDisplayTitle,
@@ -13,6 +13,7 @@ import {
 } from '../utils/courseDisplay.js';
 import { fetchPublicCourseFeed, togglePublicCourseSave } from '../services/publicFeedService.js';
 import PublicCourseCard from './PublicCourseCard.jsx';
+import PublicRouteTeaserCard from './PublicRouteTeaserCard.jsx';
 import EmptyState from '../../../shared/components/EmptyState.jsx';
 import Spinner from '../../../shared/components/Spinner.jsx';
 import { RouteIcon } from '../../../shared/components/Icon.jsx';
@@ -186,10 +187,7 @@ export default function PublicRoutesTab({ sort, active = true }) {
   }, [sort, user?.id, reloadTick, dedupeRows]);
 
   async function handleLoadMore() {
-    if (!user) {
-      openAuthPrompt({ messageKey: 'publicFeed.loginToLoadMoreRoutes', returnTo: buildReturnTo(location) });
-      return;
-    }
+    if (!user) return;
     if (fetchingRef.current) return;
     // Never request past the 150-item cap — the last page before it may need
     // fewer than a full PUBLIC_FEED_PAGE_SIZE rows (see MAX_PUBLIC_FEED_ITEMS).
@@ -214,6 +212,16 @@ export default function PublicRoutesTab({ sort, active = true }) {
       fetchingRef.current = false;
       setLoadingMore(false);
     }
+  }
+
+  // This one control skips the shared AuthRequiredModal (unlike every other
+  // login-required action on this tab, e.g. handleToggleHeart above) — the
+  // teaser card overlay itself already explains why signing in is needed, so
+  // a second confirmation modal on top of it would be redundant. Still reuses
+  // the existing login route/returnTo pipeline (navigateToLogin), just
+  // without the modal step in between.
+  function handleGuestCtaClick() {
+    navigateToLogin(navigate, `${ROUTES.explore}?tab=routes&sort=${sort}`);
   }
   handleLoadMoreRef.current = handleLoadMore;
 
@@ -404,11 +412,13 @@ export default function PublicRoutesTab({ sort, active = true }) {
         );
       })}
 
-      {hasMore && (
+      {hasMore && (user ? (
         <div ref={setSentinelNode} className="mt-1 flex justify-center py-1">
           {loadingMore && <Spinner className="h-4 w-4 border-ink/20 border-t-ink/50" />}
         </div>
-      )}
+      ) : (
+        <PublicRouteTeaserCard sort={sort} onSignInClick={handleGuestCtaClick} />
+      ))}
       {loadMoreError && (
         <p className="text-center text-xs text-red-500">{t('publicFeed.loadError')}</p>
       )}

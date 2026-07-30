@@ -59,10 +59,16 @@ export default function ExplorePage() {
   // Restores the tab/sort PublicCourseDetailPage's back button hands back via
   // router state (see its handleBack()) — undefined for every other way this
   // page is reached (bottom nav, direct URL), so those keep the plain
-  // defaults below. Only read once at mount; not re-synced on later state
-  // changes, same as every other lazy-initial-state usage in this codebase.
-  const [tab, setTab] = useState(location.state?.tab ?? 'routes');
-  const [sort, setSort] = useState(location.state?.sort ?? 'popular');
+  // defaults below. `?tab=&sort=` query params are a second restoration path:
+  // the guest "sign in to see more" CTA (PublicRoutesTab/PublicPlacesTab's
+  // handleGuestCtaClick) encodes them into its `returnTo`, since useAuthPrompt
+  // only ever carries a plain path string, not router state, across the
+  // login round trip (see authRedirect.js). Only read once at mount; not
+  // re-synced on later state changes, same as every other lazy-initial-state
+  // usage in this codebase.
+  const searchParams = new URLSearchParams(location.search);
+  const [tab, setTab] = useState(location.state?.tab ?? searchParams.get('tab') ?? 'routes');
+  const [sort, setSort] = useState(location.state?.sort ?? searchParams.get('sort') ?? 'popular');
 
   return (
     <PageShell>
