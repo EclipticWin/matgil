@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useLayoutEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import Card from '../../../shared/components/Card.jsx';
 import Thumbnail from '../../../shared/components/Thumbnail.jsx';
@@ -24,7 +24,23 @@ export default function PostCard({
   const [imgIdx, setImgIdx] = useState(0);
   const [errorUrls, setErrorUrls] = useState(new Set());
   const [viewerOpen, setViewerOpen] = useState(false);
+  const [bodyExpanded, setBodyExpanded] = useState(false);
+  const [bodyOverflowing, setBodyOverflowing] = useState(false);
+  const bodyRef = useRef(null);
   const gradient = avatarGradient(post.userId || post.author);
+
+  // Whether the collapsed (line-clamp-5) body actually truncates this post's
+  // text — measured against the clamped element's own scrollHeight vs
+  // clientHeight rather than counting characters/`\n`, since line-wrapping
+  // depends on the card's real rendered width and font, not text length.
+  // Only needs to run once per post (post.text never changes after mount;
+  // toggling bodyExpanded doesn't need a re-measure since the overflow fact
+  // itself doesn't change).
+  useLayoutEffect(() => {
+    const el = bodyRef.current;
+    if (!el) return;
+    setBodyOverflowing(el.scrollHeight > el.clientHeight + 1);
+  }, [post.text]);
   // normalizeDbPost() (communityService.js) stores the literal, locale-neutral
   // "Traveller" sentinel when a post has no author_name (same convention
   // ReviewCard.jsx uses for "Deleted user") — translated here at render time.
@@ -94,8 +110,33 @@ export default function PostCard({
           )}
         </div>
 
-        {/* body */}
-        <p className="text-[0.9rem] leading-relaxed text-ink [text-wrap:pretty]">{post.text}</p>
+        {/* body — collapsed to a 5-line preview by default; a post whose
+            text doesn't actually overflow 5 lines (bodyOverflowing stays
+            false) never shows the show more/less toggle at all. */}
+        <div className="relative">
+          <p
+            ref={bodyRef}
+            className={`whitespace-pre-wrap text-[0.9rem] leading-relaxed text-ink [text-wrap:pretty] ${
+              bodyExpanded ? '' : 'line-clamp-5'
+            }`}
+          >
+            {post.text}
+          </p>
+          {/* Faint fade hint that there's more below the 5-line cutoff — not
+              shown once expanded, since the full text is on screen then. */}
+          {bodyOverflowing && !bodyExpanded && (
+            <div className="pointer-events-none absolute inset-x-0 bottom-0 h-5 bg-gradient-to-t from-white to-transparent" aria-hidden="true" />
+          )}
+        </div>
+        {bodyOverflowing && (
+          <button
+            type="button"
+            onClick={() => setBodyExpanded((prev) => !prev)}
+            className="mt-1 text-[0.8125rem] font-bold text-ink-soft transition-colors active:text-ink"
+          >
+            {bodyExpanded ? t('community.showLess') : t('community.showMore')}
+          </button>
+        )}
 
         {/* images */}
         {images.length > 0 && (
