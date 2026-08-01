@@ -56,6 +56,30 @@
   }
 }
 
+/* ── Community pull-to-refresh ───────────────────────────────
+   `.matgil-community-scroll` is added to (and removed from) AppLayout's
+   shared `<main>` only by usePullToRefresh.js, only while CommunityPage is
+   mounted — never a global rule, never left behind on other tabs. It alone
+   isn't guaranteed to stop every browser's native pull-to-refresh (iOS
+   Safari in particular), which is why the hook also conditionally
+   preventDefault()s the confirmed-downward-pull case directly; this is the
+   CSS half of that same defense.
+   `.matgil-ptr-content` is CommunityPage's own content wrapper (PageHeader +
+   tabs + post list) — the one thing pull-to-refresh actually translates.
+   `--dragging` removes the transition entirely so the transform tracks the
+   finger 1:1 with zero lag while a pull is live; it's only present during
+   the 'pulling'/'ready' phases (see CommunityPage.jsx), never during the
+   release/return animation. */
+.matgil-community-scroll {
+  overscroll-behavior-y: contain;
+}
+.matgil-ptr-content {
+  transition: transform 220ms ease-out;
+}
+.matgil-ptr-content--dragging {
+  transition: none;
+}
+
 /* ── small, reusable keyframes ──────────────────────────────── */
 @keyframes matgil-rise {
   from {
@@ -230,5 +254,8 @@
   .search-overlay-in,
   .search-overlay-out {
     animation: none;
+  }
+  .matgil-ptr-content {
+    transition-duration: 1ms;
   }
 }

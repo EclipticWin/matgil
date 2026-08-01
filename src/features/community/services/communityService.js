@@ -2,20 +2,45 @@ import { supabase } from '../../../lib/supabase.js';
 import { formatRelativeOrAbsolute } from '../../../shared/utils/formatTime.js';
 import { POST_TINTS } from '../data/communityConstants.js';
 
-export async function fetchPosts({ popular = false } = {}) {
+/** Fetches one 5-item (default) page of the community list — offset-based,
+ *  not keyset/cursor, since the 'popular' tab's sort key (like_count) can
+ *  change between page requests and a composite (like_count, comment_count,
+ *  created_at, id) keyset filter would need a hand-built multi-column `.or()`
+ *  condition in supabase-js for very little real benefit here (a community
+ *  feed, unlike a large public ranking, is small/slow-moving enough that
+ *  offset drift — a post shifting across the page boundary between two
+ *  requests — is a rare, low-stakes cosmetic edge case, not a correctness
+ *  bug). `category` filters server-side now (previously CommunityPage
+ *  fetched every post and filtered client-side via filterPosts()) so a
+ *  5-item page can actually mean 5 items of that category, not 5 of
+ *  everything with 0 matching the active tab.
+ *  `id DESC` is appended as a final tiebreaker after every existing order()
+ *  call (never replacing them) purely for pagination stability if two rows
+ *  ever tie on every prior column — it does not change any currently
+ *  observable ordering. */
+export async function fetchPosts({ popular = false, category = null, limit = 5, offset = 0 } = {}) {
   let query = supabase
     .from('mg_community_posts')
     .select('*')
     .eq('is_published', true);
 
+  if (category) {
+    query = query.eq('category', category);
+  }
+
   if (popular) {
     query = query
       .order('like_count', { ascending: false })
       .order('comment_count', { ascending: false })
-      .order('created_at', { ascending: true });
+      .order('created_at', { ascending: true })
+      .order('id', { ascending: false });
   } else {
-    query = query.order('created_at', { ascending: false });
+    query = query
+      .order('created_at', { ascending: false })
+      .order('id', { ascending: false });
   }
+
+  query = query.range(offset, offset + limit - 1);
 
   const { data, error } = await query;
   if (error) throw error;

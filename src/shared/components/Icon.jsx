@@ -337,6 +337,24 @@ export function LocateIcon(p) {
   );
 }
 
+/** Single circular arrow (Lucide's RotateCw shape, one path with two
+ *  subpaths — the ~300° arc plus the short arrowhead at its open end) — used
+ *  by CommunityPage's pull-to-refresh indicator. Deliberately one arrow, not
+ *  the two-headed refresh-circle glyph. */
+export function RotateCwIcon(p) {
+  return (
+    <Svg {...p}>
+      <path
+        d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8 M21 3v5h-5"
+        stroke="currentColor"
+        strokeWidth="2.2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </Svg>
+  );
+}
+
 export function FacebookIcon({ size = 26 }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24">
