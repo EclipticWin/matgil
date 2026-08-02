@@ -247,6 +247,12 @@ export default function ReviewComposer({
         />
       </div>
 
+      {/* 리뷰 활용 안내 — 약관 동의처럼 강한 톤이 아니라, 위 사진 안내와 같은
+          보조 문구 톤(text-ink-faint)으로 조용히 표시한다. */}
+      <p className="mt-3 text-[0.7rem] leading-relaxed text-ink-faint">
+        {t('placeDetail.reviewUsageNotice')}
+      </p>
+
       {error && (
         <p className="mt-2 rounded-xl bg-red-50 px-3 py-2 text-center text-xs text-red-600">
           {t(`placeDetail.${errorKey}`)}

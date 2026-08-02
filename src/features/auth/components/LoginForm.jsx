@@ -43,8 +43,11 @@ export default function LoginForm({ onDone, returnTo }) {
   const { login } = useAuth();
   const navigate = useNavigate();
   const { locale, t } = useLocale();
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  // Pre-filled test-account defaults so a visitor can explore the app while
+  // logged out and still reach the login button pre-populated for
+  // login-gated features — this never auto-submits or auto-logs-in.
+  const [email, setEmail] = useState('matgiluser@gmail.com');
+  const [password, setPassword] = useState('test1234$$');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const canSubmit = email.trim() && password.trim() && !busy;
@@ -136,9 +139,12 @@ export default function LoginForm({ onDone, returnTo }) {
 
       {/* email form */}
       <form className="flex flex-col gap-2.5" onSubmit={handleLogin}>
+        {/* autoComplete="off" so the browser's own saved-credential autofill
+            can't silently overwrite the pre-filled test-account defaults
+            above; type="password" still masks the value as before. */}
         <input
           type="email"
-          autoComplete="email"
+          autoComplete="off"
           placeholder={t('login.email')}
           value={email}
           onChange={(e) => setEmail(e.target.value)}
@@ -146,7 +152,7 @@ export default function LoginForm({ onDone, returnTo }) {
         />
         <input
           type="password"
-          autoComplete="current-password"
+          autoComplete="off"
           placeholder={t('login.password')}
           value={password}
           onChange={(e) => setPassword(e.target.value)}

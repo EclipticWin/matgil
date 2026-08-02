@@ -51,14 +51,13 @@ function ReviewPhotoGrid({ images }) {
 // parent just for this one piece of UI coordination.
 const CLOSE_MENUS_EVENT = 'matgil:review-card-close-menus';
 
-/** Integer 1–5 badge (never "5.0") — a repeated 5-star row is too heavy for a
- *  single review's own score; the average/distribution at the top of the page
- *  is where stars still make sense. */
+/** One-decimal badge (5 -> "5.0", 4 -> "4.0") — matches the average rating's own
+ *  one-decimal formatting at the top of the page, for a single review's score. */
 function RatingBadge({ rating }) {
   return (
     <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-coral-tint px-2 py-0.5 text-[0.75rem] font-bold text-coral">
       <StarIcon size={9} />
-      {rating}
+      {Number(rating).toFixed(1)}
     </span>
   );
 }

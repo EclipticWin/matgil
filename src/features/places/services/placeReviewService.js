@@ -96,21 +96,27 @@ export async function fetchAllPlaceReviewStats() {
   return statsByPlaceId;
 }
 
-/** Reviews for one place, newest first (created_at desc, id desc — matches the
- *  partial index backing this query). Pass `cursor` (the last row of the previous
- *  page) for cursor-based pagination instead of offset pagination. */
-export async function fetchPlaceReviews({ placeId, cursor = null, limit = 5 }) {
+/** Reviews for one place. `sort` picks the order: 'latest' (default, created_at
+ *  desc + id desc — matches the partial index backing this query) or 'oldest'
+ *  (created_at asc + id asc, same index scanned the other way). Pass `cursor`
+ *  (the last row of the previous page, in the SAME sort direction) for
+ *  cursor-based pagination instead of offset pagination — the cursor comparison
+ *  operator flips with `sort` so paging through an 'oldest'-sorted list keeps
+ *  moving forward in time instead of re-walking already-seen rows. */
+export async function fetchPlaceReviews({ placeId, cursor = null, limit = 5, sort = 'latest' }) {
+  const ascending = sort === 'oldest';
+  const cmp = ascending ? 'gt' : 'lt';
   let query = supabase
     .from('mg_place_reviews')
     .select('*, mg_place_review_images(id, storage_path, sort_order)')
     .eq('place_id', placeId)
-    .order('created_at', { ascending: false })
-    .order('id', { ascending: false })
+    .order('created_at', { ascending })
+    .order('id', { ascending })
     .limit(limit);
 
   if (cursor) {
     query = query.or(
-      `created_at.lt.${cursor.createdAt},and(created_at.eq.${cursor.createdAt},id.lt.${cursor.id})`,
+      `created_at.${cmp}.${cursor.createdAt},and(created_at.eq.${cursor.createdAt},id.${cmp}.${cursor.id})`,
     );
   }
 

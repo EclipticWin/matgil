@@ -181,6 +181,14 @@ export function AiSparklesIcon(p) {
   );
 }
 
+export function PlusIcon(p) {
+  return (
+    <Svg vb="0 0 18 18" {...p}>
+      <path d="M9 3v12M3 9h12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+    </Svg>
+  );
+}
+
 export function CloseIcon(p) {
   return (
     <Svg vb="0 0 18 18" {...p}>

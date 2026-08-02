@@ -9,6 +9,33 @@ export function buildPlaceShareUrl(placeId) {
   return `${window.location.origin}${basename}${ROUTES.placeDetail(placeId)}`;
 }
 
+/** Same as buildPlaceShareUrl but for a place's reviews page (`/places/:placeId/reviews`). */
+export function buildPlaceReviewsShareUrl(placeId) {
+  const base = import.meta.env.BASE_URL ?? '/';
+  const basename = base === '/' ? '' : base.replace(/\/$/, '');
+  return `${window.location.origin}${basename}${ROUTES.placeReviews(placeId)}`;
+}
+
+/** Tries the Web Share API first, falling back to a clipboard copy of `url`
+ *  when unsupported or when the share itself fails (but not on a user-cancelled
+ *  share, which is silent — no toast, no clipboard fallback). navigator.share()
+ *  is reached with no `await` before it, so callers invoking this from a click
+ *  handler still satisfy browsers that require Web Share to start synchronously
+ *  within the gesture. Returns 'shared' | 'cancelled' | 'copied' | 'copyFailed'. */
+export async function shareOrCopyLink({ url, title, text }) {
+  if (navigator.share) {
+    try {
+      await navigator.share({ title, text, url });
+      return 'shared';
+    } catch (err) {
+      if (err?.name === 'AbortError') return 'cancelled';
+      console.warn('Web Share failed, falling back to clipboard copy', err);
+    }
+  }
+  const copied = await copyToClipboard(url);
+  return copied ? 'copied' : 'copyFailed';
+}
+
 /** Copies text to the clipboard, returning true/false instead of throwing —
  *  falls back to a legacy textarea+execCommand path for browsers/contexts
  *  without the async Clipboard API. */

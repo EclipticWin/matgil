@@ -18,7 +18,7 @@ import { useLocale } from '../../../shared/i18n/LocaleProvider.jsx';
 import { pickTranslated } from '../../../shared/i18n/localeFallback.js';
 import { buildReturnTo } from '../../../shared/utils/authRedirect.js';
 import { cn } from '../../../shared/utils/classNames.js';
-import { buildPlaceShareUrl, copyToClipboard } from '../../../shared/utils/shareUtils.js';
+import { buildPlaceShareUrl, shareOrCopyLink } from '../../../shared/utils/shareUtils.js';
 import { useAuth } from '../../auth/hooks/useAuth.jsx';
 import { useAuthPrompt } from '../../auth/hooks/useAuthPrompt.jsx';
 import DeleteReviewConfirmModal from '../../places/components/DeleteReviewConfirmModal.jsx';
@@ -97,11 +97,16 @@ function SectionEmptyState({ empty }) {
   );
 }
 
-function SectionHeader({ Icon, label }) {
+// `action`(리뷰 섹션의 소형 "리뷰 작성하기" 버튼 등) 유무와 무관하게 제목 쪽은
+// min-w-0 + truncate로 줄여, 좁은 모바일 너비에서도 오른쪽 버튼과 겹치지 않는다.
+function SectionHeader({ Icon, label, action = null }) {
   return (
-    <h3 className="mb-3 inline-flex items-center gap-1.5 text-[0.78rem] font-extrabold tracking-wide text-ink-soft">
-      <Icon size={13} /> {label}
-    </h3>
+    <div className="mb-3 flex items-center justify-between gap-2">
+      <h3 className="inline-flex min-w-0 items-center gap-1.5 text-[0.78rem] font-extrabold tracking-wide text-ink-soft">
+        <Icon size={13} className="shrink-0" /> <span className="truncate">{label}</span>
+      </h3>
+      {action}
+    </div>
   );
 }
 
@@ -361,37 +366,22 @@ export default function PlaceDetailSheet({ place, selectedLocation, onBack, head
     }
   }
 
-  // navigator.share must be called synchronously inside the click handler (some
-  // browsers reject it otherwise) — no awaits/setTimeout before the call itself.
-  // A user-cancelled share (AbortError) is silent: no toast, no console noise,
-  // and no clipboard fallback. Any other failure (or no Web Share support at
-  // all) falls back to copying the place's own URL to the clipboard.
+  // shareOrCopyLink() reaches navigator.share() with no `await` before it, so
+  // this still satisfies browsers that require Web Share to start synchronously
+  // within the click gesture. A user-cancelled share ('cancelled') is silent:
+  // no toast, no clipboard fallback. Any other failure (or no Web Share support
+  // at all) falls back to copying the place's own URL to the clipboard.
   async function handleShareClick() {
     if (sharing) return;
     setSharing(true);
     const shareUrl = buildPlaceShareUrl(place.id);
-    let needsClipboardFallback = !navigator.share;
-
-    if (navigator.share) {
-      try {
-        await navigator.share({
-          title: place.name,
-          text: t('placeDetail.shareText', { name: place.name }),
-          url: shareUrl,
-        });
-      } catch (err) {
-        if (err?.name !== 'AbortError') {
-          console.warn('Web Share failed, falling back to clipboard copy', err);
-          needsClipboardFallback = true;
-        }
-      }
-    }
-
-    if (needsClipboardFallback) {
-      const copied = await copyToClipboard(shareUrl);
-      if (!copied) console.warn('Clipboard copy failed');
-      setShareToast(copied ? t('placeDetail.shareCopied') : t('placeDetail.shareCopyFailed'));
-    }
+    const result = await shareOrCopyLink({
+      url: shareUrl,
+      title: place.name,
+      text: t('placeDetail.shareText', { name: place.name }),
+    });
+    if (result === 'copied') setShareToast(t('placeDetail.shareCopied'));
+    else if (result === 'copyFailed') setShareToast(t('placeDetail.shareCopyFailed'));
     setSharing(false);
   }
 
@@ -401,12 +391,16 @@ export default function PlaceDetailSheet({ place, selectedLocation, onBack, head
       return;
     }
     setLastPlaceView({ placeId: place.id, selectedLocation });
-    navigate(ROUTES.placeReviews(place.id), { state: { placeName: place.name, openWrite: true } });
+    navigate(ROUTES.placeReviews(place.id), {
+      state: { placeName: place.name, placeAddress: place.address, openWrite: true },
+    });
   }
 
   function handleViewReviewsClick() {
     setLastPlaceView({ placeId: place.id, selectedLocation });
-    navigate(ROUTES.placeReviews(place.id), { state: { placeName: place.name } });
+    navigate(ROUTES.placeReviews(place.id), {
+      state: { placeName: place.name, placeAddress: place.address },
+    });
   }
 
   function handleReviewEdited(updated, meta) {
@@ -660,9 +654,24 @@ export default function PlaceDetailSheet({ place, selectedLocation, onBack, head
           }
 
           if (section.key === 'reviews') {
+            // 리뷰가 1개 이상이고, 로그인한 본인이 이미 쓴 리뷰가 없을 때만 제목
+            // 오른쪽에 소형 작성 버튼을 둔다 — 리뷰가 없는 경우는 아래 빈 상태의
+            // 큰 CTA 하나만 남겨 버튼이 두 번 표시되지 않게 한다.
+            const showHeaderWriteButton =
+              !reviewsLoading && !reviewsError && latestReviews.length > 0 && !myReviewLoading && !myReview;
+            const headerWriteButton = showHeaderWriteButton ? (
+              <button
+                type="button"
+                onClick={handleWriteReviewClick}
+                className="shrink-0 rounded-full bg-coral px-3 py-1 text-[0.72rem] font-bold text-white"
+              >
+                {t('placeDetail.writeReview')}
+              </button>
+            ) : null;
+
             return (
               <div {...wrapperProps}>
-                <SectionHeader Icon={Icon} label={label} />
+                <SectionHeader Icon={Icon} label={label} action={headerWriteButton} />
                 {photoWarning && (
                   <div className="mb-2 rounded-xl bg-red-50 px-3 py-2 text-center text-xs text-red-600">
                     {t('placeDetail.reviewSavedPhotosFailed')}
@@ -718,19 +727,10 @@ export default function PlaceDetailSheet({ place, selectedLocation, onBack, head
                         />
                       ),
                     )}
-                    <div className="mt-1 flex items-center justify-between gap-3">
+                    <div className="mt-1">
                       <button type="button" onClick={handleViewReviewsClick} className="text-[0.8rem] font-bold text-coral">
                         {t('placeDetail.viewAllReviews', { count: reviewCount })}
                       </button>
-                      {!myReviewLoading && !myReview && (
-                        <button
-                          type="button"
-                          onClick={handleWriteReviewClick}
-                          className="shrink-0 rounded-full bg-coral px-4 py-1.5 text-[0.8rem] font-bold text-white"
-                        >
-                          {t('placeDetail.writeReview')}
-                        </button>
-                      )}
                     </div>
                   </div>
                 )}
